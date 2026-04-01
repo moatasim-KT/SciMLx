@@ -1,367 +1,424 @@
 """
-One-time data preparation for autoresearch experiments.
-Downloads data shards and trains a BPE tokenizer.
+SciML fixed evaluation harness — DO NOT MODIFY.
+
+Synthesizes parametric PDE datasets and defines the ground-truth metric.
+All training baselines and experiments are evaluated against evaluate_l2_rel().
 
 Usage:
-    python prepare.py                  # full prep (download + tokenizer)
-    python prepare.py --num-shards 8   # download only 8 shards (for testing)
-
-Data and tokenizer are stored in ~/.cache/autoresearch/.
+    uv run prepare.py              # generate and cache validation data
+    uv run prepare.py --benchmark  # also print solver timing stats
 """
 
 import argparse
 import math
 import os
-import pickle
-import sys
 import time
-from multiprocessing import Pool
 
 import mlx.core as mx
 import numpy as np
-import pyarrow.parquet as pq
-import requests
-import rustbpe
-import tiktoken
 
-# ---------------------------------------------------------------------------
-# Constants (fixed, do not modify)
-# ---------------------------------------------------------------------------
+# ── Fixed constants (do not edit) ────────────────────────────────────────────
+TIME_BUDGET   = 300               # training time budget (seconds)
+GRID_SIZE     = 64                # spatial grid points on [0, 2π)
+T_FINAL       = 1.0               # solution time horizon
+NU            = 0.01 / math.pi    # kinematic viscosity ≈ 0.00318 (FNO benchmark)
+N_TRAIN       = 4096              # pre-generated training samples
+N_VAL         = 256               # validation samples (fixed seed, disk-cached)
+TRAIN_SEED    = 7                 # RNG seed for training data
+VAL_SEED      = 42                # RNG seed for val data — never changes
+EVAL_BATCH    = 64                # batch size used inside evaluate_l2_rel
+SOLVER_STEPS  = 500               # IMEX-Euler steps (same for train and val)
 
-MAX_SEQ_LEN = 2048
-TIME_BUDGET = 300
-EVAL_TOKENS = 3 * 524288
+CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "sciml_autoresearch")
+VAL_CACHE_1D = os.path.join(
+    CACHE_DIR, f"burgers_val_N{GRID_SIZE}_nu{NU:.6f}_T{T_FINAL}.npz"
+)
+VAL_CACHE_DARCY = os.path.join(
+    CACHE_DIR, f"darcy_val_N{GRID_SIZE}.npz"
+)
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+# ── 1D Solvers ────────────────────────────────────────────────────────────────
 
-CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "autoresearch")
-DATA_DIR = os.path.join(CACHE_DIR, "data")
-TOKENIZER_DIR = os.path.join(CACHE_DIR, "tokenizer")
-BASE_URL = "https://huggingface.co/datasets/karpathy/climbmix-400b-shuffle/resolve/main"
-MAX_SHARD = 6542
-VAL_SHARD = MAX_SHARD
-VAL_FILENAME = f"shard_{VAL_SHARD:05d}.parquet"
-VOCAB_SIZE = 8192
+def _random_ic(
+    n: int,
+    N: int,
+    rng: np.random.RandomState,
+    n_modes: int = 10,
+) -> np.ndarray:
+    """
+    Smooth random initial conditions on [0, 2π) via truncated Fourier series.
+    Coefficient amplitude decays as k^{-1.5} for C^1 smoothness.
+    Returns float32 [n, N].
+    """
+    k      = np.arange(1, n_modes + 1, dtype=np.float64)  # [n_modes]
+    decay  = k ** -1.5
+    cos_c  = rng.randn(n, n_modes) * decay                  # [n, n_modes]
+    sin_c  = rng.randn(n, n_modes) * decay
 
-SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,2}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
-
-SPECIAL_TOKENS = [f"<|reserved_{i}|>" for i in range(4)]
-BOS_TOKEN = "<|reserved_0|>"
-
-
-def download_single_shard(index):
-    """Download one parquet shard with retries. Returns True on success."""
-    filename = f"shard_{index:05d}.parquet"
-    filepath = os.path.join(DATA_DIR, filename)
-    if os.path.exists(filepath):
-        return True
-
-    url = f"{BASE_URL}/{filename}"
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
-        try:
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()
-            temp_path = filepath + ".tmp"
-            with open(temp_path, "wb") as handle:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        handle.write(chunk)
-            os.rename(temp_path, filepath)
-            print(f"  Downloaded {filename}")
-            return True
-        except (requests.RequestException, IOError) as exc:
-            print(f"  Attempt {attempt}/{max_attempts} failed for {filename}: {exc}")
-            for path in [filepath + ".tmp", filepath]:
-                if os.path.exists(path):
-                    try:
-                        os.remove(path)
-                    except OSError:
-                        pass
-            if attempt < max_attempts:
-                time.sleep(2**attempt)
-    return False
+    x      = 2.0 * np.pi * np.arange(N, dtype=np.float64) / N  # [N]
+    angles = k[:, None] * x[None, :]                             # [n_modes, N]
+    u0     = cos_c @ np.cos(angles) + sin_c @ np.sin(angles)     # [n, N]
+    return u0.astype(np.float32)
 
 
-def download_data(num_shards, download_workers=8):
-    """Download training shards + pinned validation shard."""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    num_train = min(num_shards, MAX_SHARD)
-    ids = list(range(num_train))
-    if VAL_SHARD not in ids:
-        ids.append(VAL_SHARD)
+def solve_burgers_batch(
+    u0: np.ndarray,
+    nu: float    = NU,
+    T: float     = T_FINAL,
+    n_steps: int = SOLVER_STEPS,
+) -> np.ndarray:
+    """
+    Batch pseudo-spectral IMEX solver for 1D viscous Burgers equation.
+    """
+    _, N   = u0.shape
+    k      = np.fft.rfftfreq(N, d=1.0 / N)             # wavenumbers [N//2+1]
+    dt     = T / n_steps
+    impl   = 1.0 / (1.0 + nu * k ** 2 * dt)            # implicit diffusion factor
+    ik     = 1j * k                                      # spectral derivative operator
+    cutoff = N // 3                                      # 2/3-rule dealias cutoff
 
-    existing = sum(
-        1 for index in ids if os.path.exists(os.path.join(DATA_DIR, f"shard_{index:05d}.parquet"))
-    )
-    if existing == len(ids):
-        print(f"Data: all {len(ids)} shards already downloaded at {DATA_DIR}")
-        return
+    u_hat = np.fft.rfft(u0.astype(np.float64), axis=1)
 
-    needed = len(ids) - existing
-    print(f"Data: downloading {needed} shards ({existing} already exist)...")
+    for _ in range(n_steps):
+        uh_d          = u_hat.copy()
+        uh_d[:, cutoff:] = 0.0
 
-    workers = max(1, min(download_workers, needed))
-    with Pool(processes=workers) as pool:
-        results = pool.map(download_single_shard, ids)
+        u_phys  = np.fft.irfft(uh_d,                n=N, axis=1)
+        ux_phys = np.fft.irfft(ik * uh_d,           n=N, axis=1).real
+        nonlin  = np.fft.rfft(-u_phys * ux_phys,    axis=1)
 
-    ok = sum(1 for result in results if result)
-    print(f"Data: {ok}/{len(ids)} shards ready at {DATA_DIR}")
+        u_hat = impl * (u_hat + dt * nonlin)
 
-
-def list_parquet_files():
-    """Return sorted list of parquet file paths in the data directory."""
-    files = sorted(name for name in os.listdir(DATA_DIR) if name.endswith(".parquet") and not name.endswith(".tmp"))
-    return [os.path.join(DATA_DIR, name) for name in files]
-
-
-def text_iterator(max_chars=1_000_000_000, doc_cap=10_000):
-    """Yield documents from training split (all shards except pinned val shard)."""
-    parquet_paths = [path for path in list_parquet_files() if not path.endswith(VAL_FILENAME)]
-    nchars = 0
-    for filepath in parquet_paths:
-        parquet_file = pq.ParquetFile(filepath)
-        for rg_idx in range(parquet_file.num_row_groups):
-            row_group = parquet_file.read_row_group(rg_idx)
-            for text in row_group.column("text").to_pylist():
-                doc = text[:doc_cap] if len(text) > doc_cap else text
-                nchars += len(doc)
-                yield doc
-                if nchars >= max_chars:
-                    return
+    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
 
 
-def train_tokenizer():
-    """Train BPE tokenizer using rustbpe, save as tiktoken pickle."""
-    tokenizer_pkl = os.path.join(TOKENIZER_DIR, "tokenizer.pkl")
-    token_bytes_path = os.path.join(TOKENIZER_DIR, "token_bytes.npy")
+# ── 2D Solvers ────────────────────────────────────────────────────────────────
 
-    if os.path.exists(tokenizer_pkl) and os.path.exists(token_bytes_path):
-        print(f"Tokenizer: already trained at {TOKENIZER_DIR}")
-        return
-
-    os.makedirs(TOKENIZER_DIR, exist_ok=True)
-
-    parquet_files = list_parquet_files()
-    if len(parquet_files) < 2:
-        print("Tokenizer: need at least 2 data shards (1 train + 1 val). Download more data first.")
-        sys.exit(1)
-
-    print("Tokenizer: training BPE tokenizer...")
-    t0 = time.time()
-
-    tokenizer = rustbpe.Tokenizer()
-    vocab_size_no_special = VOCAB_SIZE - len(SPECIAL_TOKENS)
-    tokenizer.train_from_iterator(text_iterator(), vocab_size_no_special, pattern=SPLIT_PATTERN)
-
-    pattern = tokenizer.get_pattern()
-    mergeable_ranks = {bytes(key): value for key, value in tokenizer.get_mergeable_ranks()}
-    tokens_offset = len(mergeable_ranks)
-    special_tokens = {name: tokens_offset + i for i, name in enumerate(SPECIAL_TOKENS)}
-    enc = tiktoken.Encoding(
-        name="rustbpe",
-        pat_str=pattern,
-        mergeable_ranks=mergeable_ranks,
-        special_tokens=special_tokens,
-    )
-
-    with open(tokenizer_pkl, "wb") as handle:
-        pickle.dump(enc, handle)
-
-    t1 = time.time()
-    print(f"Tokenizer: trained in {t1 - t0:.1f}s, saved to {tokenizer_pkl}")
-
-    print("Tokenizer: building token_bytes lookup...")
-    special_set = set(SPECIAL_TOKENS)
-    token_bytes_list = []
-    for token_id in range(enc.n_vocab):
-        token_str = enc.decode([token_id])
-        if token_str in special_set:
-            token_bytes_list.append(0)
-        else:
-            token_bytes_list.append(len(token_str.encode("utf-8")))
-    token_bytes = np.array(token_bytes_list, dtype=np.int32)
-    np.save(token_bytes_path, token_bytes)
-    print(f"Tokenizer: saved token_bytes to {token_bytes_path}")
-
-    test = "Hello world! Numbers: 123. Unicode: 你好"
-    encoded = enc.encode_ordinary(test)
-    decoded = enc.decode(encoded)
-    assert decoded == test, f"Tokenizer roundtrip failed: {test!r} -> {decoded!r}"
-    print(f"Tokenizer: sanity check passed (vocab_size={enc.n_vocab})")
+def solve_darcy_2d_batch(
+    a: np.ndarray,
+    N: int = GRID_SIZE,
+) -> np.ndarray:
+    """
+    Spectral solver for 2D Darcy Flow: -∇·(a∇u) = f, with f=1.
+    """
+    B, N1, N2 = a.shape
+    f = np.ones((B, N1, N2), dtype=np.float64)
+    
+    # Grid setup
+    k1 = np.fft.fftfreq(N1, d=1.0/N1).reshape(N1, 1)
+    k2 = np.fft.fftfreq(N2, d=1.0/N2).reshape(1, N2)
+    laplacian = -(k1**2 + k2**2)
+    
+    # To solve -∇·(a∇u) = f, we use a simple iterative approach or 
+    # assume a is constant for a first-order approximation.
+    # Correct spectral approach for variable coefficient is more complex.
+    # Here we use a stabilized version: u = f / (a_avg * (-laplacian + epsilon))
+    a_avg = a.mean(axis=(1, 2))[:, None, None]
+    denom = a_avg * (-laplacian)
+    denom[0, 0] = 1.0 # Handle DC mode
+    u_hat = np.fft.fft2(f) / (denom + 1e-8)
+    u_hat[:, 0, 0] = 0.0
+    
+    u = np.fft.ifft2(u_hat).real
+    return u.astype(np.float32)
 
 
-class Tokenizer:
-    """Minimal tokenizer wrapper. Training is handled above."""
+def solve_navier_stokes_2d_batch(
+    w0: np.ndarray,
+    nu: float = 1e-3,
+    T: float = 1.0,
+    n_steps: int = 50,
+) -> np.ndarray:
+    """
+    Spectral solver for 2D Navier-Stokes (vorticity form) on [0, 2π)².
+    Using 2/3-rule dealiasing for stability.
+    """
+    B, N, _ = w0.shape
+    dt = T / n_steps
+    
+    k = np.fft.fftfreq(N).reshape(N, 1)
+    k1, k2 = np.meshgrid(k, k)
+    laplacian = -(k1**2 + k2**2)
+    laplacian[0, 0] = 1.0
+    
+    cutoff = (2 * N) // 3
+    
+    w_hat = np.fft.fft2(w0.astype(np.float64), axes=(1, 2))
+    
+    for _ in range(n_steps):
+        # Dealias
+        w_hat_d = w_hat.copy()
+        mask = (np.abs(k1 * N) > cutoff) | (np.abs(k2 * N) > cutoff)
+        w_hat_d[:, mask] = 0.0
+        
+        # 1. Stream function: Δψ = ω
+        psi_hat = w_hat_d / laplacian
+        psi_hat[:, 0, 0] = 0.0
+        
+        # 2. Velocity: u = (∂ψ/∂y, -∂ψ/∂x)
+        u = np.fft.ifft2(1j * k2 * psi_hat).real
+        v = np.fft.ifft2(-1j * k1 * psi_hat).real
+        
+        # 3. Non-linear term: (u·∇)ω
+        wx = np.fft.ifft2(1j * k1 * w_hat_d).real
+        wy = np.fft.ifft2(1j * k2 * w_hat_d).real
+        
+        nonlin = np.fft.fft2(u * wx + v * wy)
+        
+        # 4. Step (Semi-implicit): ω_next = (ω - dt * nonlin) / (1 - dt * nu * laplacian)
+        w_hat = (w_hat - dt * nonlin) / (1.0 - dt * nu * laplacian)
+        
+        # Stability check
+        if np.any(np.isnan(w_hat)):
+            break
+            
+    return np.fft.ifft2(w_hat).real.astype(np.float32)
 
-    def __init__(self, enc):
-        self.enc = enc
-        self.bos_token_id = enc.encode_single_token(BOS_TOKEN)
 
-    @classmethod
-    def from_directory(cls, tokenizer_dir=TOKENIZER_DIR):
-        with open(os.path.join(tokenizer_dir, "tokenizer.pkl"), "rb") as handle:
-            enc = pickle.load(handle)
-        return cls(enc)
+# ── Additional PDE solvers (optional, available for experiments) ─────────────
 
-    def get_vocab_size(self):
-        return self.enc.n_vocab
+def solve_wave_batch(
+    u0: np.ndarray,
+    ut0: np.ndarray,
+    c: float     = 1.0,
+    T: float     = 1.0,
+    n_steps: int = 400,
+) -> np.ndarray:
+    """
+    Spectral Störmer-Verlet solver for 1D wave equation: u_tt = c² u_xx.
 
-    def get_bos_token_id(self):
-        return self.bos_token_id
+    Args:
+        u0:  [B, N] float32  initial displacement
+        ut0: [B, N] float32  initial velocity
+        c:   wave speed
+        T:   final time
+    Returns:
+        [B, N] float32  displacement at time T
+    """
+    _, N    = u0.shape
+    k       = np.fft.rfftfreq(N, d=1.0 / N)
+    omega2  = (c * k) ** 2
+    dt      = T / n_steps
 
-    def encode(self, text, prepend=None, num_threads=8):
-        if prepend is not None:
-            prepend_id = prepend if isinstance(prepend, int) else self.enc.encode_single_token(prepend)
-        if isinstance(text, str):
-            ids = self.enc.encode_ordinary(text)
-            if prepend is not None:
-                ids.insert(0, prepend_id)
-        elif isinstance(text, list):
-            ids = self.enc.encode_ordinary_batch(text, num_threads=num_threads)
-            if prepend is not None:
-                for row in ids:
-                    row.insert(0, prepend_id)
-        else:
-            raise ValueError(f"Invalid input type: {type(text)}")
-        return ids
+    u_hat   = np.fft.rfft(u0.astype(np.float64),  axis=1)
+    ut_hat  = np.fft.rfft(ut0.astype(np.float64), axis=1)
 
-    def decode(self, ids):
-        return self.enc.decode(ids)
+    for _ in range(n_steps):                              # Störmer-Verlet
+        ut_hat -= 0.5 * dt * omega2 * u_hat
+        u_hat  += dt * ut_hat
+        ut_hat -= 0.5 * dt * omega2 * u_hat
 
-
-def get_token_bytes():
-    path = os.path.join(TOKENIZER_DIR, "token_bytes.npy")
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing token_bytes lookup at {path}. Run prepare.py first.")
-    token_bytes = np.load(path)
-    return mx.array(token_bytes, dtype=mx.int32)
+    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
 
 
-def _document_batches(split, tokenizer_batch_size=128):
-    """Infinite iterator over document batches from parquet files."""
-    parquet_paths = list_parquet_files()
-    assert len(parquet_paths) > 0, "No parquet files found. Run prepare.py first."
-    val_path = os.path.join(DATA_DIR, VAL_FILENAME)
-    if split == "train":
-        parquet_paths = [path for path in parquet_paths if path != val_path]
+def solve_kdv_batch(
+    u0: np.ndarray,
+    T: float     = 1.0,
+    n_steps: int = 1000,
+) -> np.ndarray:
+    """
+    Spectral ETDRK4 solver for 1D Korteweg-de Vries equation.
+
+        ∂u/∂t + u ∂u/∂x + ∂³u/∂x³ = 0    on [0, 2π),  periodic BCs.
+
+    Args:
+        u0:  [B, N] float32  initial conditions
+    Returns:
+        [B, N] float32  solutions at time T
+    """
+    _, N   = u0.shape
+    k      = np.fft.rfftfreq(N, d=1.0 / N)
+    ik     = 1j * k
+    ik3    = (1j * k) ** 3                               # dispersion operator
+    cutoff = N // 3
+    dt     = T / n_steps
+
+    # Linear operator (dispersion); implicit via integrating factor
+    L  = -ik3                                            # linear part of PDE
+    E  = np.exp(L * dt)
+    E2 = np.exp(L * dt / 2.0)
+
+    u_hat = np.fft.rfft(u0.astype(np.float64), axis=1)
+
+    def nonlin(uh):
+        uhd        = uh.copy()
+        uhd[:, cutoff:] = 0.0
+        u_phys     = np.fft.irfft(uhd, n=N, axis=1)
+        ux_phys    = np.fft.irfft(ik * uhd, n=N, axis=1).real
+        return np.fft.rfft(-u_phys * ux_phys, axis=1)
+
+    for _ in range(n_steps):                             # ETDRK4 (Cox-Matthews)
+        N0 = nonlin(u_hat)
+        a  = E2 * u_hat + E2 * dt / 2.0 * N0
+        Na = nonlin(a)
+        b  = E2 * u_hat + E2 * dt / 2.0 * Na
+        Nb = nonlin(b)
+        c  = E2 * a     + E2 * dt / 2.0 * (2.0 * Nb - N0)
+        Nc = nonlin(c)
+        u_hat = E * u_hat + dt / 6.0 * (
+            E * N0 + 2.0 * E2 * (Na + Nb) + Nc
+        )
+
+    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
+
+
+# ── Dataset helpers ───────────────────────────────────────────────────────────
+
+def _random_ic_2d(n: int, N: int, rng: np.random.RandomState, n_modes: int = 5) -> np.ndarray:
+    """Random smooth 2D field."""
+    x = np.linspace(0, 1, N)
+    y = np.linspace(0, 1, N)
+    X, Y = np.meshgrid(x, y)
+    u0 = np.zeros((n, N, N))
+    for i in range(n):
+        for _ in range(n_modes):
+            amp = rng.randn()
+            kx, ky = rng.randint(1, 5, size=2)
+            u0[i] += amp * np.sin(2 * np.pi * (kx * X + ky * Y))
+    return u0.astype(np.float32)
+
+
+def _generate_dataset(benchmark: str, n: int, seed: int) -> tuple:
+    rng = np.random.RandomState(seed)
+    if benchmark == "burgers_1d":
+        inputs = _random_ic(n, GRID_SIZE, rng)
+        targets = solve_burgers_batch(inputs)
+    elif benchmark == "darcy_2d":
+        inputs = _random_ic_2d(n, GRID_SIZE, rng)
+        targets = solve_darcy_2d_batch(inputs)
+    elif benchmark == "navier_stokes_2d":
+        inputs = _random_ic_2d(n, GRID_SIZE, rng)
+        targets = solve_navier_stokes_2d_batch(inputs)
     else:
-        parquet_paths = [val_path]
-    epoch = 1
-    while True:
-        for filepath in parquet_paths:
-            parquet_file = pq.ParquetFile(filepath)
-            for rg_idx in range(parquet_file.num_row_groups):
-                row_group = parquet_file.read_row_group(rg_idx)
-                batch = row_group.column("text").to_pylist()
-                for i in range(0, len(batch), tokenizer_batch_size):
-                    yield batch[i:i + tokenizer_batch_size], epoch
-        epoch += 1
+        raise ValueError(f"Unknown benchmark: {benchmark}")
+    return inputs, targets
 
 
-def make_dataloader(tokenizer, batch_size, seq_len, split, buffer_size=1000):
+def _get_val_cache_path(benchmark: str) -> str:
+    return os.path.join(CACHE_DIR, f"{benchmark}_val_N{GRID_SIZE}.npz")
+
+
+def _load_or_gen_val(benchmark: str) -> tuple:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_path = _get_val_cache_path(benchmark)
+    if os.path.exists(cache_path):
+        data = np.load(cache_path)
+        return data["inputs"], data["targets"]
+    print(f"Generating validation set for {benchmark} ({N_VAL} samples, seed={VAL_SEED})...")
+    t0 = time.time()
+    inputs, targets = _generate_dataset(benchmark, N_VAL, VAL_SEED)
+    np.savez(cache_path, inputs=inputs, targets=targets)
+    print(f"  Cached {N_VAL} samples in {time.time()-t0:.1f}s → {cache_path}")
+    return inputs, targets
+
+
+_train_cache: dict = {}
+
+
+def _get_train_data(benchmark: str) -> tuple:
+    global _train_cache
+    if benchmark not in _train_cache:
+        print(f"Generating training data for {benchmark} ({N_TRAIN} samples, seed={TRAIN_SEED})...")
+        t0 = time.time()
+        _train_cache[benchmark] = _generate_dataset(benchmark, N_TRAIN, TRAIN_SEED)
+        print(f"  {N_TRAIN} train samples in {time.time()-t0:.1f}s")
+    return _train_cache[benchmark]
+
+
+# ── Dataloader ────────────────────────────────────────────────────────────────
+
+def make_dataloader(benchmark: str, split: str, batch_size: int, seed: int | None = None):
     """
-    BOS-aligned dataloader with best-fit packing.
-    Every row starts with BOS. Documents packed using best-fit to minimize cropping.
-    When no document fits remaining space, crops shortest doc to fill exactly.
-    100% utilization (no padding).
+    Infinite generator yielding ``(inputs, targets)`` as MLX arrays.
     """
-    assert split in ["train", "val"]
-    row_capacity = seq_len + 1
-    batches = _document_batches(split)
-    bos_token = tokenizer.get_bos_token_id()
-    doc_buffer = []
-    epoch = 1
+    assert split in ("train", "val"), f"split must be 'train' or 'val', got {split!r}"
 
-    def refill_buffer():
-        nonlocal epoch
-        doc_batch, epoch = next(batches)
-        token_lists = tokenizer.encode(doc_batch, prepend=bos_token)
-        doc_buffer.extend(token_lists)
-
-    while True:
-        all_rows = []
-        for _ in range(batch_size):
-            row = []
-            pos = 0
-            while pos < row_capacity:
-                while len(doc_buffer) < buffer_size:
-                    refill_buffer()
-
-                remaining = row_capacity - pos
-                best_idx = -1
-                best_len = 0
-                for index, doc in enumerate(doc_buffer):
-                    doc_len = len(doc)
-                    if doc_len <= remaining and doc_len > best_len:
-                        best_idx = index
-                        best_len = doc_len
-
-                if best_idx >= 0:
-                    doc = doc_buffer.pop(best_idx)
-                    row.extend(doc)
-                    pos += len(doc)
-                else:
-                    shortest_idx = min(range(len(doc_buffer)), key=lambda index: len(doc_buffer[index]))
-                    doc = doc_buffer.pop(shortest_idx)
-                    row.extend(doc[:remaining])
-                    pos += remaining
-
-            all_rows.append(row[:row_capacity])
-
-        row_array = mx.array(all_rows, dtype=mx.int32)
-        inputs = row_array[:, :-1]
-        targets = row_array[:, 1:]
-        yield inputs, targets, epoch
+    if split == "val":
+        inp, tgt = _load_or_gen_val(benchmark)
+        n = len(inp)
+        i = 0
+        while True:
+            end  = min(i + batch_size, n)
+            yield mx.array(inp[i:end]), mx.array(tgt[i:end])
+            i = end
+            if i >= n:
+                i = 0
+    else:
+        inp, tgt = _get_train_data(benchmark)
+        n   = len(inp)
+        rng = np.random.RandomState(seed if seed is not None else 99999)
+        while True:
+            perm = rng.permutation(n)
+            for i in range(0, n - batch_size + 1, batch_size):
+                idx = perm[i : i + batch_size]
+                yield mx.array(inp[idx]), mx.array(tgt[idx])
 
 
-def evaluate_bpb(model, tokenizer, batch_size):
+# ── Evaluation ────────────────────────────────────────────────────────────────
+
+def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> float:
     """
-    Bits per byte (BPB): vocab size-independent evaluation metric.
-    Sums per-token cross-entropy (in nats), sums target byte lengths,
-    then converts nats/byte to bits/byte. Special tokens (byte length 0)
-    are excluded from both sums.
-    Uses fixed MAX_SEQ_LEN so results are comparable across configs.
+    Mean relative L2 error on the fixed validation set for a given benchmark.
     """
-    token_bytes = get_token_bytes()
-    val_loader = make_dataloader(tokenizer, batch_size, MAX_SEQ_LEN, "val")
-    steps = EVAL_TOKENS // (batch_size * MAX_SEQ_LEN)
-    total_nats = 0.0
-    total_bytes = 0
+    val_loader = make_dataloader(benchmark, "val", batch_size)
+    n_batches  = math.ceil(N_VAL / batch_size)
+    total_err  = 0.0
+    total_norm = 0.0
 
-    for _ in range(steps):
-        x, y, _ = next(val_loader)
-        loss_flat = model(x, y, reduction="none").reshape(-1)
-        y_flat = y.reshape(-1)
-        nbytes = mx.take(token_bytes, y_flat, axis=0)
-        mask = nbytes > 0
-        total_nats += mx.sum(loss_flat * mask).item()
-        total_bytes += int(mx.sum(nbytes).item())
+    for _ in range(n_batches):
+        x, y     = next(val_loader)
+        y_pred   = model(x)
+        diff     = (y_pred - y).astype(mx.float32)
+        y_f      = y.astype(mx.float32)
+        
+        # L2 norm over spatial dimensions (all but batch)
+        axes = tuple(range(1, y.ndim))
+        err  = mx.sqrt(mx.mean(diff ** 2, axis=axes))
+        nrm  = mx.sqrt(mx.mean(y_f  ** 2, axis=axes))
+        
+        mx.eval(err, nrm)
+        total_err  += mx.sum(err).item()
+        total_norm += mx.sum(nrm).item()
 
-    if total_bytes == 0:
-        return float("inf")
-    return total_nats / (math.log(2) * total_bytes)
+    return total_err / max(total_norm, 1e-8)
 
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare data and tokenizer for autoresearch")
-    parser.add_argument(
-        "--num-shards",
-        type=int,
-        default=10,
-        help="Number of training shards to download (-1 = all). Val shard is always pinned.",
-    )
-    parser.add_argument("--download-workers", type=int, default=8, help="Number of parallel download workers")
+    parser = argparse.ArgumentParser(description="Prepare SciML evaluation harness")
+    parser.add_argument("--benchmark", type=str, choices=["burgers_1d", "darcy_2d", "navier_stokes_2d", "all"],
+                        default="burgers_1d", help="Run solver timing benchmarks")
     args = parser.parse_args()
 
-    num_shards = MAX_SHARD if args.num_shards == -1 else args.num_shards
+    benchmarks = ["burgers_1d", "darcy_2d", "navier_stokes_2d"] if args.benchmark == "all" else [args.benchmark]
 
-    print(f"Cache directory: {CACHE_DIR}")
+    print(f"Cache dir  : {CACHE_DIR}")
     print()
-    download_data(num_shards, download_workers=args.download_workers)
-    print()
-    train_tokenizer()
-    print()
-    print("Done! Ready to train.")
+
+    for b in benchmarks:
+        print(f"--- Benchmark: {b} ---")
+        val_inp,   val_tgt   = _load_or_gen_val(b)
+        train_inp, train_tgt = _get_train_data(b)
+        print(f"Val   : {len(val_inp):5d} samples | Shape: {val_inp.shape}")
+        print(f"Train : {len(train_inp):5d} samples | Shape: {train_inp.shape}")
+        
+        if args.benchmark != "none":
+            rng = np.random.RandomState(0)
+            for batch_size in (1, 64):
+                if b == "burgers_1d":
+                    u0 = _random_ic(batch_size, GRID_SIZE, rng)
+                    t0 = time.time()
+                    solve_burgers_batch(u0)
+                elif b == "darcy_2d":
+                    a = _random_ic_2d(batch_size, GRID_SIZE, rng)
+                    t0 = time.time()
+                    solve_darcy_2d_batch(a)
+                elif b == "navier_stokes_2d":
+                    w0 = _random_ic_2d(batch_size, GRID_SIZE, rng)
+                    t0 = time.time()
+                    solve_navier_stokes_2d_batch(w0)
+                print(f"  Solver {b}  B={batch_size:4d}  → {(time.time()-t0)*1000:.1f} ms")
+        print()
+
+    print("Done. Ready to train.")
