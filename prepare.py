@@ -102,32 +102,32 @@ def solve_darcy_2d_batch(
     Spectral solver for 2D Darcy Flow: -∇·(a∇u) = f, with f=1.
     """
     B, N1, N2 = a.shape
-    f = np.ones((B, N1, N2), dtype=np.float64)
+    # Random source term f
+    rng = np.random.RandomState(42)
+    f = _random_ic_2d(B, N1, rng, scale=1.0, offset=0.0)
     
     # Grid setup
-    k1 = np.fft.fftfreq(N1, d=1.0/N1).reshape(N1, 1)
-    k2 = np.fft.fftfreq(N2, d=1.0/N2).reshape(1, N2)
+    k = np.fft.fftfreq(N1, d=1.0/N1).reshape(N1, 1)
+    k1, k2 = np.meshgrid(k, k)
     laplacian = -(k1**2 + k2**2)
     
     # To solve -∇·(a∇u) = f, we use a simple iterative approach or 
     # assume a is constant for a first-order approximation.
-    # Correct spectral approach for variable coefficient is more complex.
-    # Here we use a stabilized version: u = f / (a_avg * (-laplacian + epsilon))
     a_avg = a.mean(axis=(1, 2))[:, None, None]
     denom = a_avg * (-laplacian)
-    denom[0, 0] = 1.0 # Handle DC mode
-    u_hat = np.fft.fft2(f) / (denom + 1e-8)
+    denom[denom == 0] = 1.0 # Handle DC mode
+    u_hat = np.fft.fft2(f, axes=(1, 2)) / (denom + 1e-8)
     u_hat[:, 0, 0] = 0.0
     
-    u = np.fft.ifft2(u_hat).real
+    u = np.fft.ifft2(u_hat, axes=(1, 2)).real
     return u.astype(np.float32)
 
 
 def solve_navier_stokes_2d_batch(
     w0: np.ndarray,
-    nu: float = 1e-3,
+    nu: float = 1e-2,
     T: float = 1.0,
-    n_steps: int = 50,
+    n_steps: int = 100,
 ) -> np.ndarray:
     """
     Spectral solver for 2D Navier-Stokes (vorticity form) on [0, 2π)².
@@ -264,15 +264,15 @@ def solve_kdv_batch(
 
 # ── Dataset helpers ───────────────────────────────────────────────────────────
 
-def _random_ic_2d(n: int, N: int, rng: np.random.RandomState, n_modes: int = 5) -> np.ndarray:
+def _random_ic_2d(n: int, N: int, rng: np.random.RandomState, n_modes: int = 5, scale: float = 0.1, offset: float = 1.0) -> np.ndarray:
     """Random smooth 2D field."""
     x = np.linspace(0, 1, N)
     y = np.linspace(0, 1, N)
     X, Y = np.meshgrid(x, y)
-    u0 = np.zeros((n, N, N))
+    u0 = np.full((n, N, N), offset, dtype=np.float64)
     for i in range(n):
         for _ in range(n_modes):
-            amp = rng.randn()
+            amp = rng.randn() * scale
             kx, ky = rng.randint(1, 5, size=2)
             u0[i] += amp * np.sin(2 * np.pi * (kx * X + ky * Y))
     return u0.astype(np.float32)
@@ -284,10 +284,10 @@ def _generate_dataset(benchmark: str, n: int, seed: int) -> tuple:
         inputs = _random_ic(n, GRID_SIZE, rng)
         targets = solve_burgers_batch(inputs)
     elif benchmark == "darcy_2d":
-        inputs = _random_ic_2d(n, GRID_SIZE, rng)
+        inputs = _random_ic_2d(n, GRID_SIZE, rng, scale=0.1, offset=1.0)
         targets = solve_darcy_2d_batch(inputs)
     elif benchmark == "navier_stokes_2d":
-        inputs = _random_ic_2d(n, GRID_SIZE, rng)
+        inputs = _random_ic_2d(n, GRID_SIZE, rng, scale=1.0, offset=0.0)
         targets = solve_navier_stokes_2d_batch(inputs)
     else:
         raise ValueError(f"Unknown benchmark: {benchmark}")
