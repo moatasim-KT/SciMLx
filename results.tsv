@@ -87,3 +87,4 @@ a567132	burgers_1d	RFNO	0.171636	0.29	discard	rfno_h128_m24_l8_h1 RFNO  h=128  l
 b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
 7f3a10b	kdv_1d	FFNO	0.005267	0.38	discard	ffno_kdv_h256_m32_l8 FFNO  h=256  l=8  m=32
 7f3a10b	kdv_1d	RFNO	0.002023	0.29	keep	rfno_kdv_h128_m24_l8 RFNO  h=128  l=8  m=24
+3684277	wave_1d	FNO	0.902460	0.28	keep	fno_wave_h128_m24_l8 FNO  h=128  l=8  m=24
