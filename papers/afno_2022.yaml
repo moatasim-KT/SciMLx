@@ -1,0 +1,56 @@
+id: afno-2022
+title: "Adaptive Fourier Neural Operators: Efficient Token Mixers for Transformers"
+arxiv: "2111.13587"
+venue: "ICLR 2022"
+authors: ["John Guibas", "Morteza Mardani", "Zongyi Li", "et al."]
+year: 2022
+
+key_idea: >
+  Replace FNO's per-mode linear map with a shared block-diagonal 2-layer MLP
+  applied across all Fourier modes.  Add softshrink sparsity to adaptively
+  zero out irrelevant frequency components.  Originally designed as a vision
+  Transformer token mixer; here adapted for 1-D PDE operator learning.
+
+architecture: AFNO1d
+model_class: AFNO
+status: implemented
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null  # paper targets vision tasks, not Burgers
+    our_best: null  # session 6 RFNO running; AFNO not yet run
+    expected: "0.12–0.15 (non-linear mixing should help with shock dynamics)"
+    notes: >
+      Non-linear MLP in Fourier space should capture more complex frequency
+      interactions in Burgers shock.  Softshrink focuses on active modes.
+  kdv_1d:
+    reported_val_l2_rel: null
+    our_best: null
+    expected: "0.02–0.05"
+
+key_hyperparams:
+  n_modes: 24
+  hidden_dim: 128
+  n_layers: 8
+  block_size: 16     # channel block size for block-diagonal MLP
+  sparsity: 0.01     # softshrink threshold
+  lr: 1e-3
+
+suggested_experiments:
+  - name: afno_h128_m24_l8
+    rationale: "AFNO at same config as FNO best. Non-linear mixer + softshrink."
+    expected: "~0.13–0.15"
+  - name: afno_h128_m24_l10
+    rationale: "AFNO with Pre-LN residuals can go deeper than FNO."
+    expected: "~0.12–0.14"
+  - name: afno_h128_m24_l8_sp001
+    rationale: "Standard sparsity=0.01"
+    expected: "~0.13–0.15"
+  - name: afno_h128_m24_l8_sp0
+    rationale: "No softshrink — isolate MLP contribution from sparsity."
+    expected: "~0.13–0.16"
+
+implementation_notes: >
+  Block size must evenly divide hidden_dim.  For h=128: block_size ∈ {1,2,4,8,16,32}.
+  MLP weights are shared across all Fourier modes (not per-mode) to keep param
+  count comparable to FNO.  Real and imaginary parts processed independently.

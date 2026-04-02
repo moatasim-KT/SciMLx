@@ -1,0 +1,45 @@
+id: uno-2022
+title: "U-NO: U-shaped Neural Operators"
+arxiv: "2204.11127"
+venue: "TMLR 2023"
+authors: ["Md. Ashiqur Rahman", "Zachary E. Ross", "Kamyar Azizzadenesheli"]
+year: 2022
+
+key_idea: >
+  Encoder-decoder architecture (U-Net style) with FNO spectral conv blocks at
+  each resolution scale.  Down-sampling with stride, skip connections, up-sampling
+  with pixel-shuffle.  Captures multi-scale spatial features that flat FNO misses.
+  Reports ~20% error reduction vs FNO on standard benchmarks.
+
+architecture: UNO1d
+model_class: UNO
+status: implemented
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.012   # ~20% better than FNO's 0.0149
+    our_best: 0.715373            # UNO h=128 l=2 — much worse than FNO
+    gap_ratio: 59.6
+    notes: >
+      Our UNO consistently underperforms FNO in 5-min budget.
+      Hypothesis: U-Net pooling/upsampling takes more steps to converge.
+      UNO may need 3-5× more training time to unlock multi-scale benefits.
+      The strided downsampling + repeat upsampling may cause aliasing artifacts.
+
+remaining_investigations:
+  - "Try UNO with 3+ levels at h=64 (smaller bottleneck)"
+  - "Pre-LN residual UNO blocks"
+  - "Ensure skip connections are properly initialized (currently zeros in skip path)"
+  - "The UNO1d implementation uses [:, ::2, :] downsampling — verify gradients flow"
+
+key_hyperparams:
+  n_modes: 16
+  hidden_dim: 64
+  n_layers: 2   # FNO blocks per level; 3 levels → 6+6+4+6+6=~28 blocks total
+  lr: 1e-3
+
+verdict: >
+  Currently not competitive in our 5-min budget.  May become competitive with:
+  1. Longer training or curriculum (start with flat FNO, then add multi-scale)
+  2. Better upsampling (bilinear instead of repeat)
+  3. Proper weight initialization for skip connections

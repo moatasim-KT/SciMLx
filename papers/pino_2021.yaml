@@ -1,0 +1,48 @@
+id: pino-2021
+title: "Physics-Informed Neural Operator for Learning Partial Differential Equations"
+arxiv: "2111.03794"
+venue: "ACM/JCA 2023"
+authors: ["Zongyi Li", "Hongkai Zheng", "Nikola Kovachki", "et al."]
+year: 2021
+
+key_idea: >
+  Augment the data-driven operator loss with a PDE residual term:
+    L = L_data + λ · L_physics
+  L_physics is the Burgers residual u·∂u/∂x − ν·∂²u/∂x² evaluated on predictions.
+  This adds physical consistency constraints and improves data efficiency.
+
+architecture: FNO1d + physics loss
+model_class: FNO  # same model, different loss
+status: failed  # tried extensively; consistently worse on our harness
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: "improvements of 10-30% over data-only FNO"
+    our_best: 0.366657   # fno_h128_l6_pino_small (λ=0.01) — worse than FNO
+    notes: >
+      PINO consistently degrades performance in our operator-learning formulation.
+      Root cause: we learn u(0) → u(T) directly.  The Burgers residual at T=1
+      has no physical meaning — the model doesn't produce a trajectory.
+      The paper's PINO applies the physics loss along the trajectory, not at
+      the endpoint.  Our endpoint-only formulation is fundamentally different.
+
+failure_analysis:
+  problem: "Endpoint physics loss is not a valid Burgers constraint"
+  evidence:
+    - λ=0.01 → 0.367 (vs FNO 0.185 baseline)
+    - λ=0.001 → 0.491 (even worse)
+    - λ=0.05 → 0.579 (much worse)
+  correct_pino_formulation: >
+    True PINO requires access to intermediate time steps to evaluate the
+    residual along the trajectory.  Our prepare.py only provides (u(0), u(T))
+    pairs.  To properly implement PINO, we would need to:
+    1. Modify the model to predict the full trajectory u(t) for t ∈ [0,T]
+    2. Evaluate the Burgers residual at interior time points
+    3. Use a time-stepper FNO (e.g., FNO-Markov chain) architecture
+
+verdict: "Do not re-run PINO with current data formulation. Not applicable."
+
+alternative: >
+  Consider PINO as a data-augmentation strategy: use the trained FNO to
+  generate 'pseudo-solutions' at intermediate times, then train PINO on those.
+  This requires architecture changes beyond current scope.

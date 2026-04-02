@@ -1,0 +1,44 @@
+id: rfno-2024
+title: "Residual Fourier Neural Operator (Pre-LN variant)"
+arxiv: null  # internal adaptation; pattern from Pre-LN Transformers
+venue: "This repo (SciMLx)"
+authors: ["Internal experiment"]
+year: 2024
+
+key_idea: >
+  Apply the Pre-LN residual pattern from Pre-LN Transformers (Wang et al. 2019)
+  to FNO blocks.  Each FNOBlock becomes:
+    x = x + GELU(spec(LN(x)) + w(LN(x)))
+  instead of the original:
+    x = GELU(spec(x) + w(x))
+  This enables stable training of deeper stacks (l ≥ 10) without gradient
+  degradation, unlocking parameter-efficient depth scaling.
+
+architecture: RFNO1d
+model_class: RFNO
+status: implemented_running  # session 6 currently running
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null
+    our_best: null  # session 6 in progress
+    expected: "0.13–0.15 for l=8; may unlock l=10 (FNO l=10 degraded to 0.169)"
+
+related_papers:
+  - "Pre-LN Transformer: Wang et al. 2019 'Learning Deep Transformer Models for
+     Machine Translation' (ACL 2019)"
+  - "ReZero: Bachlechner et al. 2020 'ReZero is All You Need: Fast Convergence at
+     Large Depth' (UAI 2021)"
+
+key_hyperparams:
+  n_modes: 24
+  hidden_dim: 128
+  n_layers: 8  # same as best FNO; key experiment is l=10/12
+  lr: 1e-3
+
+session_6_experiments:
+  - rfno_h128_m24_l8:   "Same config as FNO best — isolate Pre-LN effect"
+  - rfno_h128_m24_l10:  "FNO failed here (0.169); RFNO may unlock it"
+  - rfno_h128_m24_l12:  "FNO failed (0.217); RFNO's target"
+  - rfno_h128_m24_l6:   "Ablation: does Pre-LN help at shallower depth too?"
+  - rfno_h128_m24_l16:  "Stress test of depth scaling"

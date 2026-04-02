@@ -190,6 +190,11 @@ def main() -> None:
                    help="Git-commit results.tsv after each improved result")
     p.add_argument("--force",       action="store_true",
                    help="Re-run experiments already in results.tsv")
+    p.add_argument("--auto",        action="store_true",
+                   help="Fully autonomous mode: run all pending, then call "
+                        "auto_suggest.py to print next steps and loop indefinitely")
+    p.add_argument("--suggest-after", action="store_true",
+                   help="Print auto_suggest report after all experiments complete")
     args = p.parse_args()
 
     # Build queue
@@ -277,6 +282,40 @@ def main() -> None:
     for bm, val in sorted(baselines.items()):
         print(f"  {bm:<25}  {val:.6f}")
     print(f"{'━'*70}\n")
+
+    # ── Auto-suggest next steps ───────────────────────────────────────────────
+    if args.suggest_after or args.auto:
+        print("\n─── auto_suggest.py output ───")
+        try:
+            result = subprocess.run(
+                ["uv", "run", "auto_suggest.py",
+                 "--benchmark", args.benchmark or "burgers_1d",
+                 "--top", "6"],
+                cwd=REPO_ROOT, capture_output=True, text=True, timeout=30
+            )
+            print(result.stdout)
+            if result.stderr:
+                print(result.stderr[:500])
+        except Exception as e:
+            print(f"  auto_suggest failed: {e}")
+
+    # ── Autonomous loop ───────────────────────────────────────────────────────
+    if args.auto:
+        # Check if there are still pending experiments in the queue
+        remaining = [e for e in get_experiments(args.benchmark, args.model, args.priority)
+                     if e.name not in load_done_names()]
+        if remaining:
+            print(f"\n  {len(remaining)} experiments still in queue — continuing…")
+            # Recurse by re-entering main (restart the loop)
+            import sys
+            # Pass same flags but without --auto to avoid infinite recursion on crash
+            new_argv = [a for a in sys.argv[1:] if a != "--auto"] + ["--auto"]
+            sys.argv[1:] = new_argv
+            main()
+        else:
+            print("\n  Queue exhausted. Autonomous loop complete.")
+            print("  → Add new experiments via 'uv run auto_suggest.py --generate'")
+            print("  → Or manually edit experiments.py and re-run autorun.py --auto")
 
 
 if __name__ == "__main__":

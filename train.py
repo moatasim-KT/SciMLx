@@ -5,17 +5,27 @@ Baseline: Fourier Neural Operator (FNO) for multiple SciML benchmarks.
 Goal: minimise val_l2_rel (lower is better) within the 5-minute budget.
 
 Available MODEL_TYPE values:
-  "FNO"        – Fourier Neural Operator         (Li et al. 2020)
-  "RFNO"       – Residual FNO with Pre-LN blocks (unlocks l≥10)
-  "UNO"        – U-shaped Neural Operator        (Rahman et al. 2022)
-  "WNO"        – Wavelet Neural Operator         (Tripura et al. 2022)
-  "DeepONet"   – Deep Operator Network           (Lu et al. 2019)
-  "PODDeepONet"– POD-based DeepONet              (Lu et al. 2022)
+  "FNO"        – Fourier Neural Operator                  (Li et al. 2020)
+  "RFNO"       – Residual FNO with Pre-LN blocks          (unlocks l≥10)
+  "AFNO"       – Adaptive FNO: block-diagonal MLP + softshrink (Guibas 2022)
+  "UNO"        – U-shaped Neural Operator                 (Rahman et al. 2022)
+  "WNO"        – Wavelet Neural Operator                  (Tripura et al. 2022)
+  "DeepONet"   – Deep Operator Network                    (Lu et al. 2019)
+  "PODDeepONet"– POD-based DeepONet                       (Lu et al. 2022)
+
+Available LOSS_TYPE values:
+  "l2_rel"    – relative L2 (default)
+  "h1"        – H1 Sobolev: L2 + α·L2(∂u/∂x)  → targets shock fronts
+  "h1_strong" – H1 with α=1.0
+  "spectral"  – frequency-weighted L2
+  "l1_rel"    – relative L1
 
 CLI flags (all optional; module-level constants below are the defaults):
-  --benchmark  burgers_1d|darcy_2d|navier_stokes_2d
-  --model      FNO|UNO|WNO|DeepONet|PODDeepONet
-  --modes      Fourier modes (FNO/UNO)
+  --benchmark  burgers_1d|darcy_2d|kdv_1d|wave_1d
+  --model      FNO|RFNO|AFNO|UNO|WNO|DeepONet|PODDeepONet
+  --loss       l2_rel|h1|h1_strong|spectral|l1_rel
+  --h1_alpha   weight for H1 derivative term (default 0.1)
+  --modes      Fourier modes (FNO/UNO/RFNO/AFNO)
   --levels     Haar decomposition levels (WNO)
   --hidden     channel width
   --layers     depth
@@ -35,11 +45,15 @@ import mlx.nn as nn
 from mlx.utils import tree_flatten
 
 from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
-from models import FNO1d, FNO2d, UNO1d, RFNO1d, WNO1d, DeepONet, PODDeepONet
+from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
+from losses import get_loss_fn
+from models import FNO1d, FNO2d, UNO1d, RFNO1d, AFNO1d, WNO1d, DeepONet, PODDeepONet
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
-BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "navier_stokes_2d"
+BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "kdv_1d" | "wave_1d"
 MODEL_TYPE   = "FNO"          # see module docstring
+LOSS_TYPE    = "l2_rel"       # "l2_rel" | "h1" | "h1_strong" | "spectral" | "l1_rel"
+H1_ALPHA     = 0.1            # weight for H1 derivative term
 N_MODES      = 16             # Fourier modes to keep  (FNO, UNO; ≤ GRID_SIZE//2)
 N_LEVELS     = 3              # Haar decomposition levels (WNO; 3 → N/8 approx)
 HIDDEN_DIM   = 64             # channel width
@@ -63,7 +77,10 @@ def _parse_args():
     p = argparse.ArgumentParser(description="SciML Training Script")
     p.add_argument("--benchmark",   default=BENCHMARK)
     p.add_argument("--model",       default=MODEL_TYPE,
-                   choices=["FNO", "RFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+                   choices=["FNO", "RFNO", "AFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+    p.add_argument("--loss",        default=LOSS_TYPE,
+                   choices=["l2_rel", "h1", "h1_strong", "spectral", "l1_rel", "mse"])
+    p.add_argument("--h1_alpha",    type=float, default=H1_ALPHA)
     p.add_argument("--modes",       type=int,   default=N_MODES)
     p.add_argument("--levels",      type=int,   default=N_LEVELS)
     p.add_argument("--hidden",      type=int,   default=HIDDEN_DIM)
@@ -77,6 +94,8 @@ def _parse_args():
 args = _parse_args()
 BENCHMARK   = args.benchmark
 MODEL_TYPE  = args.model
+LOSS_TYPE   = args.loss
+H1_ALPHA    = args.h1_alpha
 N_MODES     = args.modes
 N_LEVELS    = args.levels
 HIDDEN_DIM  = args.hidden
@@ -201,7 +220,14 @@ def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
 
 t_start = time.time()
 
-train_loader   = make_dataloader(BENCHMARK, "train", BATCH_SIZE)
+# Route to extended benchmarks (kdv_1d, wave_1d) or standard (burgers_1d, darcy_2d)
+if BENCHMARK in EXT_BENCHMARKS:
+    train_loader   = make_ext_dataloader(BENCHMARK, "train", BATCH_SIZE)
+    _eval_fn       = lambda model: evaluate_l2_rel_ext(BENCHMARK, model)
+else:
+    train_loader   = make_dataloader(BENCHMARK, "train", BATCH_SIZE)
+    _eval_fn       = lambda model: evaluate_l2_rel(BENCHMARK, model)
+
 x_init, y_init = next(train_loader)
 t_data         = time.time()
 print(f"Data ready in {t_data - t_start:.1f}s")
@@ -219,6 +245,11 @@ elif MODEL_TYPE == "RFNO":
     if not is_1d:
         raise ValueError("RFNO 2D not yet implemented — use FNO for 2D benchmarks.")
     model = RFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "AFNO":
+    if not is_1d:
+        raise ValueError("AFNO 2D not yet implemented — use FNO for 2D benchmarks.")
+    model = AFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
 
 elif MODEL_TYPE == "UNO":
     if not is_1d:
@@ -255,7 +286,7 @@ print(f"Benchmark: {BENCHMARK}")
 print(f"Model    : {MODEL_TYPE}  layers={N_LAYERS}  hidden={HIDDEN_DIM}")
 print(f"Params   : {n_params / 1e6:.3f}M")
 print(f"Budget   : {TIME_BUDGET}s | batch={BATCH_SIZE} | "
-      f"grad_clip={GRAD_CLIP} | pino_λ={PINO_LAMBDA}")
+      f"grad_clip={GRAD_CLIP} | pino_λ={PINO_LAMBDA} | loss={LOSS_TYPE}")
 
 optimizer = AdamW(lr=LR, weight_decay=WEIGHT_DECAY, betas=ADAM_BETAS)
 
@@ -289,18 +320,19 @@ def _forward(model, x: mx.array) -> mx.array:
     return model(x)
 
 
+# Build the core loss function once (supports l2_rel, h1, spectral, etc.)
+_loss_kwargs = {"alpha": H1_ALPHA} if LOSS_TYPE.startswith("h1") else {}
+_core_loss   = get_loss_fn(LOSS_TYPE, **_loss_kwargs)
+
+
 def loss_fn(model, x, y):
     pred = _forward(model, x)
-    diff = pred - y
-    axes = tuple(range(1, y.ndim))
-    data_loss = mx.mean(
-        mx.sqrt(mx.mean(diff ** 2, axis=axes))
-        / (mx.sqrt(mx.mean(y ** 2, axis=axes)) + 1e-8)
-    )
+    data_loss = _core_loss(pred, y)
+
     if PINO_LAMBDA > 0 and BENCHMARK == "burgers_1d":
+        axes = tuple(range(1, y.ndim))
         res  = burgers_residual(pred)
-        # Normalise physics loss the same way as data loss (relative L2)
-        # so that PINO_LAMBDA is a true mixing ratio, not a raw magnitude knob.
+        # Normalise physics loss (relative L2) so PINO_LAMBDA is a true ratio.
         phys_loss = mx.mean(
             mx.sqrt(mx.mean(res ** 2, axis=axes))
             / (mx.sqrt(mx.mean(pred ** 2, axis=axes)) + 1e-8)
@@ -381,7 +413,7 @@ t_train = time.time()
 print(f"Training done in {t_train - t_compiled:.1f}s")
 
 print("Evaluating...")
-val_l2_rel = evaluate_l2_rel(BENCHMARK, lambda x: _forward(model, x))
+val_l2_rel = _eval_fn(lambda x: _forward(model, x))
 t_eval     = time.time()
 print(f"Eval done in {t_eval - t_train:.1f}s")
 

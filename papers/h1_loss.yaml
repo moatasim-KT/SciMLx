@@ -1,0 +1,57 @@
+id: h1-sobolev-loss
+title: "Sobolev Training for Neural Networks / H1 Loss for Neural Operators"
+arxiv: "1706.04859"  # Czarnecki et al. 2017 (Sobolev Training)
+venue: "Various (NeurIPS 2017, U-FNO 2022)"
+authors: ["Czarnecki et al. (2017)", "Wen et al. (2022)"]
+year: 2017
+
+key_idea: >
+  Add a derivative-matching penalty to the loss function:
+    L_H1 = L2_rel(pred, y) + α · L2_rel(∂pred/∂x, ∂y/∂x)
+  This creates a Sobolev H1 norm penalty.  Derivatives are computed via FFT
+  for spectral accuracy.  Penalises high-frequency errors more than plain L2.
+  Particularly effective when the target has sharp gradients (Burgers shock,
+  KdV soliton).
+
+architecture: any  # loss-function change, not architecture
+model_class: any
+status: implemented  # in losses.py
+
+benchmarks:
+  burgers_1d:
+    reported_improvement: "5-15% over L2 loss (U-FNO paper)"
+    our_best: null  # not yet run
+    expected: "~0.13–0.15 with FNO h128 m24 l8"
+    notes: "Shock fronts have large |∂u/∂x|; H1 loss directly targets this."
+
+key_hyperparams:
+  loss_type: "h1"
+  alpha: 0.1   # H1 weight; try 0.01, 0.1, 0.5, 1.0
+
+suggested_experiments:
+  - name: fno_h128_m24_l8_h1_a01
+    model: FNO
+    loss: h1
+    alpha: 0.1
+    rationale: "H1 loss on best FNO config. α=0.1 is U-FNO default."
+  - name: fno_h128_m24_l8_h1_a001
+    model: FNO
+    loss: h1
+    alpha: 0.01
+    rationale: "Mild H1 penalty — avoids over-regularising smooth regions."
+  - name: rfno_h128_m24_l8_h1
+    model: RFNO
+    loss: h1
+    alpha: 0.1
+    rationale: "Combine RFNO architecture with H1 loss for double improvement."
+  - name: afno_h128_m24_l8_h1
+    model: AFNO
+    loss: h1
+    alpha: 0.1
+    rationale: "AFNO + H1 — non-linear Fourier mixing + frequency-weighted error."
+
+references:
+  - "Wen et al. (2022) 'U-FNO: An enhanced FNO-based deep learning model for
+     multiphase flow' arXiv:2109.03697 — reports 10% improvement with H1 loss"
+  - "Czarnecki et al. (2017) 'Sobolev Training for Neural Networks'
+     NeurIPS 2017 — theoretical foundation"

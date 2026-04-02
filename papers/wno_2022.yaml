@@ -1,0 +1,48 @@
+id: wno-2022
+title: "Wavelet Neural Operator for solving parametric partial differential equations in computational mechanics problems"
+arxiv: "2205.02191"
+venue: "Computer Methods in Applied Mechanics and Engineering 2023"
+authors: ["Tapas Tripura", "Souvik Chakraborty"]
+year: 2022
+
+key_idea: >
+  Replace Fourier spectral convolution with multi-level Haar wavelet decomposition.
+  Haar wavelets have compact support (vs global Fourier modes) — better for:
+  1. Non-periodic boundary conditions (Darcy flow)
+  2. Localised features (shocks, interfaces)
+  3. Multi-scale signals where energy is concentrated at specific scales
+
+architecture: WNO1d
+model_class: WNO
+status: implemented
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.015   # paper results
+    our_best: 0.896012           # wno_h128_l6_fixed (after gradient fix)
+    gap_ratio: 59.7
+    notes: >
+      CONSISTENTLY fails in our harness despite extensive debugging.
+      Key investigation: Haar wavelets are a wrong inductive bias for the
+      PERIODIC Burgers equation.  The paper tests non-periodic benchmarks
+      (beam mechanics, structural dynamics) where WNO excels.
+      Burgers with periodic BCs on [0, 2π) is perfectly suited to Fourier.
+      Recommendation: test WNO on darcy_2d (non-periodic) instead.
+
+failure_analysis:
+  problem: "Wrong inductive bias for periodic PDE"
+  evidence:
+    - All WNO runs cluster at 0.84-0.90 regardless of h/l/levels
+    - Even after fixing stride-2 gradient bug: 0.896 (h=128, l=6)
+    - Haar wavelets assume non-periodic signals; our Burgers is periodic
+  gradient_fix: >
+    Fixed stride-2 slicing bug (produced near-zero gradients in MLX autograd).
+    Fix: reshape-based pair extraction instead of x[:,0::2,:].
+    Even with the fix, WNO fundamentally wrong for periodic Burgers.
+
+remaining_investigations:
+  - "Test WNO on darcy_2d — should be appropriate for heterogeneous permeability"
+  - "Test WNO on kdv_1d — KdV has solitons (localised) where wavelets may help"
+  - "Try Daubechies wavelets (smoother than Haar) for smoother PDEs"
+
+verdict: "Abandon WNO on burgers_1d. Revisit on darcy_2d or kdv_1d."

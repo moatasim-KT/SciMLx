@@ -1,0 +1,49 @@
+id: ffno-2023
+title: "Factorized Fourier Neural Operators"
+arxiv: "2111.13587"
+venue: "ICLR 2023"
+authors: ["Alasdair Tran", "Alexander Mathews", "Lexing Xie", "Cheng Soon Ong"]
+year: 2023
+
+key_idea: >
+  Factor the spectral convolution weight tensor W[m, in_c, out_c] into a
+  frequency-selective component and a channel-mixing component:
+    y_ft[m] = W_channel @ (W_freq[m] ⊙ x_ft[m])
+  This separates "which frequency modes to weight" from "how to mix channels".
+  Fewer parameters (O(m*C + C²) vs O(m*C²)) → allows wider models in same budget.
+
+architecture: FFNO1d  # not yet implemented
+model_class: FFNO
+status: pending  # implementation needed
+
+benchmarks:
+  kdv_1d:
+    reported_val_l2_rel: 0.008
+    our_best: null
+  burgers_1d:
+    reported_val_l2_rel: "similar to FNO with fewer params"
+    our_best: null
+
+suggested_experiments:
+  - name: ffno_h128_m32_l8
+    rationale: >
+      FFNO is param-efficient: with C=128, m=32 uses same params as FNO m=16.
+      Can use more modes and deeper models in same compute budget.
+  - name: ffno_h256_m32_l8
+    rationale: >
+      Wider model feasible because diagonal freq component is cheap.
+      h=256 with factorized spectral conv ≈ h=128 FNO in params.
+
+implementation_notes: >
+  To implement:
+  1. DiagonalSpectralConv1d: W_freq[m, C] (per-mode scale, not full C×C matrix)
+  2. FFNO1d: Same as FNO1d but using DiagonalSpectralConv1d + extra Linear layer
+  Key: still combines with pointwise Linear (the 'w' branch in FNOBlock) which
+  provides the full channel mixing that the diagonal spectral conv lacks.
+
+  Param count comparison (C=128, m=24):
+    FNO SpectralConv: m * C * C = 24 * 128 * 128 = 393,216  (real+imag: ×2)
+    FFNO DiagConv:   m * C     = 24 * 128       =   3,072   (100× fewer!)
+  FFNO recovers expressivity from the shared Linear layer (C×C = 16,384 params).
+
+related: "afno-2022 shares the idea of block-wise computation in Fourier space"

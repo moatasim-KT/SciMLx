@@ -1,0 +1,46 @@
+id: deeponet-2021
+title: "Learning nonlinear operators via DeepONet based on the universal approximation theorem of operators"
+arxiv: "1910.03193"
+venue: "Nature Machine Intelligence 2021"
+authors: ["Lu Lu", "Pengzhan Jin", "George Em Karniadakis"]
+year: 2019
+
+key_idea: >
+  Universal operator approximation via two networks: Branch net encodes the
+  input function at sensor locations; Trunk net encodes the query point.
+  Output is their inner product: G(u)(y) = Σ b_k(u) · t_k(y).
+  With POD basis: fixed POD modes as trunk, learned branch coefficients.
+
+architecture: DeepONet / PODDeepONet
+model_class: DeepONet
+status: implemented
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.05   # Lu et al. 2021
+    our_best: 0.808308           # DeepONet h=64 — very poor
+    gap_ratio: 16.2
+    notes: >
+      Very poor performance. Root cause: branch net takes all N=64 grid points
+      as input — high-dimensional input, hard to encode.  PODDeepONet not yet
+      separately run but uses same approach.
+      DeepONet requires many more training samples than FNO (not sample efficient).
+      Original paper uses different data scale and normalisation.
+
+remaining_investigations:
+  - "Try normalising input u0 per-sample before branch net"
+  - "Use CNN-based branch net (local features) instead of MLP"
+  - "PODDeepONet: try with n_basis=32/64; small basis may capture most of solution space"
+  - "DeepONet with attention (Improved Architectures, Wang et al. 2022)"
+
+key_hyperparams:
+  hidden_dim: 128
+  out_dim: 128
+  n_layers: 4
+  branch_dim: 64   # = GRID_SIZE
+  trunk_dim: 1     # query coordinate
+
+verdict: >
+  DeepONet is not competitive with FNO in our 5-min, N=64 setting.
+  The branch net struggles with 64-dim input.  Recommend investigating
+  convolutional branch nets or pre-encoding u0 with a small CNN.

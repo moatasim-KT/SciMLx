@@ -62,3 +62,8 @@ ebcb142	burgers_1d	FNO	0.187067	0.10	keep	fno_h64_m16_l8 FNO  h=64  l=8  m=16
 61f2f84	burgers_1d	FNO	0.167067	0.34	discard	fno_h128_m24_l10_lr5e4 FNO  h=128  l=10  m=24  lr=5e-04
 61f2f84	burgers_1d	FNO	0.183209	0.40	discard	fno_h128_m24_l12_bs16 FNO  h=128  l=12  m=24
 61f2f84	burgers_1d	FNO	0.162033	0.28	discard	fno_h128_m24_l8_lr5e4 FNO  h=128  l=8  m=24  lr=5e-04
+8c00377	burgers_1d	RFNO	0.163563	0.35	discard	rfno_h128_m24_l10 RFNO  h=128  l=10  m=24
+8c00377	burgers_1d	RFNO	0.172085	0.40	discard	rfno_h128_m24_l12 RFNO  h=128  l=12  m=24
+8c00377	burgers_1d	RFNO	0.175917	0.29	discard	rfno_h128_m24_l8 RFNO  h=128  l=8  m=24
+8c00377	burgers_1d	RFNO	0.172921	0.57	discard	rfno_h128_m24_l16 RFNO  h=128  l=16  m=24
+8c00377	burgers_1d	RFNO	0.176950	0.25	discard	rfno_h128_m24_l6 RFNO  h=128  l=6  m=24

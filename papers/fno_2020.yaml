@@ -1,0 +1,63 @@
+id: fno-2020
+title: "Fourier Neural Operator for Parametric Partial Differential Equations"
+arxiv: "2010.08895"
+venue: "ICLR 2021"
+authors: ["Zongyi Li", "Nikola Kovachki", "Kamyar Azizzadenesheli", "et al."]
+year: 2020
+
+key_idea: >
+  Replace pointwise nonlinear kernels with a global convolution operator
+  in Fourier space.  Learns linear maps W[m, in_c, out_c] on the lowest
+  N_MODES Fourier coefficients.  Resolution-invariant by construction.
+
+architecture: FNO1d
+model_class: FNO
+status: implemented  # implemented | partial | pending | failed
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.0149
+    paper_epochs: 500
+    paper_batch: 20
+    paper_modes: 16
+    paper_width: 64
+    paper_layers: 4
+    our_best: 0.155287  # fno_h128_m24_l8 — still 10× from paper
+    gap_ratio: 10.4
+    notes: >
+      Paper trains for 500 epochs on larger dataset. Our 5-min budget ≈ 25 epochs.
+      Key insight: m=24 > m=16 by 11% on our harness.
+  darcy_2d:
+    reported_val_l2_rel: 0.0108
+    paper_epochs: 500
+    paper_modes: 12
+    paper_width: 32
+    our_best: 0.998617  # FNO baseline — solver approximation issue
+    gap_ratio: 92.5
+    notes: "Darcy solver uses averaged permeability; heterogeneous solver needed."
+  navier_stokes_2d:
+    reported_val_l2_rel: 0.0128
+    our_best: null  # crashes
+    notes: "NS solver diverges; need improved IC generation."
+
+key_hyperparams:
+  n_modes: 16
+  hidden_dim: 64
+  n_layers: 4
+  lr: 1e-3
+  batch_size: 20
+
+ablations_done:
+  - "n_modes sweep: 16/20/22/24/26/28/32 → sweet spot at m=24"
+  - "hidden sweep: 64/128/256 → h=128 wins in 5-min budget"
+  - "depth sweep: 4/6/8/10/12 → l=8 wins; l=10+ is step-time-limited"
+  - "LR sweep: 3e-4/1e-3/2e-3/3e-3 → 1e-3 is optimal"
+  - "batch sweep: 16/32 → 32 wins"
+  - "grad_clip sweep: disabled → 1.0 is fine"
+
+remaining_levers:
+  - "Pre-LN residual connections (RFNO) — unlocks deeper stacks"
+  - "Sobolev/H1 loss — frequency-weighted error"
+  - "Cosine annealing vs warmup+flat vs one-cycle"
+  - "Data augmentation: time-reversal symmetry of Burgers"
+  - "Ensemble of FNO models"

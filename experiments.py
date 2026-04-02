@@ -26,22 +26,25 @@ from typing import List
 @dataclass
 class ExperimentConfig:
     name:        str              # unique key (used for dedup against results.tsv)
-    benchmark:   str              # "burgers_1d" | "darcy_2d"
-    model:       str              # "FNO" | "RFNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
+    benchmark:   str              # "burgers_1d" | "darcy_2d" | "kdv_1d" | "wave_1d"
+    model:       str              # "FNO" | "RFNO" | "AFNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
     hidden_dim:  int              # channel width
     n_layers:    int              # depth (FNO blocks per level for UNO)
-    n_modes:     int  = 16        # Fourier modes (FNO / UNO)
+    n_modes:     int  = 16        # Fourier modes (FNO / UNO / RFNO / AFNO)
     n_levels:    int  = 3         # Haar levels (WNO)
     lr:          float = 1e-3     # learning rate
     batch_size:  int  = 32        # training batch size
     grad_clip:   float = 1.0      # gradient clipping (0 = disabled)
     pino_lambda: float = 0.0      # PINO physics-loss weight
+    loss_type:   str  = "l2_rel"  # loss function: "l2_rel" | "h1" | "h1_strong" | "spectral"
+    h1_alpha:    float = 0.1      # H1 loss derivative weight (used when loss_type="h1")
     priority:    int  = 5         # 1 = highest; run in ascending order
     rationale:   str  = ""        # why this experiment?
     expected:    str  = ""        # expected val_l2_rel range or direction
+    paper_ref:   str  = ""        # paper ID from papers/*.yaml
 
     def to_cli_args(self) -> List[str]:
-        return [
+        args = [
             "--benchmark",   self.benchmark,
             "--model",       self.model,
             "--hidden",      str(self.hidden_dim),
@@ -52,12 +55,16 @@ class ExperimentConfig:
             "--batch_size",  str(self.batch_size),
             "--grad_clip",   str(self.grad_clip),
             "--pino_lambda", str(self.pino_lambda),
+            "--loss",        self.loss_type,
         ]
+        if self.loss_type.startswith("h1"):
+            args += ["--h1_alpha", str(self.h1_alpha)]
+        return args
 
     def short(self) -> str:
         """One-line summary for logging."""
         parts = [f"{self.model}", f"h={self.hidden_dim}", f"l={self.n_layers}"]
-        if self.model in ("FNO", "RFNO", "UNO"):
+        if self.model in ("FNO", "RFNO", "AFNO", "UNO"):
             parts.append(f"m={self.n_modes}")
         if self.model == "WNO":
             parts.append(f"lvl={self.n_levels}")
@@ -67,6 +74,8 @@ class ExperimentConfig:
             parts.append(f"lr={self.lr:.0e}")
         if self.grad_clip != 1.0:
             parts.append(f"clip={self.grad_clip}")
+        if self.loss_type != "l2_rel":
+            parts.append(f"loss={self.loss_type}")
         return "  ".join(parts)
 
 
@@ -616,6 +625,128 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="Push RFNO to l=16. Each block ~35ms → ~8500 steps in 5min "
                   "but only ~5300 iterations. Residuals may compensate.",
         expected="~0.125–0.145 if depth keeps scaling.",
+    ),
+
+    # ── P13 · AFNO (Adaptive FNO) — non-linear Fourier mixing ───────────────
+    # Block-diagonal MLP + softshrink in spectral space.  Guibas et al. 2022.
+    ExperimentConfig(
+        name="afno_h128_m24_l8",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="AFNO at same config as FNO best. Non-linear Fourier mixing "
+                  "+ softshrink sparsity. Hypothesis: MLP in Fourier space captures "
+                  "more complex shock frequency interactions than linear maps.",
+        expected="~0.13–0.15",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="afno_h128_m24_l10",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="AFNO with Pre-LN residuals should scale to l=10 (FNO degraded here). "
+                  "Non-linear mixing + depth should compound benefits.",
+        expected="~0.12–0.14",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="afno_h128_m24_l12",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=12, n_modes=24,
+        priority=2,
+        rationale="AFNO deep: l=12 with Pre-LN residuals. FNO collapsed at l=12 (0.217).",
+        expected="~0.12–0.14",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="afno_h128_m24_l8_sp0",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="AFNO without softshrink (sparsity=0) — ablation to isolate MLP "
+                  "contribution from sparsity regularisation.",
+        expected="~0.13–0.16 — isolates the MLP benefit",
+        paper_ref="afno-2022",
+    ),
+
+    # ── P14 · H1 / Sobolev loss — frequency-weighted error ───────────────────
+    # U-FNO (Wen et al. 2022) reports 10% improvement with H1 loss on flow problems.
+    # H1 penalises gradient errors → directly targets Burgers shock fronts.
+    ExperimentConfig(
+        name="fno_h128_m24_l8_h1",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        loss_type="h1", h1_alpha=0.1,
+        priority=1,
+        rationale="H1 Sobolev loss on best FNO config. Shock fronts have large |∂u/∂x|; "
+                  "H1 loss directly penalises gradient errors. α=0.1 is U-FNO default.",
+        expected="~0.13–0.15 if H1 targets shock well",
+        paper_ref="h1-sobolev-loss",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l8_h1_a001",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        loss_type="h1", h1_alpha=0.01,
+        priority=2,
+        rationale="H1 with mild α=0.01 — avoids over-regularising smooth background.",
+        expected="~0.14–0.16",
+        paper_ref="h1-sobolev-loss",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l8_h1",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        loss_type="h1", h1_alpha=0.1,
+        priority=2,
+        rationale="RFNO (Pre-LN residual) + H1 loss. Both independently may help; "
+                  "combination might compound the gains.",
+        expected="~0.12–0.14",
+        paper_ref="h1-sobolev-loss",
+    ),
+    ExperimentConfig(
+        name="afno_h128_m24_l8_h1",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        loss_type="h1", h1_alpha=0.1,
+        priority=2,
+        rationale="AFNO + H1 loss: non-linear Fourier mixing + frequency-weighted "
+                  "error. Best combination of architecture and loss innovations.",
+        expected="~0.11–0.13",
+        paper_ref="h1-sobolev-loss",
+    ),
+
+    # ── P15 · KdV benchmark (extended, uses ETDRK4 solver) ───────────────────
+    ExperimentConfig(
+        name="fno_kdv_h128_m24_l8",
+        benchmark="kdv_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="Establish FNO baseline on KdV. Soliton dynamics are quasi-periodic "
+                  "so FNO's Fourier basis is appropriate. SOTA: ~0.01.",
+        expected="~0.02–0.08 (FNO good match for periodic KdV)",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="rfno_kdv_h128_m24_l8",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=3,
+        rationale="RFNO on KdV — Pre-LN residuals may help capture multi-soliton dynamics.",
+        expected="~0.01–0.05",
+        paper_ref="rfno-2024",
+    ),
+
+    # ── P16 · Wave equation benchmark ────────────────────────────────────────
+    ExperimentConfig(
+        name="fno_wave_h64_m24_l4",
+        benchmark="wave_1d", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=24,
+        priority=3,
+        rationale="Establish FNO baseline on linear wave equation. "
+                  "This is easy for FNO (linear PDE, periodic). SOTA: ~0.005.",
+        expected="~0.005–0.02 (FNO near-exact for linear PDEs)",
     ),
 
     # ── P11 · Depth extension around fno_h128_m24_l8 (new best 0.1553) ────────

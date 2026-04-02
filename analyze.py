@@ -23,11 +23,13 @@ from typing import Optional
 RESULTS_FILE = Path(__file__).parent / "results.tsv"
 LOGS_DIR     = Path(__file__).parent / "logs"
 
-# SOTA targets per benchmark (from docs/SOTA.md)
+# SOTA targets per benchmark (from docs/SOTA.md and paper registry)
 SOTA = {
     "burgers_1d":       0.0149,
     "darcy_2d":         0.0108,
     "navier_stokes_2d": 0.0128,
+    "kdv_1d":           0.010,
+    "wave_1d":          0.005,
 }
 
 
@@ -279,10 +281,20 @@ def main() -> None:
     p.add_argument("--benchmark", default=None, help="Filter to one benchmark")
     p.add_argument("--plot",      action="store_true",
                    help="Save convergence plots with matplotlib")
+    p.add_argument("--papers",    action="store_true",
+                   help="Include paper registry gap report")
     args = p.parse_args()
 
     rows = load_results(args.benchmark)
     print_report(rows, args.benchmark)
+
+    if args.papers:
+        try:
+            from paper_registry import PaperRegistry
+            reg = PaperRegistry()
+            reg.gap_table()
+        except Exception as e:
+            print(f"\nPaper registry unavailable: {e}")
 
     if args.plot:
         benchmarks = ([args.benchmark] if args.benchmark
