@@ -8,6 +8,7 @@ Available MODEL_TYPE values:
   "FNO"        – Fourier Neural Operator                  (Li et al. 2020)
   "RFNO"       – Residual FNO with Pre-LN blocks          (unlocks l≥10)
   "AFNO"       – Adaptive FNO: block-diagonal MLP + softshrink (Guibas 2022)
+  "FFNO"       – Factorized FNO: diagonal per-mode weights (Tran et al. 2023)
   "UNO"        – U-shaped Neural Operator                 (Rahman et al. 2022)
   "WNO"        – Wavelet Neural Operator                  (Tripura et al. 2022)
   "DeepONet"   – Deep Operator Network                    (Lu et al. 2019)
@@ -22,7 +23,7 @@ Available LOSS_TYPE values:
 
 CLI flags (all optional; module-level constants below are the defaults):
   --benchmark  burgers_1d|darcy_2d|kdv_1d|wave_1d
-  --model      FNO|RFNO|AFNO|UNO|WNO|DeepONet|PODDeepONet
+  --model      FNO|RFNO|AFNO|FFNO|UNO|WNO|DeepONet|PODDeepONet
   --loss       l2_rel|h1|h1_strong|spectral|l1_rel
   --h1_alpha   weight for H1 derivative term (default 0.1)
   --modes      Fourier modes (FNO/UNO/RFNO/AFNO)
@@ -47,7 +48,7 @@ from mlx.utils import tree_flatten
 from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
 from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
 from losses import get_loss_fn
-from models import FNO1d, FNO2d, UNO1d, RFNO1d, AFNO1d, WNO1d, DeepONet, PODDeepONet
+from models import FNO1d, FNO2d, UNO1d, RFNO1d, AFNO1d, FFNO1d, WNO1d, DeepONet, PODDeepONet
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
 BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "kdv_1d" | "wave_1d"
@@ -77,7 +78,7 @@ def _parse_args():
     p = argparse.ArgumentParser(description="SciML Training Script")
     p.add_argument("--benchmark",   default=BENCHMARK)
     p.add_argument("--model",       default=MODEL_TYPE,
-                   choices=["FNO", "RFNO", "AFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+                   choices=["FNO", "RFNO", "AFNO", "FFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
     p.add_argument("--loss",        default=LOSS_TYPE,
                    choices=["l2_rel", "h1", "h1_strong", "spectral", "l1_rel", "mse"])
     p.add_argument("--h1_alpha",    type=float, default=H1_ALPHA)
@@ -250,6 +251,11 @@ elif MODEL_TYPE == "AFNO":
     if not is_1d:
         raise ValueError("AFNO 2D not yet implemented — use FNO for 2D benchmarks.")
     model = AFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "FFNO":
+    if not is_1d:
+        raise ValueError("FFNO 2D not yet implemented — use FNO for 2D benchmarks.")
+    model = FFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
 
 elif MODEL_TYPE == "UNO":
     if not is_1d:

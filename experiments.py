@@ -27,7 +27,7 @@ from typing import List
 class ExperimentConfig:
     name:        str              # unique key (used for dedup against results.tsv)
     benchmark:   str              # "burgers_1d" | "darcy_2d" | "kdv_1d" | "wave_1d"
-    model:       str              # "FNO" | "RFNO" | "AFNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
+    model:       str              # "FNO" | "RFNO" | "AFNO" | "FFNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
     hidden_dim:  int              # channel width
     n_layers:    int              # depth (FNO blocks per level for UNO)
     n_modes:     int  = 16        # Fourier modes (FNO / UNO / RFNO / AFNO)
@@ -64,7 +64,7 @@ class ExperimentConfig:
     def short(self) -> str:
         """One-line summary for logging."""
         parts = [f"{self.model}", f"h={self.hidden_dim}", f"l={self.n_layers}"]
-        if self.model in ("FNO", "RFNO", "AFNO", "UNO"):
+        if self.model in ("FNO", "RFNO", "AFNO", "FFNO", "UNO"):
             parts.append(f"m={self.n_modes}")
         if self.model == "WNO":
             parts.append(f"lvl={self.n_levels}")
@@ -816,6 +816,120 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="l=12 + bs=16 trades step size for step count — may help very deep model "
                   "escape early plateau.",
         expected="~0.130–0.150.",
+    ),
+
+    # ── P17 · AFNO v2 (fixed) + FFNO (factorized diagonal) ──────────────────
+    # Previous AFNO results (0.56–0.72) were caused by a critical bug: real and
+    # imaginary Fourier components were processed INDEPENDENTLY by the MLP.
+    # The fix (v2): concatenate [xr; xi] → 2C → MLP(2C) → split.
+    # This respects the complex convolution requirement: out_r must depend on
+    # both xr and xi (analogous to FNO: out_r = xr*wr - xi*wi).
+    #
+    # FFNO uses diagonal spectral weights W[m,C] instead of full W[m,in,out].
+    # 128× fewer spectral params → can afford h=256/512 or m=48 in same budget.
+    ExperimentConfig(
+        name="afno_v2_h128_m24_l8",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="AFNO v2 (fixed complex coupling) at FNO best config. Previous "
+                  "AFNO failed (0.56–0.72) due to independent real/imag MLP — now "
+                  "fixed by concatenating [xr;xi] → 2C input.",
+        expected="~0.12–0.15 (should now match or beat FNO)",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="afno_v2_h128_m24_l10",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="AFNO v2 at l=10. Pre-LN residuals in AFNOBlock should unlock "
+                  "depth that FNO cannot reach (FNO degraded at l=10: 0.169).",
+        expected="~0.11–0.14",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="ffno_h128_m32_l8",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=128, n_layers=8, n_modes=32,
+        priority=1,
+        rationale="FFNO: diagonal per-mode-per-channel weights → 128× cheaper "
+                  "spectral params than FNO. Enables m=32 (max modes) with same "
+                  "param budget. Key hypothesis: more modes + diagonal = better "
+                  "frequency coverage without over-parameterisation.",
+        expected="~0.13–0.15",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="ffno_h256_m32_l8",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=256, n_layers=8, n_modes=32,
+        priority=1,
+        rationale="FFNO with wide channels (h=256). FNO h=256 was step-time-limited "
+                  "(slow spectral conv); FFNO's diagonal weights are much cheaper so "
+                  "h=256 is feasible. Full channel mixing comes from pointwise Linear.",
+        expected="~0.11–0.14 — wider FFNO should beat narrow FNO",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="ffno_h256_m24_l8",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=256, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="FFNO h=256 at FNO optimal m=24. Combines width advantage of "
+                  "diagonal weights with proven mode count.",
+        expected="~0.12–0.14",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="ffno_h512_m24_l8",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=512, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="FFNO at h=512 — only feasible because diagonal spectral weights "
+                  "add O(m*C) not O(m*C²) params. Tests extreme width on Apple Silicon.",
+        expected="~0.10–0.13 if width keeps helping",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="ffno_h256_m32_l10",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=256, n_layers=10, n_modes=32,
+        priority=2,
+        rationale="FFNO wide+deep+max-modes. FFNO blocks are faster than FNO blocks "
+                  "(no einsum over in_c×out_c) so l=10 may still get enough steps.",
+        expected="~0.10–0.13",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="ffno_h128_m48_l8",
+        benchmark="burgers_1d", model="FFNO",
+        hidden_dim=128, n_layers=8, n_modes=48,
+        priority=2,
+        rationale="FFNO at m=48 (3× FNO max modes). Only feasible with diagonal "
+                  "weights — FNO's full spectral matrix at m=48 would be 12× larger.",
+        expected="~0.12–0.15 — very high-frequency coverage test",
+        paper_ref="ffno-2023",
+    ),
+    ExperimentConfig(
+        name="afno_v2_h256_m24_l8",
+        benchmark="burgers_1d", model="AFNO",
+        hidden_dim=256, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="AFNO v2 wider channels (h=256). BlockDiagMLP operates on 2C=512 "
+                  "features — tests whether AFNO benefits from wider hidden dim.",
+        expected="~0.11–0.14",
+        paper_ref="afno-2022",
+    ),
+    ExperimentConfig(
+        name="ffno_kdv_h256_m32_l8",
+        benchmark="kdv_1d", model="FFNO",
+        hidden_dim=256, n_layers=8, n_modes=32,
+        priority=3,
+        rationale="FFNO on KdV. Soliton dynamics involve many harmonics → high "
+                  "mode count is critical. FFNO enables m=32 at h=256 cheaply.",
+        expected="~0.01–0.04",
+        paper_ref="ffno-2023",
     ),
 ]
 
