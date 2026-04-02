@@ -1013,6 +1013,15 @@ EXPERIMENTS: List[ExperimentConfig] = [
                   "benchmark is working and data is learnable.",
         expected="~0.003–0.01",
     ),
+    ExperimentConfig(
+        name="fno_wave_h128_m24_l8_v2",
+        benchmark="wave_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="Re-run of fno_wave_h128 with fixed wave ICs (ut0=0). "
+                  "Previous run used random ut0 making the problem ill-posed.",
+        expected="<0.001 — should be near-exact for FNO on linear wave PDE",
+    ),
 ]
 
 

@@ -60,9 +60,14 @@ def _kdv_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
 
 
 def _wave_ic(n: int, N: int, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
-    """Random ICs for wave equation: (u0, ∂u/∂t|₀)."""
+    """Random ICs for wave equation: (u0, ∂u/∂t|₀).
+
+    ut0=0 (released from rest) makes the problem well-posed from u0 alone.
+    With random ut0 independent of u0, the model cannot learn the mapping
+    since the same u0 maps to different targets for each ut0 sample.
+    """
     u0  = _random_ic(n, N, rng, n_modes=8)
-    ut0 = _random_ic(n, N, rng, n_modes=6)
+    ut0 = np.zeros_like(u0)   # released from rest: u(x,0)=u0(x), u_t(x,0)=0
     return u0, ut0
 
 
