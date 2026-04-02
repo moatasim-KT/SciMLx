@@ -68,6 +68,55 @@ class FNO1d(nn.Module):
         return self.proj2(x)[:, :, 0]
 
 
+# ── Residual FNO (Pre-LN) ─────────────────────────────────────────────────────
+
+class FNOBlockResidual1d(nn.Module):
+    """Pre-LN residual FNO block: x = x + GELU(spec(LN(x)) + w(LN(x))).
+
+    The residual connection + pre-norm pattern (from Pre-LN Transformers) gives
+    better gradient flow through deep stacks — same param count as FNOBlock1d.
+    """
+
+    def __init__(self, channels: int, n_modes: int):
+        super().__init__()
+        self.norm = nn.LayerNorm(channels)
+        self.spec = SpectralConv1d(channels, channels, n_modes)
+        self.w    = nn.Linear(channels, channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        h = self.norm(x)
+        return x + nn.gelu(self.spec(h) + self.w(h))
+
+
+class RFNO1d(nn.Module):
+    """Residual Fourier Neural Operator for 1-D operator learning.
+
+    Drop-in replacement for FNO1d that uses Pre-LN residual blocks.
+    Intended to unlock deeper stacks (l ≥ 10) without gradient degradation.
+
+    Hyperparameter guide: same as FNO1d.  Start with n_modes=24, hidden=128,
+    n_layers=10 or 12 — the residual connections should handle the extra depth.
+    """
+
+    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2):
+        super().__init__()
+        self.lift   = nn.Linear(in_ch, hidden_dim)
+        self.blocks = [FNOBlockResidual1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.norm   = nn.LayerNorm(hidden_dim)
+        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+
+    def __call__(self, u0: mx.array) -> mx.array:
+        B, N  = u0.shape
+        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
+        x     = mx.stack([u0, grid], axis=-1)
+        x     = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x     = nn.gelu(self.proj1(self.norm(x)))
+        return self.proj2(x)[:, :, 0]
+
+
 class SpectralConv2d(nn.Module):
     """2-D Fourier spectral convolution."""
 

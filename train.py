@@ -6,6 +6,7 @@ Goal: minimise val_l2_rel (lower is better) within the 5-minute budget.
 
 Available MODEL_TYPE values:
   "FNO"        – Fourier Neural Operator         (Li et al. 2020)
+  "RFNO"       – Residual FNO with Pre-LN blocks (unlocks l≥10)
   "UNO"        – U-shaped Neural Operator        (Rahman et al. 2022)
   "WNO"        – Wavelet Neural Operator         (Tripura et al. 2022)
   "DeepONet"   – Deep Operator Network           (Lu et al. 2019)
@@ -34,7 +35,7 @@ import mlx.nn as nn
 from mlx.utils import tree_flatten
 
 from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
-from models import FNO1d, FNO2d, UNO1d, WNO1d, DeepONet, PODDeepONet
+from models import FNO1d, FNO2d, UNO1d, RFNO1d, WNO1d, DeepONet, PODDeepONet
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
 BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "navier_stokes_2d"
@@ -62,7 +63,7 @@ def _parse_args():
     p = argparse.ArgumentParser(description="SciML Training Script")
     p.add_argument("--benchmark",   default=BENCHMARK)
     p.add_argument("--model",       default=MODEL_TYPE,
-                   choices=["FNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+                   choices=["FNO", "RFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
     p.add_argument("--modes",       type=int,   default=N_MODES)
     p.add_argument("--levels",      type=int,   default=N_LEVELS)
     p.add_argument("--hidden",      type=int,   default=HIDDEN_DIM)
@@ -213,6 +214,11 @@ if MODEL_TYPE == "FNO":
     else:
         model = FNO2d(n_modes1=N_MODES, n_modes2=N_MODES,
                       hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "RFNO":
+    if not is_1d:
+        raise ValueError("RFNO 2D not yet implemented — use FNO for 2D benchmarks.")
+    model = RFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
 
 elif MODEL_TYPE == "UNO":
     if not is_1d:

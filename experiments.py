@@ -27,7 +27,7 @@ from typing import List
 class ExperimentConfig:
     name:        str              # unique key (used for dedup against results.tsv)
     benchmark:   str              # "burgers_1d" | "darcy_2d"
-    model:       str              # "FNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
+    model:       str              # "FNO" | "RFNO" | "UNO" | "WNO" | "DeepONet" | "PODDeepONet"
     hidden_dim:  int              # channel width
     n_layers:    int              # depth (FNO blocks per level for UNO)
     n_modes:     int  = 16        # Fourier modes (FNO / UNO)
@@ -57,7 +57,7 @@ class ExperimentConfig:
     def short(self) -> str:
         """One-line summary for logging."""
         parts = [f"{self.model}", f"h={self.hidden_dim}", f"l={self.n_layers}"]
-        if self.model in ("FNO", "UNO"):
+        if self.model in ("FNO", "RFNO", "UNO"):
             parts.append(f"m={self.n_modes}")
         if self.model == "WNO":
             parts.append(f"lvl={self.n_levels}")
@@ -568,6 +568,54 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="Best config + 10× higher weight decay (1e-3 vs default 1e-4). "
                   "More regularisation may reduce overfitting to training noise.",
         expected="~0.155–0.170.",
+    ),
+
+    # ── P12 · Residual FNO (RFNO) — Pre-LN residual blocks ───────────────────
+    # FNO saturates at l=8 (step-time-limited). Pre-LN residual connections
+    # should allow deeper stacks without gradient degradation — same param count.
+    ExperimentConfig(
+        name="rfno_h128_m24_l8",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="RFNO at same config as FNO best (h=128,m=24,l=8). "
+                  "Tests whether Pre-LN residuals alone improve over FNO 0.1553.",
+        expected="~0.140–0.155 if normalisation helps; may match FNO.",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l10",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="RFNO at l=10 — FNO degraded to 0.169 here due to fewer steps. "
+                  "Residuals may allow l=10 to actually converge better.",
+        expected="~0.135–0.150 if residuals unlock deeper models.",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l12",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=12, n_modes=24,
+        priority=1,
+        rationale="RFNO at l=12 — FNO collapsed to 0.217. Residuals are the fix.",
+        expected="~0.130–0.150 if depth scaling is unlocked.",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l6",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        priority=2,
+        rationale="RFNO at shallower l=6 — ablation to isolate the Pre-LN effect "
+                  "vs depth. FNO l=6 got 0.1648.",
+        expected="~0.150–0.165.",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l16",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=16, n_modes=24,
+        priority=2,
+        rationale="Push RFNO to l=16. Each block ~35ms → ~8500 steps in 5min "
+                  "but only ~5300 iterations. Residuals may compensate.",
+        expected="~0.125–0.145 if depth keeps scaling.",
     ),
 
     # ── P11 · Depth extension around fno_h128_m24_l8 (new best 0.1553) ────────
