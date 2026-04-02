@@ -179,21 +179,20 @@ def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
     Works on a uniform periodic grid [0, 2π).
     Returns [B, N] residual field; minimise its L2 norm as physics loss.
     """
-    B, N = u_pred.shape
-    # Wave numbers for real FFT: k = 0, 1, …, N//2
-    k_pos  = mx.arange(N // 2 + 1, dtype=mx.float32)
-    # First-order derivative: multiply by ik
-    u_ft   = mx.fft.rfft(u_pred, axis=1)
-    ux_ft  = mx.complex(mx.zeros_like(k_pos), k_pos)[None, :, None] * \
-             mx.complex(u_ft.real, u_ft.imag)[..., None]
-    # Simplify: ux = irfft(i*k * û)
-    ux_ft_r = -u_ft.imag * k_pos[None, :]
-    ux_ft_i =  u_ft.real * k_pos[None, :]
-    ux      = mx.fft.irfft(mx.complex(ux_ft_r, ux_ft_i), n=N, axis=1)
-    # Second-order derivative: multiply by -k²
-    uxx_ft_r = -(k_pos ** 2)[None, :] * u_ft.real
-    uxx_ft_i = -(k_pos ** 2)[None, :] * u_ft.imag
-    uxx      = mx.fft.irfft(mx.complex(uxx_ft_r, uxx_ft_i), n=N, axis=1)
+    B, N   = u_pred.shape
+    k      = mx.arange(N // 2 + 1, dtype=mx.float32)   # wave numbers 0…N//2
+    u_ft   = mx.fft.rfft(u_pred, axis=1)               # [B, N//2+1] complex
+
+    # ∂u/∂x  ↔  multiply Fourier coeff by ik  →  real=-imag*k, imag=real*k
+    ux_ft_r = -u_ft.imag * k[None, :]
+    ux_ft_i =  u_ft.real * k[None, :]
+    ux      = mx.fft.irfft(ux_ft_r + 1j * ux_ft_i, n=N, axis=1)
+
+    # ∂²u/∂x²  ↔  multiply by -k²
+    uxx_ft_r = -(k ** 2)[None, :] * u_ft.real
+    uxx_ft_i = -(k ** 2)[None, :] * u_ft.imag
+    uxx      = mx.fft.irfft(uxx_ft_r + 1j * uxx_ft_i, n=N, axis=1)
+
     return u_pred * ux - nu * uxx
 
 
