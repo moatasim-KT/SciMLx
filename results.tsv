@@ -67,3 +67,21 @@ ebcb142	burgers_1d	FNO	0.187067	0.10	keep	fno_h64_m16_l8 FNO  h=64  l=8  m=16
 8c00377	burgers_1d	RFNO	0.175917	0.29	discard	rfno_h128_m24_l8 RFNO  h=128  l=8  m=24
 8c00377	burgers_1d	RFNO	0.172921	0.57	discard	rfno_h128_m24_l16 RFNO  h=128  l=16  m=24
 8c00377	burgers_1d	RFNO	0.176950	0.25	discard	rfno_h128_m24_l6 RFNO  h=128  l=6  m=24
+a567132	burgers_1d	AFNO	0.564929	0.27	discard	afno_h128_m24_l10 AFNO  h=128  l=10  m=24
+a567132	burgers_1d	AFNO	0.613486	0.20	discard	afno_h128_m24_l8 AFNO  h=128  l=8  m=24
+a567132	burgers_1d	FNO	0.181417	0.28	discard	fno_h128_m24_l8_h1 FNO  h=128  l=8  m=24  loss=h1
+a567132	burgers_1d	AFNO	0.717507	0.23	discard	afno_h128_m24_l12 AFNO  h=128  l=12  m=24
+a567132	burgers_1d	AFNO	0.621222	0.23	discard	afno_h128_m24_l8_h1 AFNO  h=128  l=8  m=24  loss=h1
+a567132	burgers_1d	AFNO	0.669750	0.23	discard	afno_h128_m24_l8_sp0 AFNO  h=128  l=8  m=24
+a567132	burgers_1d	FNO	0.155865	0.28	discard	fno_h128_m24_l8_h1_a001 FNO  h=128  l=8  m=24  loss=h1
+a567132	burgers_1d	RFNO	0.171636	0.29	discard	rfno_h128_m24_l8_h1 RFNO  h=128  l=8  m=24  loss=h1
+8af7cc7	burgers_1d	AFNO	0.551242	0.30	discard	afno_v2_h128_m24_l10 AFNO  h=128  l=10  m=24
+8af7cc7	burgers_1d	AFNO	0.502508	0.21	discard	afno_v2_h128_m24_l8 AFNO  h=128  l=8  m=24
+8af7cc7	burgers_1d	FFNO	0.256668	0.19	discard	ffno_h128_m32_l8 FFNO  h=128  l=8  m=32
+8af7cc7	burgers_1d	FFNO	0.246536	0.34	discard	ffno_h256_m24_l8 FFNO  h=256  l=8  m=24
+8af7cc7	burgers_1d	FFNO	0.240487	0.37	discard	ffno_h256_m32_l8 FFNO  h=256  l=8  m=32
+8af7cc7	burgers_1d	AFNO	0.659331	0.48	discard	afno_v2_h256_m24_l8 AFNO  h=256  l=8  m=24
+8af7cc7	burgers_1d	FFNO	N/A	0.00	crash	ffno_h128_m48_l8 FFNO  h=128  l=8  m=48
+8af7cc7	burgers_1d	FFNO	0.350967	0.45	discard	ffno_h256_m32_l10 FFNO  h=256  l=10  m=32
+8af7cc7	burgers_1d	FFNO	0.302069	0.70	discard	ffno_h512_m24_l8 FFNO  h=512  l=8  m=24
+b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
