@@ -226,6 +226,13 @@ def main() -> None:
     n_crashed  = 0
 
     for i, exp in enumerate(pending, 1):
+        # Re-read results.tsv before each run — guards against duplicate runs
+        # when multiple sessions overlap or a previous session was interrupted
+        # mid-write.
+        if not args.force and exp.name in load_done_names():
+            print(f"\n[{i}/{len(pending)}]  {exp.name}  — already in results.tsv, skipping")
+            continue
+
         print(f"\n{'─'*70}")
         print(f"[{i}/{len(pending)}]  {exp.name}")
         print(f"  Config   : {exp.short()}")

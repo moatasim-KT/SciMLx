@@ -374,6 +374,111 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="Larger batch → smoother gradients, fewer steps per epoch.",
         expected="May hurt convergence in fixed-time budget.",
     ),
+
+    # ── P9 · Follow-ups from session-1/2 findings ────────────────────────────
+    # Key empirical result: FNO h=128, l=6 = 0.1852 (best so far).
+    # Width (h=256) helped more than raw depth (l=6 at h=64).
+    # h=128 + l=6 beat both: best combo in the budget.
+    # WNO & PINO failed — both fixed; re-run with fixed code.
+
+    ExperimentConfig(
+        name="fno_h128_m16_l8",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=16,
+        priority=1,
+        rationale="Extend best config (h=128,l=6→0.1852): does l=8 add more?",
+        expected="~0.16–0.18; step time ~35ms so still ~8500 steps.",
+    ),
+    ExperimentConfig(
+        name="fno_h256_m16_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=256, n_layers=6, n_modes=16,
+        priority=1,
+        rationale="Wide AND deep: h=256 (2nd best) + l=6 (best depth).",
+        expected="~0.16–0.18; slower per step (~45ms) but still meaningful.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        priority=1,
+        rationale="Best depth config + more Fourier modes (24 vs 16).",
+        expected="~0.17–0.19; more modes capture higher-freq Burgers features.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m32_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=32,
+        priority=2,
+        rationale="Max modes (N//2=32) at best depth.",
+        expected="~0.17–0.19; all spatial frequencies included.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_l6_lr3e4",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        lr=3e-4,
+        priority=2,
+        rationale="Best arch (h=128,l=6) with lower LR: smoother late convergence.",
+        expected="~0.17–0.19; may help in the warmdown phase.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_l6_lr3e3",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        lr=3e-3,
+        priority=2,
+        rationale="Best arch (h=128,l=6) with higher LR: faster early convergence.",
+        expected="~0.16–0.18 if GRAD_CLIP=1.0 keeps it stable.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_l6_pino_fixed",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        pino_lambda=0.05,
+        priority=2,
+        rationale="PINO on best arch with FIXED normalised physics loss. "
+                  "Previous runs (λ=0.01/0.001) failed because residual was "
+                  "unnormalised; now fixed to relative-L2 scaling.",
+        expected="~0.15–0.18 if physics loss genuinely guides training.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_l6_pino_small",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        pino_lambda=0.01,
+        priority=2,
+        rationale="PINO with fixed normalisation, λ=0.01 (conservative).",
+        expected="~0.15–0.18.",
+    ),
+    ExperimentConfig(
+        name="wno_h128_l6_fixed",
+        benchmark="burgers_1d", model="WNO",
+        hidden_dim=128, n_layers=6, n_levels=3,
+        priority=2,
+        rationale="WNO with FIXED Haar transform (reshape-based instead of "
+                  "stride-2 slicing, which produced near-zero gradients). "
+                  "Wider and deeper than original failed run.",
+        expected="~0.20–0.25 if gradient fix resolves the learning failure.",
+    ),
+    ExperimentConfig(
+        name="uno_h128_l2_wide",
+        benchmark="burgers_1d", model="UNO",
+        hidden_dim=128, n_layers=2, n_modes=16,
+        priority=2,
+        rationale="h=64 UNO lost to FNO (0.222 vs 0.185). "
+                  "h=128 matches the winning FNO width — bottleneck has 512ch.",
+        expected="~0.17–0.20; UNO paper claims ~20% over FNO at matched capacity.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_l6_bs16",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        batch_size=16,
+        priority=3,
+        rationale="Best arch + small batch → ~2× more gradient steps per minute.",
+        expected="~0.16–0.18; higher gradient noise may help escape local optima.",
+    ),
 ]
 
 

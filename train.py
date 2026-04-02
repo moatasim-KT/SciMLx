@@ -292,8 +292,14 @@ def loss_fn(model, x, y):
         / (mx.sqrt(mx.mean(y ** 2, axis=axes)) + 1e-8)
     )
     if PINO_LAMBDA > 0 and BENCHMARK == "burgers_1d":
-        res = burgers_residual(pred)
-        return data_loss + PINO_LAMBDA * mx.mean(res ** 2)
+        res  = burgers_residual(pred)
+        # Normalise physics loss the same way as data loss (relative L2)
+        # so that PINO_LAMBDA is a true mixing ratio, not a raw magnitude knob.
+        phys_loss = mx.mean(
+            mx.sqrt(mx.mean(res ** 2, axis=axes))
+            / (mx.sqrt(mx.mean(pred ** 2, axis=axes)) + 1e-8)
+        )
+        return data_loss + PINO_LAMBDA * phys_loss
     return data_loss
 
 

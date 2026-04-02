@@ -35,8 +35,12 @@ def _haar_forward(x: mx.array, levels: int) -> tuple[list[mx.array], mx.array]:
     approx = x
     sq2 = math.sqrt(2)
     for _ in range(levels):
-        lo = (approx[:, 0::2, :] + approx[:, 1::2, :]) / sq2
-        hi = (approx[:, 0::2, :] - approx[:, 1::2, :]) / sq2
+        B, N, C = approx.shape
+        # Reshape into pairs first — avoids stride-2 slicing which can
+        # produce weak/zero gradients through MLX's autograd engine.
+        pairs = approx.reshape(B, N // 2, 2, C)
+        lo = (pairs[:, :, 0, :] + pairs[:, :, 1, :]) / sq2
+        hi = (pairs[:, :, 0, :] - pairs[:, :, 1, :]) / sq2
         details.append(hi)
         approx = lo
     return details, approx
