@@ -194,18 +194,19 @@ class DiagSpectralConv1d(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         B, N, C = x.shape
+        n_rfft  = N // 2 + 1
+        m       = min(self.n_modes, n_rfft)     # clamp to available rfft modes
         x_ft    = mx.fft.rfft(x, axis=1)
-        xr      = x_ft[:, :self.n_modes, :].real   # [B, m, C]
-        xi      = x_ft[:, :self.n_modes, :].imag
+        xr      = x_ft[:, :m, :].real          # [B, m, C]
+        xi      = x_ft[:, :m, :].imag
 
         # Diagonal complex multiply: elementwise per (mode, channel)
-        out_r = xr * self.wr[None] - xi * self.wi[None]
-        out_i = xr * self.wi[None] + xi * self.wr[None]
+        out_r = xr * self.wr[:m][None] - xi * self.wi[:m][None]
+        out_i = xr * self.wi[:m][None] + xi * self.wr[:m][None]
 
         out_modes = out_r + 1j * out_i
-        n_rfft    = N // 2 + 1
-        if n_rfft > self.n_modes:
-            pad    = mx.zeros([B, n_rfft - self.n_modes, C], dtype=mx.complex64)
+        if n_rfft > m:
+            pad    = mx.zeros([B, n_rfft - m, C], dtype=mx.complex64)
             out_ft = mx.concatenate([out_modes, pad], axis=1)
         else:
             out_ft = out_modes

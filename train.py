@@ -5,21 +5,21 @@ Baseline: Fourier Neural Operator (FNO) for multiple SciML benchmarks.
 Goal: minimise val_l2_rel (lower is better) within the 5-minute budget.
 
 Available MODEL_TYPE values:
-  "FNO"        – Fourier Neural Operator                  (Li et al. 2020)
-  "RFNO"       – Residual FNO with Pre-LN blocks          (unlocks l≥10)
-  "AFNO"       – Adaptive FNO: block-diagonal MLP + softshrink (Guibas 2022)
-  "FFNO"       – Factorized FNO: diagonal per-mode weights (Tran et al. 2023)
-  "UNO"        – U-shaped Neural Operator                 (Rahman et al. 2022)
-  "WNO"        – Wavelet Neural Operator                  (Tripura et al. 2022)
-  "DeepONet"   – Deep Operator Network                    (Lu et al. 2019)
-  "PODDeepONet"– POD-based DeepONet                       (Lu et al. 2022)
+  "FNO"        - Fourier Neural Operator                  (Li et al. 2020)
+  "RFNO"       - Residual FNO with Pre-LN blocks          (unlocks l≥10)
+  "AFNO"       - Adaptive FNO: block-diagonal MLP + softshrink (Guibas 2022)
+  "FFNO"       - Factorized FNO: diagonal per-mode weights (Tran et al. 2023)
+  "UNO"        - U-shaped Neural Operator                 (Rahman et al. 2022)
+  "WNO"        - Wavelet Neural Operator                  (Tripura et al. 2022)
+  "DeepONet"   - Deep Operator Network                    (Lu et al. 2019)
+  "PODDeepONet"- POD-based DeepONet                       (Lu et al. 2022)
 
 Available LOSS_TYPE values:
-  "l2_rel"    – relative L2 (default)
-  "h1"        – H1 Sobolev: L2 + α·L2(∂u/∂x)  → targets shock fronts
-  "h1_strong" – H1 with α=1.0
-  "spectral"  – frequency-weighted L2
-  "l1_rel"    – relative L1
+  "l2_rel"    - relative L2 (default)
+  "h1"        - H1 Sobolev: L2 + a·L2(∂u/∂x)  → targets shock fronts
+  "h1_strong" - H1 with a=1.0
+  "spectral"  - frequency-weighted L2
+  "l1_rel"    - relative L1
 
 CLI flags (all optional; module-level constants below are the defaults):
   --benchmark  burgers_1d|darcy_2d|kdv_1d|wave_1d
@@ -48,7 +48,7 @@ from mlx.utils import tree_flatten
 from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
 from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
 from losses import get_loss_fn
-from models import FNO1d, FNO2d, UNO1d, RFNO1d, AFNO1d, FFNO1d, WNO1d, DeepONet, PODDeepONet
+from research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
 BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "kdv_1d" | "wave_1d"
@@ -77,8 +77,7 @@ FINAL_LR_FRAC  = 0.01
 def _parse_args():
     p = argparse.ArgumentParser(description="SciML Training Script")
     p.add_argument("--benchmark",   default=BENCHMARK)
-    p.add_argument("--model",       default=MODEL_TYPE,
-                   choices=["FNO", "RFNO", "AFNO", "FFNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+    p.add_argument("--model",       default=MODEL_TYPE)
     p.add_argument("--loss",        default=LOSS_TYPE,
                    choices=["l2_rel", "h1", "h1_strong", "spectral", "l1_rel", "mse"])
     p.add_argument("--h1_alpha",    type=float, default=H1_ALPHA)
@@ -195,12 +194,12 @@ def clip_grad_norm(grads, max_norm: float):
 # ── Physics residuals (for PINO) ──────────────────────────────────────────────
 
 def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
-    """Spectral Burgers residual: u·∂u/∂x − ν·∂²u/∂x² evaluated at u_pred.
+    """Spectral Burgers residual: u·∂u/∂x - v·∂²u/∂x² evaluated at u_pred.
 
     Works on a uniform periodic grid [0, 2π).
     Returns [B, N] residual field; minimise its L2 norm as physics loss.
     """
-    B, N   = u_pred.shape
+    _, N   = u_pred.shape
     k      = mx.arange(N // 2 + 1, dtype=mx.float32)   # wave numbers 0…N//2
     u_ft   = mx.fft.rfft(u_pred, axis=1)               # [B, N//2+1] complex
 
@@ -217,17 +216,13 @@ def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
     return u_pred * ux - nu * uxx
 
 
-# ── Model factory ─────────────────────────────────────────────────────────────
+# ── Model factory (registry-driven) ──────────────────────────────────────────
 
 t_start = time.time()
 
-# Route to extended benchmarks (kdv_1d, wave_1d) or standard (burgers_1d, darcy_2d)
-if BENCHMARK in EXT_BENCHMARKS:
-    train_loader   = make_ext_dataloader(BENCHMARK, "train", BATCH_SIZE)
-    _eval_fn       = lambda model: evaluate_l2_rel_ext(BENCHMARK, model)
-else:
-    train_loader   = make_dataloader(BENCHMARK, "train", BATCH_SIZE)
-    _eval_fn       = lambda model: evaluate_l2_rel(BENCHMARK, model)
+# Route benchmark → dataloader and eval function via registry
+train_loader = BENCHMARK_REGISTRY.make_loader(BENCHMARK, "train", BATCH_SIZE)
+_eval_fn     = lambda model: BENCHMARK_REGISTRY.evaluate(BENCHMARK, model)
 
 x_init, y_init = next(train_loader)
 t_data         = time.time()
@@ -235,56 +230,13 @@ print(f"Data ready in {t_data - t_start:.1f}s")
 
 is_1d = BENCHMARK.endswith("_1d")
 
-if MODEL_TYPE == "FNO":
-    if is_1d:
-        model = FNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-    else:
-        model = FNO2d(n_modes1=N_MODES, n_modes2=N_MODES,
-                      hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "RFNO":
-    if not is_1d:
-        raise ValueError("RFNO 2D not yet implemented — use FNO for 2D benchmarks.")
-    model = RFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "AFNO":
-    if not is_1d:
-        raise ValueError("AFNO 2D not yet implemented — use FNO for 2D benchmarks.")
-    model = AFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "FFNO":
-    if not is_1d:
-        raise ValueError("FFNO 2D not yet implemented — use FNO for 2D benchmarks.")
-    model = FFNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "UNO":
-    if not is_1d:
-        raise ValueError("UNO 2D not yet implemented — use FNO for 2D benchmarks.")
-    model = UNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "WNO":
-    if not is_1d:
-        raise ValueError("WNO 2D not yet implemented — use FNO for 2D benchmarks.")
-    model = WNO1d(n_levels=N_LEVELS, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "DeepONet":
-    if is_1d:
-        model = DeepONet(branch_dim=GRID_SIZE, trunk_dim=1,
-                         hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM,
-                         n_layers=N_LAYERS)
-    else:
-        model = DeepONet(branch_dim=GRID_SIZE * GRID_SIZE, trunk_dim=2,
-                         hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM,
-                         n_layers=N_LAYERS)
-
-elif MODEL_TYPE == "PODDeepONet":
-    if not is_1d:
-        raise ValueError("PODDeepONet 2D not yet implemented.")
-    model = PODDeepONet(branch_dim=GRID_SIZE, n_basis=HIDDEN_DIM,
-                        hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
-
-else:
-    raise ValueError(f"Unknown MODEL_TYPE: {MODEL_TYPE!r}")
+# Route model type → model instance via registry
+# 2D benchmarks use a FNO2D key; all others route directly
+_model_key = ("FNO2D" if MODEL_TYPE == "FNO" and not is_1d else MODEL_TYPE)
+model = MODEL_REGISTRY.build(
+    _model_key,
+    n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS, n_levels=N_LEVELS,
+)
 
 mx.eval(model.parameters())
 n_params = sum(p.size for _, p in tree_flatten(model.parameters()))
