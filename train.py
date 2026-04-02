@@ -19,12 +19,12 @@ from models import FNO1d, FNO2d, DeepONet
 
 # ── Hyperparameters ───────────────────────────────────────────────────────────
 # Benchmark Selection
-BENCHMARK = "darcy_2d"  # Choices: "burgers_1d", "darcy_2d", "navier_stokes_2d"
+BENCHMARK = "burgers_1d"
 
 # Architecture
 MODEL_TYPE = "FNO"       # Choices: "FNO", "DeepONet"
 N_MODES    = 16          # Fourier modes to keep (≤ GRID_SIZE // 2)
-HIDDEN_DIM = 64          # channel width
+HIDDEN_DIM = 32          # channel width
 N_LAYERS   = 4           # number of blocks
 
 # Optimiser

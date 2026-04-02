@@ -1,1 +1,9 @@
-commit	val_l2_rel	memory_gb	status	description
+commit	benchmark	model	val_l2_rel	memory_gb	status	description
+2c511b0	burgers_1d	FNO	0.237418	0.1	keep	baseline FNO-1D (12x32)
+2c511b0	darcy_2d	FNO	0.998617	1.7	keep	baseline FNO-2D (12x32)
+2c511b0	navier_stokes_2d	FNO	1.000000	0.0	crash	diverged in step 67
+37100	burgers_1d	FNO	0.230707	0.1	keep	FNO-1D (12x64) - slightly better
+37436	burgers_1d	FNO	0.269450	0.1	discard	FNO-1D (8x64) - worse
+37803	burgers_1d	FNO	0.255476	0.1	discard	FNO-1D (16x32) - worse, timer issue?
+36513	burgers_1d	DeepONet	0.808308	0.1	discard	DeepONet (64) - poor
+36099	burgers_1d	FNO	0.249884	0.1	discard	FNO-1D (12x32) + residual - worse
