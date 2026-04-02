@@ -569,6 +569,75 @@ EXPERIMENTS: List[ExperimentConfig] = [
                   "More regularisation may reduce overfitting to training noise.",
         expected="~0.155–0.170.",
     ),
+
+    # ── P11 · Depth extension around fno_h128_m24_l8 (new best 0.1553) ────────
+    # Key finding: depth l=8 beats width h=256; next question is how far depth scales.
+    # Also probe whether the optimal mode count shifts at greater depth.
+    ExperimentConfig(
+        name="fno_h128_m24_l10",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="Depth trend: l=4(0.208)→l=6(0.165)→l=8(0.155). Does l=10 continue?",
+        expected="~0.140–0.155 if depth trend continues.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l12",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=12, n_modes=24,
+        priority=1,
+        rationale="Push depth further. Each FNOBlock is ~40ms; l=12 ~4800 steps in 5 min.",
+        expected="~0.135–0.155 if depth keeps helping; may saturate.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m22_l8",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=22,
+        priority=1,
+        rationale="m=22 slightly beat m=24 at l=6 (0.1643 vs 0.1648). Test if that "
+                  "advantage persists or disappears at l=8.",
+        expected="~0.150–0.158.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l8_bs16",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=16,
+        priority=1,
+        rationale="Best depth config + half batch → ~2× gradient steps. "
+                  "bs=16 gave 0.160 at l=6; may help more at l=8.",
+        expected="~0.145–0.158.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l10_lr5e4",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        lr=5e-4,
+        priority=2,
+        rationale="Deeper models often need lower LR to converge. "
+                  "Pair l=10 with lr=5e-4 for more stable optimisation.",
+        expected="~0.135–0.150.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l8_lr5e4",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        lr=5e-4,
+        priority=2,
+        rationale="Best config + lower LR. lr=1e-3 may be slightly too aggressive "
+                  "for 5-min budget — 5e-4 gives more careful convergence.",
+        expected="~0.148–0.158.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l12_bs16",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=12, n_modes=24,
+        batch_size=16,
+        priority=2,
+        rationale="l=12 + bs=16 trades step size for step count — may help very deep model "
+                  "escape early plateau.",
+        expected="~0.130–0.150.",
+    ),
 ]
 
 
