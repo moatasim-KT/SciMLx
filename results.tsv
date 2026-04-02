@@ -7,3 +7,4 @@ commit	benchmark	model	val_l2_rel	memory_gb	status	description
 37803	burgers_1d	FNO	0.255476	0.1	discard	FNO-1D (16x32) - worse, timer issue?
 36513	burgers_1d	DeepONet	0.808308	0.1	discard	DeepONet (64) - poor
 36099	burgers_1d	FNO	0.249884	0.1	discard	FNO-1D (12x32) + residual - worse
+0b02868	burgers_1d	FNO	0.216930	0.16	keep	fno_h128_m16_l4 FNO  h=128  l=4  m=16
