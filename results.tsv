@@ -9,3 +9,10 @@ commit	benchmark	model	val_l2_rel	memory_gb	status	description
 36099	burgers_1d	FNO	0.249884	0.1	discard	FNO-1D (12x32) + residual - worse
 0b02868	burgers_1d	FNO	0.216930	0.16	keep	fno_h128_m16_l4 FNO  h=128  l=4  m=16
 5394a18	burgers_1d	FNO	0.199864	0.39	keep	fno_h256_m16_l4 FNO  h=256  l=4  m=16
+9616e25	burgers_1d	FNO	0.200541	0.09	discard	fno_h64_m16_l6 FNO  h=64  l=6  m=16
+9616e25	burgers_1d	UNO	0.235394	0.11	discard	uno_h64_l1 UNO  h=64  l=1  m=16
+9616e25	burgers_1d	UNO	0.222151	0.16	discard	uno_h64_l2 UNO  h=64  l=2  m=16
+9616e25	burgers_1d	UNO	0.222151	0.16	discard	uno_h64_l2 UNO  h=64  l=2  m=16
+9616e25	burgers_1d	WNO	0.846389	0.05	discard	wno_h64_lvl3_l4 WNO  h=64  l=4  lvl=3
+9616e25	burgers_1d	WNO	0.846389	0.05	discard	wno_h64_lvl3_l4 WNO  h=64  l=4  lvl=3
+9616e25	burgers_1d	FNO	0.185221	0.20	keep	fno_h128_m16_l6 FNO  h=128  l=6  m=16
