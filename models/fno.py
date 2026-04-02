@@ -1,6 +1,9 @@
 import mlx.core as mx
 import mlx.nn as nn
 
+
+# ── 1D Spectral Components ────────────────────────────────────────────────────
+
 class SpectralConv1d(nn.Module):
     """1-D Fourier spectral convolution."""
 
@@ -141,3 +144,76 @@ class FNO2d(nn.Module):
             x = blk(x)
         x     = nn.gelu(self.proj1(x))
         return self.proj2(x)[:, :, :, 0]
+
+
+# ── U-shaped Neural Operator (UNO) ────────────────────────────────────────────
+
+class UNO1d(nn.Module):
+    """U-shaped Neural Operator for 1-D problems.
+
+    Encoder-decoder with FNO layers at each scale, skip connections between
+    symmetric levels, and spectral subsampling (slice every other point) for
+    downsampling.  Captures both global (low-freq) and local (high-freq)
+    features simultaneously.
+
+    Reference: Rahman et al. (2022) "U-NO: U-shaped Neural Operators"
+    (arXiv:2204.11127)
+
+    Architecture (hidden_dim=h, N=64 default):
+        lift → enc0(N,h) → enc1(N/2,2h) → bottleneck(N/4,4h)
+             ↓ skip0          ↓ skip1
+        dec0(N,h) ← dec1(N/2,2h) ← upsample
+    """
+
+    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int = 2,
+                 in_ch: int = 2):
+        super().__init__()
+        h = hidden_dim
+        m = n_modes
+        # Encoder
+        self.lift  = nn.Linear(in_ch, h)
+        self.enc0  = nn.Sequential(*[FNOBlock1d(h, m) for _ in range(n_layers)])
+        self.down0 = nn.Linear(h, 2 * h)
+        self.enc1  = nn.Sequential(*[FNOBlock1d(2 * h, max(m // 2, 1))
+                                      for _ in range(n_layers)])
+        self.down1 = nn.Linear(2 * h, 4 * h)
+        # Bottleneck
+        self.bot   = nn.Sequential(*[FNOBlock1d(4 * h, max(m // 4, 1))
+                                      for _ in range(n_layers)])
+        # Decoder
+        self.up1   = nn.Linear(4 * h + 2 * h, 2 * h)
+        self.dec1  = nn.Sequential(*[FNOBlock1d(2 * h, max(m // 2, 1))
+                                      for _ in range(n_layers)])
+        self.up0   = nn.Linear(2 * h + h, h)
+        self.dec0  = nn.Sequential(*[FNOBlock1d(h, m) for _ in range(n_layers)])
+        # Output projection
+        self.proj1 = nn.Linear(h, h // 2)
+        self.proj2 = nn.Linear(h // 2, 1)
+
+    def __call__(self, u0: mx.array) -> mx.array:
+        B, N = u0.shape
+        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
+        x    = mx.stack([u0, grid], axis=-1)
+        x    = self.lift(x)                         # [B, N,    h]
+
+        # Encode
+        s0   = self.enc0(x)                         # [B, N,    h]  skip0
+        x    = self.down0(s0)[:, ::2, :]            # [B, N//2, 2h]
+        s1   = self.enc1(x)                         # [B, N//2, 2h]  skip1
+        x    = self.down1(s1)[:, ::2, :]            # [B, N//4, 4h]
+
+        # Bottleneck
+        x    = self.bot(x)                          # [B, N//4, 4h]
+
+        # Decode
+        x    = mx.repeat(x, 2, axis=1)             # [B, N//2, 4h]
+        x    = mx.concatenate([x, s1], axis=-1)     # [B, N//2, 6h]
+        x    = self.up1(x)                          # [B, N//2, 2h]
+        x    = self.dec1(x)                         # [B, N//2, 2h]
+        x    = mx.repeat(x, 2, axis=1)             # [B, N,    2h]
+        x    = mx.concatenate([x, s0], axis=-1)     # [B, N,    3h]
+        x    = self.up0(x)                          # [B, N,    h]
+        x    = self.dec0(x)                         # [B, N,    h]
+
+        x    = nn.gelu(self.proj1(x))
+        return self.proj2(x)[:, :, 0]

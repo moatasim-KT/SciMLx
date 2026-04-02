@@ -3,6 +3,25 @@ SciML experiment script — edit this file freely.
 
 Baseline: Fourier Neural Operator (FNO) for multiple SciML benchmarks.
 Goal: minimise val_l2_rel (lower is better) within the 5-minute budget.
+
+Available MODEL_TYPE values:
+  "FNO"        – Fourier Neural Operator         (Li et al. 2020)
+  "UNO"        – U-shaped Neural Operator        (Rahman et al. 2022)
+  "WNO"        – Wavelet Neural Operator         (Tripura et al. 2022)
+  "DeepONet"   – Deep Operator Network           (Lu et al. 2019)
+  "PODDeepONet"– POD-based DeepONet              (Lu et al. 2022)
+
+CLI flags (all optional; module-level constants below are the defaults):
+  --benchmark  burgers_1d|darcy_2d|navier_stokes_2d
+  --model      FNO|UNO|WNO|DeepONet|PODDeepONet
+  --modes      Fourier modes (FNO/UNO)
+  --levels     Haar decomposition levels (WNO)
+  --hidden     channel width
+  --layers     depth
+  --lr         learning rate
+  --batch_size batch size
+  --grad_clip  max gradient norm (0 = disabled)
+  --pino_lambda weight for physics residual loss (0 = disabled)
 """
 
 import gc
@@ -15,26 +34,56 @@ import mlx.nn as nn
 from mlx.utils import tree_flatten
 
 from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
-from models import FNO1d, FNO2d, DeepONet
+from models import FNO1d, FNO2d, UNO1d, WNO1d, DeepONet, PODDeepONet
 
-# ── Hyperparameters ───────────────────────────────────────────────────────────
-# Benchmark Selection
-BENCHMARK = "burgers_1d"
+# ── Hyperparameters (module-level defaults) ───────────────────────────────────
+BENCHMARK    = "burgers_1d"   # "burgers_1d" | "darcy_2d" | "navier_stokes_2d"
+MODEL_TYPE   = "FNO"          # see module docstring
+N_MODES      = 16             # Fourier modes to keep  (FNO, UNO; ≤ GRID_SIZE//2)
+N_LEVELS     = 3              # Haar decomposition levels (WNO; 3 → N/8 approx)
+HIDDEN_DIM   = 64             # channel width
+N_LAYERS     = 4              # depth
+BATCH_SIZE   = 32
+LR           = 1e-3
+WEIGHT_DECAY = 1e-4
+GRAD_CLIP    = 1.0            # max gradient L2 norm; 0 = disabled
+PINO_LAMBDA  = 0.0            # physics residual loss weight (0 = data-only)
 
-# Architecture
-MODEL_TYPE = "FNO"       # Choices: "FNO", "DeepONet"
-N_MODES    = 16          # Fourier modes to keep (≤ GRID_SIZE // 2)
-HIDDEN_DIM = 32          # channel width
-N_LAYERS   = 4           # number of blocks
-
-# Optimiser
-BATCH_SIZE     = 32
-LR             = 1e-3
-WEIGHT_DECAY   = 1e-4
+# Scheduler
 ADAM_BETAS     = (0.9, 0.999)
 WARMUP_RATIO   = 0.05
 WARMDOWN_RATIO = 0.4
 FINAL_LR_FRAC  = 0.01
+
+
+# ── CLI override ──────────────────────────────────────────────────────────────
+
+def _parse_args():
+    p = argparse.ArgumentParser(description="SciML Training Script")
+    p.add_argument("--benchmark",   default=BENCHMARK)
+    p.add_argument("--model",       default=MODEL_TYPE,
+                   choices=["FNO", "UNO", "WNO", "DeepONet", "PODDeepONet"])
+    p.add_argument("--modes",       type=int,   default=N_MODES)
+    p.add_argument("--levels",      type=int,   default=N_LEVELS)
+    p.add_argument("--hidden",      type=int,   default=HIDDEN_DIM)
+    p.add_argument("--layers",      type=int,   default=N_LAYERS)
+    p.add_argument("--batch_size",  type=int,   default=BATCH_SIZE)
+    p.add_argument("--lr",          type=float, default=LR)
+    p.add_argument("--grad_clip",   type=float, default=GRAD_CLIP)
+    p.add_argument("--pino_lambda", type=float, default=PINO_LAMBDA)
+    return p.parse_args()
+
+args = _parse_args()
+BENCHMARK   = args.benchmark
+MODEL_TYPE  = args.model
+N_MODES     = args.modes
+N_LEVELS    = args.levels
+HIDDEN_DIM  = args.hidden
+N_LAYERS    = args.layers
+BATCH_SIZE  = args.batch_size
+LR          = args.lr
+GRAD_CLIP   = args.grad_clip
+PINO_LAMBDA = args.pino_lambda
 
 
 # ── Optimiser ─────────────────────────────────────────────────────────────────
@@ -99,7 +148,56 @@ def lr_schedule(progress: float) -> float:
     return t + (1 - t) * FINAL_LR_FRAC
 
 
-# ── Training loop ─────────────────────────────────────────────────────────────
+# ── Gradient utilities ────────────────────────────────────────────────────────
+
+def _scale_tree(tree, scale: float):
+    """Recursively multiply every array in a nested tree by a scalar."""
+    if isinstance(tree, mx.array):
+        return tree * scale
+    if isinstance(tree, dict):
+        return {k: _scale_tree(v, scale) for k, v in tree.items()}
+    if isinstance(tree, list):
+        return [_scale_tree(v, scale) for v in tree]
+    return tree
+
+
+def clip_grad_norm(grads, max_norm: float):
+    """Clip gradient tree by global L2 norm.  Returns (clipped_grads, norm)."""
+    flat_g = dict(tree_flatten(grads))
+    sq_sum = sum(float(mx.sum(g * g).item()) for g in flat_g.values())
+    norm   = sq_sum ** 0.5
+    if norm > max_norm:
+        grads = _scale_tree(grads, max_norm / (norm + 1e-6))
+    return grads, norm
+
+
+# ── Physics residuals (for PINO) ──────────────────────────────────────────────
+
+def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
+    """Spectral Burgers residual: u·∂u/∂x − ν·∂²u/∂x² evaluated at u_pred.
+
+    Works on a uniform periodic grid [0, 2π).
+    Returns [B, N] residual field; minimise its L2 norm as physics loss.
+    """
+    B, N = u_pred.shape
+    # Wave numbers for real FFT: k = 0, 1, …, N//2
+    k_pos  = mx.arange(N // 2 + 1, dtype=mx.float32)
+    # First-order derivative: multiply by ik
+    u_ft   = mx.fft.rfft(u_pred, axis=1)
+    ux_ft  = mx.complex(mx.zeros_like(k_pos), k_pos)[None, :, None] * \
+             mx.complex(u_ft.real, u_ft.imag)[..., None]
+    # Simplify: ux = irfft(i*k * û)
+    ux_ft_r = -u_ft.imag * k_pos[None, :]
+    ux_ft_i =  u_ft.real * k_pos[None, :]
+    ux      = mx.fft.irfft(mx.complex(ux_ft_r, ux_ft_i), n=N, axis=1)
+    # Second-order derivative: multiply by -k²
+    uxx_ft_r = -(k_pos ** 2)[None, :] * u_ft.real
+    uxx_ft_i = -(k_pos ** 2)[None, :] * u_ft.imag
+    uxx      = mx.fft.irfft(mx.complex(uxx_ft_r, uxx_ft_i), n=N, axis=1)
+    return u_pred * ux - nu * uxx
+
+
+# ── Model factory ─────────────────────────────────────────────────────────────
 
 t_start = time.time()
 
@@ -108,68 +206,109 @@ x_init, y_init = next(train_loader)
 t_data         = time.time()
 print(f"Data ready in {t_data - t_start:.1f}s")
 
-# Initialize Model based on benchmark and type
+is_1d = BENCHMARK.endswith("_1d")
+
 if MODEL_TYPE == "FNO":
-    if BENCHMARK.endswith("_1d"):
+    if is_1d:
         model = FNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
     else:
-        model = FNO2d(n_modes1=N_MODES, n_modes2=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+        model = FNO2d(n_modes1=N_MODES, n_modes2=N_MODES,
+                      hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "UNO":
+    if not is_1d:
+        raise ValueError("UNO 2D not yet implemented — use FNO for 2D benchmarks.")
+    model = UNO1d(n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "WNO":
+    if not is_1d:
+        raise ValueError("WNO 2D not yet implemented — use FNO for 2D benchmarks.")
+    model = WNO1d(n_levels=N_LEVELS, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
 elif MODEL_TYPE == "DeepONet":
-    # Simple coordinate grid for Trunk Net
-    if BENCHMARK.endswith("_1d"):
-        model = DeepONet(branch_dim=GRID_SIZE, trunk_dim=1, hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM)
+    if is_1d:
+        model = DeepONet(branch_dim=GRID_SIZE, trunk_dim=1,
+                         hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM,
+                         n_layers=N_LAYERS)
     else:
-        model = DeepONet(branch_dim=GRID_SIZE*GRID_SIZE, trunk_dim=2, hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM)
+        model = DeepONet(branch_dim=GRID_SIZE * GRID_SIZE, trunk_dim=2,
+                         hidden_dim=HIDDEN_DIM, out_dim=HIDDEN_DIM,
+                         n_layers=N_LAYERS)
+
+elif MODEL_TYPE == "PODDeepONet":
+    if not is_1d:
+        raise ValueError("PODDeepONet 2D not yet implemented.")
+    model = PODDeepONet(branch_dim=GRID_SIZE, n_basis=HIDDEN_DIM,
+                        hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS)
+
 else:
-    raise ValueError(f"Unknown model type: {MODEL_TYPE}")
+    raise ValueError(f"Unknown MODEL_TYPE: {MODEL_TYPE!r}")
 
 mx.eval(model.parameters())
 n_params = sum(p.size for _, p in tree_flatten(model.parameters()))
 print(f"Benchmark: {BENCHMARK}")
 print(f"Model    : {MODEL_TYPE}  layers={N_LAYERS}  hidden={HIDDEN_DIM}")
 print(f"Params   : {n_params / 1e6:.3f}M")
-print(f"Budget   : {TIME_BUDGET}s | batch={BATCH_SIZE}")
+print(f"Budget   : {TIME_BUDGET}s | batch={BATCH_SIZE} | "
+      f"grad_clip={GRAD_CLIP} | pino_λ={PINO_LAMBDA}")
 
 optimizer = AdamW(lr=LR, weight_decay=WEIGHT_DECAY, betas=ADAM_BETAS)
 
 
-def loss_fn(model, x, y):
+# ── Loss function ─────────────────────────────────────────────────────────────
+
+def _get_coords(B: int) -> mx.array:
+    """Evaluation coordinates for DeepONet-family models."""
+    if is_1d:
+        coords = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
+        return mx.broadcast_to(coords, (B, GRID_SIZE, 1))
+    g1 = mx.broadcast_to(mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1),
+                          (1, GRID_SIZE, GRID_SIZE))
+    g2 = mx.broadcast_to(mx.linspace(0, 1, GRID_SIZE).reshape(1, 1, GRID_SIZE),
+                          (1, GRID_SIZE, GRID_SIZE))
+    coords = mx.stack([g1, g2], axis=-1)
+    return mx.broadcast_to(coords, (B, GRID_SIZE, GRID_SIZE, 2)).reshape(B, -1, 2)
+
+
+def _forward(model, x: mx.array) -> mx.array:
+    """Unified forward pass for all model types."""
     if MODEL_TYPE == "DeepONet":
-        # DeepONet requires coordinates
-        B = x.shape[0]
-        if BENCHMARK.endswith("_1d"):
-            coords = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
-            coords = mx.broadcast_to(coords, (B, GRID_SIZE, 1))
-            u_in = x
-        else:
-            grid1 = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
-            grid2 = mx.linspace(0, 1, GRID_SIZE).reshape(1, 1, GRID_SIZE)
-            coords = mx.stack([mx.broadcast_to(grid1, (1, GRID_SIZE, GRID_SIZE)), 
-                             mx.broadcast_to(grid2, (1, GRID_SIZE, GRID_SIZE))], axis=-1)
-            coords = mx.broadcast_to(coords, (B, GRID_SIZE, GRID_SIZE, 2)).reshape(B, -1, 2)
-            u_in = x.reshape(B, -1)
-        pred = model(u_in, coords)
-        if not BENCHMARK.endswith("_1d"):
-            pred = pred.reshape(B, GRID_SIZE, GRID_SIZE)
-    else:
-        pred = model(x)
-        
+        B    = x.shape[0]
+        u_in = x if is_1d else x.reshape(B, -1)
+        pred = model(u_in, _get_coords(B))
+        return pred if is_1d else pred.reshape(B, GRID_SIZE, GRID_SIZE)
+    if MODEL_TYPE == "PODDeepONet":
+        B    = x.shape[0]
+        u_in = x if is_1d else x.reshape(B, -1)
+        return model(u_in)
+    return model(x)
+
+
+def loss_fn(model, x, y):
+    pred = _forward(model, x)
     diff = pred - y
     axes = tuple(range(1, y.ndim))
-    # Per-sample relative L2, averaged over batch
-    return mx.mean(
+    data_loss = mx.mean(
         mx.sqrt(mx.mean(diff ** 2, axis=axes))
         / (mx.sqrt(mx.mean(y ** 2, axis=axes)) + 1e-8)
     )
+    if PINO_LAMBDA > 0 and BENCHMARK == "burgers_1d":
+        res = burgers_residual(pred)
+        return data_loss + PINO_LAMBDA * mx.mean(res ** 2)
+    return data_loss
 
 
 loss_grad_fn = nn.value_and_grad(model, loss_fn)
 
-x, y              = x_init, y_init
-step              = 0
-total_train_time  = 0.0
-smooth_loss       = 0.0
-t_compiled        = None
+
+# ── Training loop ─────────────────────────────────────────────────────────────
+
+x, y             = x_init, y_init
+step             = 0
+total_train_time = 0.0
+smooth_loss      = 0.0
+t_compiled       = None
+max_grad_norm    = 0.0
 
 while True:
     t0 = time.time()
@@ -180,6 +319,11 @@ while True:
     if t_compiled is None:
         t_compiled = time.time()
         print(f"Compiled in {t_compiled - t_data:.1f}s")
+
+    # Gradient clipping
+    if GRAD_CLIP > 0:
+        grads, gnorm = clip_grad_norm(grads, GRAD_CLIP)
+        max_grad_norm = max(max_grad_norm, gnorm)
 
     progress      = min(total_train_time / TIME_BUDGET, 1.0)
     optimizer.lr  = LR * lr_schedule(progress)
@@ -226,28 +370,7 @@ t_train = time.time()
 print(f"Training done in {t_train - t_compiled:.1f}s")
 
 print("Evaluating...")
-# Wrapper for evaluation if DeepONet is used
-def eval_model(x):
-    if MODEL_TYPE == "DeepONet":
-        B = x.shape[0]
-        if BENCHMARK.endswith("_1d"):
-            coords = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
-            coords = mx.broadcast_to(coords, (B, GRID_SIZE, 1))
-            u_in = x
-        else:
-            grid1 = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
-            grid2 = mx.linspace(0, 1, GRID_SIZE).reshape(1, 1, GRID_SIZE)
-            coords = mx.stack([mx.broadcast_to(grid1, (1, GRID_SIZE, GRID_SIZE)), 
-                             mx.broadcast_to(grid2, (1, GRID_SIZE, GRID_SIZE))], axis=-1)
-            coords = mx.broadcast_to(coords, (B, GRID_SIZE, GRID_SIZE, 2)).reshape(B, -1, 2)
-            u_in = x.reshape(B, -1)
-        pred = model(u_in, coords)
-        if not BENCHMARK.endswith("_1d"):
-            pred = pred.reshape(B, GRID_SIZE, GRID_SIZE)
-        return pred
-    return model(x)
-
-val_l2_rel = evaluate_l2_rel(BENCHMARK, eval_model)
+val_l2_rel = evaluate_l2_rel(BENCHMARK, lambda x: _forward(model, x))
 t_eval     = time.time()
 print(f"Eval done in {t_eval - t_train:.1f}s")
 
@@ -262,3 +385,4 @@ print(f"num_steps:        {step}")
 print(f"num_params_M:     {n_params / 1e6:.3f}")
 print(f"architecture:     {MODEL_TYPE}-{BENCHMARK}")
 print(f"batch_size:       {BATCH_SIZE}")
+print(f"max_grad_norm:    {max_grad_norm:.4f}")
