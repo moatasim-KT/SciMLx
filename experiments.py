@@ -479,6 +479,96 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="Best arch + small batch → ~2× more gradient steps per minute.",
         expected="~0.16–0.18; higher gradient noise may help escape local optima.",
     ),
+
+    # ── P10 · Mode fine-sweep around m=24 (session-3 finding) ────────────────
+    # m=24 beat m=16 significantly (0.1648 vs 0.1852) and m=32 exploded (0.631).
+    # Goal: find the exact mode sweet spot and combine with best depth/width.
+
+    ExperimentConfig(
+        name="fno_h128_m20_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=20,
+        priority=1,
+        rationale="Mode sweep: m=20 between 16 (0.185) and 24 (0.165).",
+        expected="~0.170–0.185; fine-tuning the mode cutoff.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m22_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=22,
+        priority=1,
+        rationale="Mode sweep: m=22.",
+        expected="~0.165–0.180.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m26_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=26,
+        priority=1,
+        rationale="Mode sweep: m=26 (just above best m=24).",
+        expected="~0.160–0.170 if m=24 was not yet the true peak.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m28_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=28,
+        priority=1,
+        rationale="Mode sweep: m=28 (approaching m=32 failure zone).",
+        expected="~0.165–0.180; approaching aliasing instability.",
+    ),
+    ExperimentConfig(
+        name="fno_h256_m24_l6",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=256, n_layers=6, n_modes=24,
+        priority=1,
+        rationale="Best modes (m=24) + widest model (h=256) + best depth (l=6). "
+                  "h=256+m=16 got 0.185; m=24 boosted h=128 by 11% → may do same here.",
+        expected="~0.145–0.165; most likely path to <0.15.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l8",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="Best modes + deeper (l=8). l=8 alone gave 0.187; with m=24 may compound.",
+        expected="~0.155–0.165.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_bs16",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        batch_size=16,
+        priority=2,
+        rationale="Best config + smaller batch → ~2× more gradient steps in 5 min.",
+        expected="~0.150–0.165; noise may help or hinder.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_lr2e3",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        lr=2e-3,
+        priority=2,
+        rationale="Best config + moderately higher LR (2e-3 between 1e-3 and 3e-3).",
+        expected="~0.155–0.170.",
+    ),
+    ExperimentConfig(
+        name="fno_h256_m24_l8",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=256, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="Maximum capacity: wide + deep + best modes. Step time ~60ms "
+                  "so ~5000 steps; may be step-time-limited.",
+        expected="~0.140–0.160 if not compute-limited.",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l6_wd1e3",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        priority=2,
+        rationale="Best config + 10× higher weight decay (1e-3 vs default 1e-4). "
+                  "More regularisation may reduce overfitting to training noise.",
+        expected="~0.155–0.170.",
+    ),
 ]
 
 

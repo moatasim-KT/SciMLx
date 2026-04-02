@@ -33,3 +33,15 @@ ebcb142	burgers_1d	FNO	0.187067	0.10	keep	fno_h64_m16_l8 FNO  h=64  l=8  m=16
 3eeb22d	burgers_1d	UNO	0.256130	0.23	discard	uno_h64_l3 UNO  h=64  l=3  m=16
 3eeb22d	burgers_1d	UNO	0.256130	0.23	discard	uno_h64_l3 UNO  h=64  l=3  m=16
 3eeb22d	burgers_1d	FNO	0.164822	0.25	keep	fno_h128_m24_l6 FNO  h=128  l=6  m=24
+3d6cf8a	burgers_1d	WNO	0.843176	0.11	discard	wno_h128_lvl3_l4 WNO  h=128  l=4  lvl=3
+3d6cf8a	burgers_1d	WNO	0.842067	0.11	discard	wno_h128_lvl3_l4 WNO  h=128  l=4  lvl=3
+3d6cf8a	burgers_1d	FNO	0.184933	0.52	discard	fno_h256_m16_l6 FNO  h=256  l=6  m=16
+3d6cf8a	burgers_1d	WNO	0.819294	0.05	discard	wno_h64_lvl4_l4 WNO  h=64  l=4  lvl=4
+3d6cf8a	burgers_1d	WNO	0.819294	0.05	discard	wno_h64_lvl4_l4 WNO  h=64  l=4  lvl=4
+3d6cf8a	burgers_1d	FNO	0.189676	0.20	discard	fno_h128_l6_lr3e3 FNO  h=128  l=6  m=16  lr=3e-03
+3d6cf8a	burgers_1d	FNO	0.193448	0.20	discard	fno_h128_l6_lr3e4 FNO  h=128  l=6  m=16  lr=3e-04
+3d6cf8a	burgers_1d	FNO	0.579058	0.18	discard	fno_h128_l6_pino_fixed FNO  h=128  l=6  m=16  pino=0.05
+3d6cf8a	burgers_1d	FNO	0.366657	0.18	discard	fno_h128_l6_pino_small FNO  h=128  l=6  m=16  pino=0.01
+3d6cf8a	burgers_1d	FNO	0.631458	0.29	discard	fno_h128_m32_l6 FNO  h=128  l=6  m=32
+3d6cf8a	burgers_1d	UNO	0.715373	0.40	discard	uno_h128_l2_wide UNO  h=128  l=2  m=16
+3d6cf8a	burgers_1d	WNO	0.896012	0.12	discard	wno_h128_l6_fixed WNO  h=128  l=6  lvl=3
