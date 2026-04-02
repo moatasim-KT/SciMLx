@@ -931,6 +931,88 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="~0.01–0.04",
         paper_ref="ffno-2023",
     ),
+
+    # ── P18 · KdV follow-ups (best = RFNO 0.002023, both FNO/RFNO beat SOTA) ──
+    # Goal: push KdV closer to zero. Baseline is 4.9× better than SOTA already.
+    ExperimentConfig(
+        name="rfno_kdv_h128_m24_l10",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="RFNO beat FNO on KdV at l=8. RFNO at l=10: Pre-LN residuals "
+                  "enable deeper stacks. KdV is smoother than Burgers → less "
+                  "step-time concern; l=10 should still converge well.",
+        expected="~0.001–0.002 (continued improvement)",
+        paper_ref="rfno-2024",
+    ),
+    ExperimentConfig(
+        name="rfno_kdv_h256_m24_l8",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=256, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="RFNO wider (h=256) on KdV. FNO h=256 was step-time-limited on "
+                  "Burgers; KdV step times are shorter (~37ms) so h=256 is feasible.",
+        expected="~0.001–0.002",
+        paper_ref="rfno-2024",
+    ),
+    ExperimentConfig(
+        name="rfno_kdv_h128_m32_l8",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=32,
+        priority=1,
+        rationale="RFNO with more modes (m=32) on KdV. Solitons involve many "
+                  "harmonics — m=32 captures full spectrum up to Nyquist.",
+        expected="~0.001–0.002",
+        paper_ref="rfno-2024",
+    ),
+    ExperimentConfig(
+        name="fno_kdv_h256_m32_l8",
+        benchmark="kdv_1d", model="FNO",
+        hidden_dim=256, n_layers=8, n_modes=32,
+        priority=2,
+        rationale="FNO wide+max-modes on KdV. Tests whether FNO can match RFNO "
+                  "with wider channels (h=256) instead of residual connections.",
+        expected="~0.001–0.003",
+    ),
+    ExperimentConfig(
+        name="rfno_kdv_h128_m24_l12",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=12, n_modes=24,
+        priority=2,
+        rationale="Deep RFNO on KdV (l=12). FNO collapsed at l=12 on Burgers but "
+                  "KdV is smoother. Pre-LN residuals should enable this depth.",
+        expected="~0.0008–0.0015",
+        paper_ref="rfno-2024",
+    ),
+
+    # ── P19 · Wave equation benchmark ────────────────────────────────────────
+    # Linear wave PDE: u_tt = c² u_xx.  FNO should do very well (linear, periodic).
+    ExperimentConfig(
+        name="fno_wave_h128_m24_l8",
+        benchmark="wave_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="Full-capacity FNO on wave equation. Linear PDE → FNO's linear "
+                  "spectral conv is theoretically exact. SOTA: ~0.005.",
+        expected="<0.001 (linear PDE should be near-exact for FNO)",
+    ),
+    ExperimentConfig(
+        name="rfno_wave_h128_m24_l8",
+        benchmark="wave_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="RFNO on wave equation. Residuals + Pre-LN may help at l=8.",
+        expected="<0.001",
+    ),
+    ExperimentConfig(
+        name="fno_wave_h64_m16_l4",
+        benchmark="wave_1d", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="Lightweight FNO baseline on wave: quick result to confirm "
+                  "benchmark is working and data is learnable.",
+        expected="~0.003–0.01",
+    ),
 ]
 
 
