@@ -95,3 +95,4 @@ b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
 1828b15	kdv_1d	FNO	0.006050	0.98	discard	fno_kdv_h256_m32_l8 FNO  h=256  l=8  m=32
 1828b15	wave_1d	FNO	0.000992	0.07	keep	fno_wave_h64_m16_l4 FNO  h=64  l=4  m=16
 0d70ade	kdv_1d	RFNO	0.003297	0.43	discard	rfno_kdv_h128_m24_l12 RFNO  h=128  l=12  m=24
+73e08fc	burgers_1d	FNO	0.146759	0.28	keep	fno_h128_m24_l8_aug FNO  h=128  l=8  m=24
