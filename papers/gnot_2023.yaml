@@ -1,0 +1,64 @@
+id: gnot-2023
+title: "GNOT: A General Neural Operator Transformer"
+arxiv: "2302.14376"
+venue: "ICML 2023"
+authors: ["Zhongkai Hao", "Zhengyi Wang", "Hang Su", "et al."]
+year: 2023
+
+key_idea: >
+  Replace spectral convolutions with multi-head cross-attention between
+  query (output) and key/value (input) points.  Handles heterogeneous inputs
+  (different discretisations, multiple input functions) in a unified framework.
+  Uses positional encoding from coordinates.  N query × M key attention is
+  O(NM) but with efficient approximation via random Fourier features.
+
+architecture: GNOT
+model_class: GNOT
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.0031
+    paper_epochs: 500
+    notes: "Attention over 64 spatial points.  Our 5-min budget may be insufficient."
+  darcy_2d:
+    reported_val_l2_rel: 0.0041
+    notes: "64×64 grid; attention over 4096 tokens is O(4096²) — use chunked attention."
+  navier_stokes_2d:
+    reported_val_l2_rel: 0.0188
+    notes: "Reported for T=10 (harder setting)."
+
+key_hyperparams:
+  n_layers: 3        # transformer depth
+  hidden_dim: 256    # embedding dimension
+  n_heads: 8         # multi-head attention
+  ffn_ratio: 2       # FFN expansion factor
+  n_iters: 2         # iterative attention refinement (GNOT specific)
+
+implementation_notes: >
+  MLX has no native transformer. Need: nn.Linear for Q/K/V projections,
+  manual scaled dot-product attention, positional encoding from (x,y) coords.
+  Cross-attention: queries=output coords, keys/values=input function samples.
+  GNOT key trick: heterogeneous inputs encoded separately then fused via
+  multi-tree gating.  For our 1D benchmarks, simplify to self-attention.
+
+  Estimated implementation: ~400 lines in models/gnot.py.
+  Step time estimate: ~120ms for N=64 (quadratic attention) → ~2500 steps in budget.
+
+difficulty: 7   # out of 10
+
+suggested_experiments:
+  - name: gnot_h256_l3_burgers
+    rationale: "GNOT baseline on Burgers.  Attention may better capture shock
+                front location vs FNO's global spectral projection."
+    expected: "~0.05–0.10 (step-time limited; unlikely to beat FNO in 5min)"
+  - name: gnot_h256_l3_kdv
+    rationale: "KdV solitons travel coherently — cross-attention should learn
+                soliton trajectory. May match FNO."
+    expected: "~0.003–0.008"
+
+verdict: >
+  SOTA on many benchmarks but computationally expensive (O(N²) attention).
+  Likely step-time-limited vs FNO on Apple Silicon.  Best chance: Darcy 2D
+  where FNO's current result (0.998) is broken.  Worth implementing once
+  Darcy 2D data issue is resolved.

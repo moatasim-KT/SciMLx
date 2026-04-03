@@ -1,0 +1,91 @@
+id: ssm-s4-2022
+title: "Efficiently Modeling Long Sequences with Structured State Spaces (S4)"
+arxiv: "2111.00396"
+venue: "ICLR 2022"
+authors: ["Albert Gu", "Karan Goel", "Christopher Ré"]
+year: 2022
+
+key_idea: >
+  Model sequences with linear time-invariant state-space systems:
+    h'(t) = A·h(t) + B·u(t)
+    y(t)  = C·h(t) + D·u(t)
+  Discretised as: h_k = Ā·h_{k-1} + B̄·u_k, y_k = C·h_k
+
+  Key innovations:
+    1. Structured A matrix (HIPPO initialisation) → captures long-range deps
+    2. Parallel (FFT-based) computation: O(N log N) instead of O(N²) for RNNs
+    3. Natural for time-series PDE data: u(x,0), u(x,dt), ... → u(x,T)
+
+  For PDE operator learning: treat u(x) as a sequence over spatial index x.
+  S4 mixes spatial information globally with O(N log N) computation.
+
+  Comparison to FNO:
+    FNO: global Fourier mixing in frequency domain, O(N log N) via FFT
+    S4:  global mixing via state-space, also O(N log N)
+  S4 advantage: learned structured mixing without frequency domain restriction.
+  S4 disadvantage: HIPPO initialisation complexity; Mamba's selective gates needed
+                   for non-stationary signals.
+
+architecture: S4NO   # State Space Neural Operator (our name)
+model_class: S4NO
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null   # S4 not tested on PDE operator learning (novel)
+    notes: "Speculative. S4 designed for 1D sequences; should transfer to PDE."
+  kdv_1d:
+    reported_val_l2_rel: null
+    notes: "KdV solitons are quasi-periodic — S4's HIPPO basis well-suited."
+
+key_hyperparams:
+  hidden_dim: 64     # state dimension
+  ssm_dim: 64        # S4 state size per layer
+  n_layers: 6        # stacked S4 + MLP blocks
+  dt_min: 0.001      # minimum discretisation step
+  dt_max: 0.1        # maximum discretisation step
+
+implementation_notes: >
+  Implementation of S4 for 1D PDE operator learning.
+  Core S4 computation:
+    1. Define A via normal-plus-low-rank (NPLR) structure
+    2. Compute kernel K via Cauchy matrix product
+    3. Apply via FFT convolution: y = IFFT(FFT(K) * FFT(u))
+
+  Simpler alternative: use Mamba's selective scan (S6) which is the
+  SOTA SSM architecture (Gu & Dao 2023, arXiv:2312.00752).
+  Mamba advantage: input-dependent state transition → selective filtering.
+
+  MLX implementation notes:
+    - FFT available: mx.fft.fft
+    - Complex64: available
+    - Main challenge: efficient parallel scan (Mamba's associative scan)
+    - Estimated lines: ~450 for full S4; ~350 for simplified version
+
+  Alternative simpler approach: use S4D (diagonal variant, Gupta et al. 2022)
+  which avoids the low-rank correction → ~200 lines.
+
+difficulty: 8   # complex linear algebra and careful initialisation
+
+suggested_experiments:
+  - name: s4d_h64_l6_burgers
+    model: S4NO
+    benchmark: burgers_1d
+    rationale: "Diagonal S4 (S4D) on Burgers. Novel application of SSM to
+                operator learning. May capture different inductive biases than FNO."
+    expected: "~0.08–0.15 (speculative)"
+    priority: 4
+  - name: s4d_h128_l6_kdv
+    model: S4NO
+    benchmark: kdv_1d
+    rationale: "KdV solitons are quasi-periodic in space — S4's oscillatory
+                HIPPO basis should be well-matched."
+    expected: "~0.002–0.005"
+    priority: 4
+
+verdict: >
+  Novel research direction — S4/Mamba applied to PDE operator learning is
+  largely unexplored.  High implementation complexity but potentially high
+  novelty.  Recommend S4D (diagonal variant) as a first step.
+  Lower priority than data augmentation and ensemble methods which are
+  guaranteed improvements.  Worth a paper-level investigation.

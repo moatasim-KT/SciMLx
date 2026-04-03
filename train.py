@@ -40,6 +40,9 @@ import gc
 import math
 import time
 import argparse
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).parent
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -64,6 +67,8 @@ LR           = 1e-3
 WEIGHT_DECAY = 1e-4
 GRAD_CLIP    = 1.0            # max gradient L2 norm; 0 = disabled
 PINO_LAMBDA  = 0.0            # physics residual loss weight (0 = data-only)
+AUGMENT      = False          # spatial-shift augmentation (roll u0 and uT)
+SAVE_CKPT    = False          # save model weights to checkpoints/ after training
 
 # Scheduler
 ADAM_BETAS     = (0.9, 0.999)
@@ -89,6 +94,10 @@ def _parse_args():
     p.add_argument("--lr",          type=float, default=LR)
     p.add_argument("--grad_clip",   type=float, default=GRAD_CLIP)
     p.add_argument("--pino_lambda", type=float, default=PINO_LAMBDA)
+    p.add_argument("--augment",     action="store_true", default=AUGMENT,
+                   help="Spatial-shift augmentation: randomly roll u0 and uT")
+    p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT,
+                   help="Save model checkpoint to checkpoints/<name>.safetensors")
     return p.parse_args()
 
 args = _parse_args()
@@ -104,6 +113,8 @@ BATCH_SIZE  = args.batch_size
 LR          = args.lr
 GRAD_CLIP   = args.grad_clip
 PINO_LAMBDA = args.pino_lambda
+AUGMENT     = args.augment
+SAVE_CKPT   = args.save_ckpt
 
 
 # ── Optimiser ─────────────────────────────────────────────────────────────────
@@ -331,7 +342,16 @@ while True:
     optimizer.update(model, grads)
     mx.eval(model.parameters(), *optimizer.state_arrays)
 
-    x, y = next(train_loader)
+    x_next, y_next = next(train_loader)
+
+    # Spatial-shift augmentation: randomly roll along spatial dimension
+    # Valid for periodic BCs (Burgers, KdV, Wave).  No extra solver calls.
+    if AUGMENT and is_1d:
+        shift = int(mx.random.randint(0, x_next.shape[1] - 1, shape=(1,)).item())
+        if shift > 0:
+            x_next = mx.concatenate([x_next[:, shift:], x_next[:, :shift]], axis=1)
+            y_next = mx.concatenate([y_next[:, shift:], y_next[:, :shift]], axis=1)
+    x, y = x_next, y_next
 
     loss_f = float(loss.item())
     if not math.isfinite(loss_f) or loss_f > 100.0:
@@ -387,3 +407,15 @@ print(f"num_params_M:     {n_params / 1e6:.3f}")
 print(f"architecture:     {MODEL_TYPE}-{BENCHMARK}")
 print(f"batch_size:       {BATCH_SIZE}")
 print(f"max_grad_norm:    {max_grad_norm:.4f}")
+
+# ── Save checkpoint ───────────────────────────────────────────────────────────
+if SAVE_CKPT:
+    import os
+    from mlx.utils import tree_flatten
+    ckpt_dir = REPO_ROOT / "checkpoints"
+    os.makedirs(ckpt_dir, exist_ok=True)
+    ckpt_name = f"{MODEL_TYPE}_{BENCHMARK}_val{val_l2_rel:.4f}"
+    ckpt_path = ckpt_dir / f"{ckpt_name}.npz"
+    flat_params = dict(tree_flatten(model.parameters()))
+    mx.savez(str(ckpt_path), **flat_params)
+    print(f"checkpoint_path:  {ckpt_path}")

@@ -38,6 +38,8 @@ class ExperimentConfig:
     pino_lambda: float = 0.0      # PINO physics-loss weight
     loss_type:   str  = "l2_rel"  # loss function: "l2_rel" | "h1" | "h1_strong" | "spectral"
     h1_alpha:    float = 0.1      # H1 loss derivative weight (used when loss_type="h1")
+    augment:     bool  = False    # spatial-shift augmentation (periodic BCs only)
+    save_ckpt:   bool  = False    # save model checkpoint after training
     priority:    int  = 5         # 1 = highest; run in ascending order
     rationale:   str  = ""        # why this experiment?
     expected:    str  = ""        # expected val_l2_rel range or direction
@@ -59,6 +61,10 @@ class ExperimentConfig:
         ]
         if self.loss_type.startswith("h1"):
             args += ["--h1_alpha", str(self.h1_alpha)]
+        if self.augment:
+            args += ["--augment"]
+        if self.save_ckpt:
+            args += ["--save_ckpt"]
         return args
 
     def short(self) -> str:
@@ -1021,6 +1027,56 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="Re-run of fno_wave_h128 with fixed wave ICs (ut0=0). "
                   "Previous run used random ut0 making the problem ill-posed.",
         expected="<0.001 — should be near-exact for FNO on linear wave PDE",
+    ),
+
+    # ── P20 · Data augmentation (spatial shift) ─────────────────────────────
+    # Spatial shift on periodic 1D benchmarks is a zero-cost augmentation:
+    # u_aug(x) = u(x + δ) for random δ.  Exploits translation symmetry.
+    # No extra solver calls; just np.roll on each batch.
+    ExperimentConfig(
+        name="fno_h128_m24_l8_aug",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        augment=True,
+        priority=1,
+        rationale="Spatial shift augmentation on best FNO config. "
+                  "Random roll of u0+uT exploits periodic translation symmetry. "
+                  "Effective dataset size ∞ at zero solver cost.",
+        expected="~0.12–0.14 (10-20% over baseline 0.155)",
+        paper_ref="augmentation-2023",
+    ),
+    ExperimentConfig(
+        name="rfno_h128_m24_l8_aug",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        augment=True,
+        priority=1,
+        rationale="RFNO + spatial shift augmentation. Tests whether augmentation "
+                  "compounds with residual connections.",
+        expected="~0.12–0.14",
+        paper_ref="augmentation-2023",
+    ),
+    ExperimentConfig(
+        name="rfno_kdv_h128_m24_l8_aug",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        augment=True,
+        priority=2,
+        rationale="KdV RFNO + augmentation. KdV is Galilean-invariant so spatial "
+                  "shifts are physically valid. Already near-SOTA — push lower.",
+        expected="~0.001–0.0015",
+        paper_ref="augmentation-2023",
+    ),
+    ExperimentConfig(
+        name="fno_h128_m24_l8_aug_ckpt",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        augment=True, save_ckpt=True,
+        priority=2,
+        rationale="Best augmented config + checkpoint saving. Enables ensemble "
+                  "inference (run N times, average predictions → UQ).",
+        expected="~0.12–0.14",
+        paper_ref="ensemble-uq-2023",
     ),
 ]
 

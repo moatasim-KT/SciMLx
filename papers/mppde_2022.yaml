@@ -1,0 +1,65 @@
+id: mppde-2022
+title: "Message Passing Neural PDE Solvers"
+arxiv: "2202.03376"
+venue: "ICLR 2022"
+authors: ["Johannes Brandstetter", "Daniel Worrall", "Max Welling"]
+year: 2022
+
+key_idea: >
+  Represent the PDE domain as a graph where nodes are collocation points and
+  edges connect spatial neighbours.  Each node aggregates messages from
+  neighbours via learned edge functions.  Supports: irregular meshes, adaptive
+  refinement, and non-periodic boundary conditions — all impossible for FNO.
+  Uses multiple message-passing steps (depth) to propagate information globally.
+
+architecture: MPNNO  # Message-Passing Neural Network Operator
+model_class: MPNNO
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.0085  # Table 3 in paper (1D, T=1)
+    paper_epochs: 20
+    notes: "1D regular grid; message passing on chain graph."
+  navier_stokes_2d:
+    reported_val_l2_rel: 0.0175
+    notes: "2D irregular mesh — FNO cannot handle this."
+
+key_hyperparams:
+  hidden_dim: 128   # node/edge feature dimension
+  n_layers: 6       # message-passing iterations
+  n_neighbors: 5    # edges per node in 1D = 2 (left/right), 2D = ~6
+
+implementation_notes: >
+  For our regular-grid 1D benchmarks, the graph is a chain (each node has
+  left and right neighbour).  This is equivalent to a 1D CNN with receptive
+  field growing linearly with depth.  Simpler than full GNN.
+
+  For 1D regular grid:
+    x_i^(t+1) = MLP(x_i^(t), sum_{j in N(i)} edge_fn(x_i, x_j, r_ij))
+  where r_ij = x_j - x_i is the relative position.
+
+  MLX implementation: can use sliding window gather (no sparse ops needed)
+  for regular 1D grids.  Estimated ~200 lines in models/mpnno.py.
+  Step time: ~40ms (similar to FNO, no FFT overhead).
+
+  For 2D irregular meshes: needs proper sparse gather — more complex.
+
+difficulty: 5   # for 1D regular grid
+
+suggested_experiments:
+  - name: mpnno_h128_l6_burgers
+    rationale: "MP-PDE on Burgers: local message-passing may better handle
+                shock front propagation vs global spectral conv. l=6 neighbours
+                reach ≥ 13 hops = full domain at N=64."
+    expected: "~0.05–0.12 — local inductive bias may help shocks"
+  - name: mpnno_h128_l8_kdv
+    rationale: "KdV solitons: test whether local propagation captures
+                soliton-soliton interactions."
+    expected: "~0.003–0.010"
+
+verdict: >
+  Key advantage over FNO: handles irregular meshes, non-periodic BCs, adaptive
+  refinement.  On regular grids, likely comparable to FNO but not better.
+  Most valuable as a building block for Geo-FNO or when Navier-Stokes benchmark
+  uses irregular triangular meshes.

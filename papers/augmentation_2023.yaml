@@ -1,0 +1,91 @@
+id: augmentation-2023
+title: "Physics-Informed Data Augmentation for Neural PDE Solvers"
+arxiv: null   # no single paper — synthesis of PINNacle (2306.08827) + custom
+venue: "Survey + custom implementation"
+authors: ["Composite — Huang et al. 2023 (PINNacle); custom for operator learning"]
+year: 2023
+
+key_idea: >
+  Exploit known symmetries of PDEs to augment training data without running
+  the expensive numerical solver.  For Burgers (u_t + u·u_x = ν·u_xx):
+    1. Spatial translation: u_aug(x) = u(x + δ) for random δ (periodic BCs)
+    2. Odd/even decomposition: Burgers preserves odd+even symmetry classes
+    3. Scaling: if (u, ν) is a solution, so is (λu, ν) for scaling u
+    4. Time reversal (careful): Burgers is dissipative → NOT reversible.
+
+  For KdV (u_t + u·u_x + u_xxx = 0):
+    1. Galilean boost: u(x,t) → u(x-vt,t) + v (shift + boost)
+    2. Spatial reflection: u(-x,t) → -u(x,t) for odd ICs (KdV is odd-symmetric)
+    3. Scaling: u(x,t) → λ·u(λ^{1/2}x, λ^{3/2}t)
+
+  For wave (u_tt = c²·u_xx):
+    1. Spatial reflection: u(x,t) → u(-x,t)
+    2. Time reflection: u(x,t) → u(x,-t) (wave is time-reversible!)
+    3. Superposition: u1+u2 is also a solution (linear PDE)
+
+  Key insight: each augmented pair (u_aug_0, u_aug_T) is physically valid
+  without running the solver.  For periodic spatial shift on uniform grid,
+  it's just a numpy roll.
+
+architecture: DataAugmentation   # not a model, a training trick
+model_class: null
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null  # our estimate
+    notes: "Expected ~10-20% improvement from 2× augmentation via spatial shifts."
+  kdv_1d:
+    reported_val_l2_rel: null
+    notes: "Expected ~5-10% improvement; KdV already near SOTA."
+  wave_1d:
+    reported_val_l2_rel: null
+    notes: "Strong augmentation: superposition + reflection → 4× data for free."
+
+implementation_notes: >
+  Implementation: modify prepare.py dataloader to apply augmentations on-the-fly.
+  No solver calls needed — just numpy/mlx transforms.
+
+  Priority augmentation for Burgers (where we're farthest from SOTA):
+    - Spatial shift: np.roll(u, shift, axis=1)  — 10-20 lines
+    - Creates k-fold augmented dataset where each batch has shifted copies
+
+  How to integrate:
+    1. Add --augment flag to train.py
+    2. In dataloader, after each batch: apply random roll to u0 AND u_T
+    3. Interleave augmented + real batches
+
+  Estimated gain for Burgers: Burgers at T=1 with 4096 training samples
+  is somewhat over-parameterised at h=128. Augmentation → effective dataset
+  grows to ~40960 with 10 random shifts → less overfitting.
+
+  Estimated lines: ~50 lines in augmentation helper + 5 lines in train.py.
+
+difficulty: 2   # very easy to implement
+
+suggested_experiments:
+  - name: fno_h128_m24_l8_aug_shift
+    model: FNO
+    benchmark: burgers_1d
+    rationale: "Spatial shift augmentation on best FNO config. 10× effective
+                dataset size for ~0 extra compute. Expected: ~10-20% gain."
+    expected: "~0.12–0.14"
+    priority: 1
+  - name: fno_h128_m24_l8_aug_scale
+    model: FNO
+    benchmark: burgers_1d
+    rationale: "Amplitude scaling augmentation (u_aug = λ·u, λ~Uniform(0.5,2))."
+    expected: "~0.13–0.15"
+    priority: 2
+  - name: rfno_kdv_h128_m24_l8_aug
+    model: RFNO
+    benchmark: kdv_1d
+    rationale: "KdV with Galilean boost augmentation. KdV is Galilean invariant."
+    expected: "~0.001–0.0015"
+    priority: 2
+
+verdict: >
+  Easiest win in the research roadmap.  Spatial translation augmentation
+  requires ~50 lines of code and no architectural changes.  Expected 10-25%
+  improvement on Burgers where FNO has plateaued.  MUST try before more
+  complex architectural changes.

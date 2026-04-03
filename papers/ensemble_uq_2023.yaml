@@ -1,0 +1,76 @@
+id: ensemble-uq-2023
+title: "Neural Operator Ensembles for Uncertainty Quantification in PDEs"
+arxiv: "2309.16298"
+venue: "arXiv 2023"
+authors: ["Md Ashiqur Rahman", "et al."]
+year: 2023
+
+key_idea: >
+  Train N independent FNO/RFNO models with different random seeds or
+  architectures; average predictions, use variance as uncertainty estimate.
+  Benefits:
+    1. Accuracy: ensemble mean is consistently better than any single member
+    2. Uncertainty: variance of ensemble = epistemic uncertainty (model-form)
+    3. Robustness: errors are uncorrelated across ensemble members
+
+  For a 5-min budget per member, an M=5 ensemble uses 25 min total.
+  The ensemble mean typically improves 5-15% over the best single model.
+
+  Diversity strategies:
+    - Random seeds (different weight initialisation, data shuffle)
+    - Architecture diversity (FNO + RFNO + FFNO ensemble)
+    - Dropout at inference (single model, M=20 stochastic passes)
+
+architecture: EnsembleFNO
+model_class: null   # wrapper around existing models
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.010   # estimated from similar ensemble papers
+    notes: "M=5 random-seed ensemble of FNO h=128 m=24 l=8."
+  kdv_1d:
+    reported_val_l2_rel: 0.001   # estimated; already near-zero
+    notes: "Ensemble at near-SOTA level."
+
+implementation_notes: >
+  Simplest approach: train M models separately, average at inference.
+  train.py doesn't need changes — just run M times with --seed flags.
+  Create evaluate_ensemble.py or add to viz.py.
+
+  For diversity: run FNO + RFNO + FFNO (different architectures); their
+  errors are more independent → better ensemble gain.
+
+  Advanced: deep ensemble with adversarial perturbations, or anchored
+  ensemble (share some layers, diverge at heads).
+
+  Code: ~100 lines in evaluate_ensemble.py; no model changes needed.
+  Only limitation: needs N saved checkpoints. Currently no checkpoint
+  saving in train.py → need to add model saving.
+
+  How to add checkpoint saving (train.py addition):
+    import mlx.core as mx
+    mx.save("checkpoints/model_xyz.npz", dict(model.parameters()))
+
+  How to load (inference):
+    model.load_weights("checkpoints/model_xyz.npz")
+
+difficulty: 4   # need to add checkpoint saving first
+
+suggested_experiments:
+  - name: ensemble_fno_m5_burgers
+    rationale: "M=5 random-seed ensemble of best FNO config. Expected 5-15%
+                improvement over single-model 0.1553."
+    expected: "~0.13–0.145"
+    priority: 2
+  - name: ensemble_hetero_kdv
+    rationale: "Heterogeneous ensemble: FNO + RFNO + FFNO on KdV. Architecture
+                diversity → uncorrelated errors → better ensemble mean."
+    expected: "~0.001–0.0015"
+    priority: 3
+
+verdict: >
+  Reliable 5-15% gain with zero architectural innovation.  Primary blocker:
+  current train.py does not save checkpoints.  Add checkpoint saving first,
+  then ensembles become free.  Also needed for any transfer learning or
+  fine-tuning direction.

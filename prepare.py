@@ -101,7 +101,7 @@ def solve_darcy_2d_batch(
     """
     Spectral solver for 2D Darcy Flow: -∇·(a∇u) = f, with f=1.
     """
-    B, N1, N2 = a.shape
+    B, N1, _ = a.shape
     # Random source term f
     rng = np.random.RandomState(42)
     f = _random_ic_2d(B, N1, rng, scale=1.0, offset=0.0)
@@ -133,7 +133,7 @@ def solve_navier_stokes_2d_batch(
     Spectral solver for 2D Navier-Stokes (vorticity form) on [0, 2π)².
     Using 2/3-rule dealiasing for stability.
     """
-    B, N, _ = w0.shape
+    _, N, _ = w0.shape
     dt = T / n_steps
     
     k = np.fft.fftfreq(N).reshape(N, 1)

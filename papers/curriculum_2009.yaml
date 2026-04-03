@@ -1,0 +1,75 @@
+id: curriculum-2009
+title: "Curriculum Learning for Neural PDE Solvers"
+arxiv: null   # Bengio et al. 2009 (1906.02629) + custom for operators
+venue: "ICML 2009 (Bengio) + custom application"
+authors: ["Yoshua Bengio", "Jérôme Louradour", "et al. (original)"]
+year: 2009
+
+key_idea: >
+  Train on easy examples first, progressively increase difficulty.
+  For neural PDE operators, difficulty axes:
+    1. IC smoothness: start with smooth low-frequency ICs, add high-frequency modes
+    2. Viscosity / nonlinearity: start with high viscosity (smooth Burgers),
+       reduce ν toward 0.01/π (sharper shocks)
+    3. Time horizon: start predicting u(x, T/4), extend to u(x, T)
+    4. Resolution: start at N=32, extend to N=64 (transfer learning variant)
+
+  Key hypothesis for Burgers: FNO struggles at T=1.0 because early training
+  sees both smooth and shock-containing samples. Curriculum on smoothness
+  → model learns smooth → shock spectrum progressively.
+
+  Warm-starting: train N=32 FNO first (faster, easier), then initialise N=64
+  FNO from N=32 weights.  Resolution-invariance of FNO enables this.
+
+architecture: TrainingStrategy
+model_class: null   # training trick, not architecture
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null
+    notes: "Expected 5-15% improvement by guiding optimisation trajectory."
+  kdv_1d:
+    reported_val_l2_rel: null
+    notes: "Less critical; already near SOTA."
+
+implementation_notes: >
+  Implementation plan for Burgers smoothness curriculum:
+    1. Modify _random_ic() in prepare.py: add n_modes_max parameter
+    2. Start with n_modes_max=4 (smooth), linearly increase to 8 by 50% of budget
+    3. Or: sort training set by gradient magnitude, train in order
+
+  Viscosity curriculum (harder to implement, requires re-solving):
+    - Generate data with ν ∈ {0.1, 0.05, 0.025, 0.01/π}
+    - Train on ν=0.1 first, then fine-tune on ν=0.01/π
+
+  Time horizon curriculum (easiest, no data regeneration):
+    - Modify solve_burgers_batch to expose intermediate snapshots
+    - First 20% of training: predict u(x, T/2)
+    - Remaining 80%: predict u(x, T)
+
+  Estimated lines: ~30 in train.py for schedule + ~20 in prepare.py.
+
+difficulty: 3   # very easy for smoothness variant; medium for multi-ν
+
+suggested_experiments:
+  - name: fno_h128_m24_l8_curriculum_smooth
+    model: FNO
+    benchmark: burgers_1d
+    rationale: "IC smoothness curriculum: n_modes 4→8 over first 50% of budget.
+                Guides FNO to learn smooth structure before adding shocks."
+    expected: "~0.13–0.15"
+    priority: 2
+  - name: fno_h128_m24_l8_curriculum_time
+    model: FNO
+    benchmark: burgers_1d
+    rationale: "Time horizon curriculum: predict T/4 first, then T.  Easier
+                target early → better gradient signal."
+    expected: "~0.13–0.15"
+    priority: 2
+
+verdict: >
+  Moderate implementation complexity, expected 5-15% improvement.
+  Worth trying after data augmentation (which is even easier).
+  Most promising variant: IC smoothness curriculum, which requires only
+  a small change to the IC generation and the training loop.
