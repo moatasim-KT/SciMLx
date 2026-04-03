@@ -150,7 +150,7 @@ def _register_defaults():
     )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
-        EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
+        EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
     )
 
     # ── 1-D models (factories accept **kw to absorb unused params) ───────────
@@ -210,9 +210,13 @@ def _register_defaults():
             bm,
             make_loader=make_ext_dataloader,
             evaluate=lambda name, fn: evaluate_l2_rel_ext(name, fn),
-            sota={"kdv_1d": 0.010, "wave_1d": 0.005}.get(bm),
-            description={"kdv_1d": "KdV soliton (ETDRK4)",
-                         "wave_1d": "1D wave u_tt=c²u_xx"}.get(bm, ""),
+            sota=EXT_SOTA.get(bm),
+            description={
+                "kdv_1d":       "KdV soliton (ETDRK4)",
+                "wave_1d":      "1D wave u_tt=c²u_xx",
+                "darcy_2d_fix": "2D Darcy -∇·(a∇u)=f (corrected solver)",
+                "ns_2d_fix":    "2D NS vorticity (CFL-stable ICs)",
+            }.get(bm, ""),
         )
 
 

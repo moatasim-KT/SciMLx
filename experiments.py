@@ -1078,6 +1078,46 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="~0.12–0.14",
         paper_ref="ensemble-uq-2023",
     ),
+
+    # ── P21 · Corrected 2D benchmarks ────────────────────────────────────────
+    # prepare.py's darcy_2d and navier_stokes_2d benchmarks are broken at the
+    # data level (read-only file).  These use the fixed solvers in benchmarks_ext.py.
+    ExperimentConfig(
+        name="fno_darcy2d_fix_h32_m8_l4",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        priority=1,
+        rationale="Baseline FNO on corrected Darcy 2D benchmark. "
+                  "prepare.py solver used mean(a) only and fixed-seed f → val≈0.998. "
+                  "This fix: Richardson iteration with full a(x,y); f tied to data seed.",
+        expected="~0.05–0.15 (SOTA 0.0108 with FNO h=32 on proper Darcy)",
+    ),
+    ExperimentConfig(
+        name="fno_darcy2d_fix_h64_m12_l4",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        priority=2,
+        rationale="Larger FNO on corrected Darcy 2D to approach SOTA 0.0108.",
+        expected="~0.02–0.08",
+    ),
+    ExperimentConfig(
+        name="fno_ns2d_fix_h32_m8_l4",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        priority=1,
+        rationale="Baseline FNO on corrected NS 2D benchmark. "
+                  "prepare.py solver: IC scale=1.0 → CFL≈61 → NaN. "
+                  "This fix: IC scale=0.1 → CFL≈0.6, n_steps=1000.",
+        expected="~0.05–0.20 (NS is harder than Darcy at T=1)",
+    ),
+    ExperimentConfig(
+        name="fno_ns2d_fix_h64_m12_l4",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        priority=2,
+        rationale="Larger FNO on corrected NS 2D benchmark.",
+        expected="~0.03–0.10",
+    ),
 ]
 
 
