@@ -149,6 +149,12 @@ def _register_defaults():
         WNO1d, DeepONet, PODDeepONet,
         S4NO1d, GNOT1d, GNOT2d,
         PINO1d,
+        # TFNO family (Tucker/CP factorized FNO — PhysicsNeMo)
+        TFNO1d, RTFNO1d, CPFNO1d, TFNO2d,
+        # Transolver (Physics Attention Transformer — NeurIPS 2024 / PhysicsNeMo)
+        Transolver1d, Transolver2d,
+        # Time-Marching DeepONet (FE-NO coupling — CMAME 2025)
+        TimeDeepONet1d, DualBranchDeepONet1d,
     )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
@@ -217,6 +223,58 @@ def _register_defaults():
                      in_channels=3, out_channels=3, **kw):
         return FNO1dMC(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers,
                        in_channels=in_channels, out_channels=out_channels)
+
+    # ── TFNO family (Tucker / CP factorized — from PhysicsNeMo) ──────────────
+    @MODEL_REGISTRY.register("TFNO")
+    def _make_tfno(n_modes=16, hidden_dim=64, n_layers=4,
+                   rank_ratio=0.5, **kw):
+        return TFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                      n_layers=n_layers, rank_ratio=rank_ratio)
+
+    @MODEL_REGISTRY.register("RTFNO")
+    def _make_rtfno(n_modes=16, hidden_dim=64, n_layers=4,
+                    rank_ratio=0.5, **kw):
+        return RTFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                       n_layers=n_layers, rank_ratio=rank_ratio)
+
+    @MODEL_REGISTRY.register("CPFNO")
+    def _make_cpfno(n_modes=16, hidden_dim=64, n_layers=4,
+                    rank=8, **kw):
+        return CPFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                       n_layers=n_layers, rank=rank)
+
+    @MODEL_REGISTRY.register("TFNO2D")
+    def _make_tfno2d(n_modes=12, hidden_dim=64, n_layers=4,
+                     rank_ratio=0.5, **kw):
+        return TFNO2d(n_modes1=n_modes, n_modes2=n_modes,
+                      hidden_dim=hidden_dim, n_layers=n_layers,
+                      rank_ratio=rank_ratio)
+
+    # ── Transolver (Physics Attention — NeurIPS 2024 / PhysicsNeMo) ──────────
+    @MODEL_REGISTRY.register("Transolver")
+    def _make_transolver(n_modes=16, hidden_dim=64, n_layers=4,
+                         n_head=4, slice_num=32, **kw):
+        return Transolver1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                            n_layers=n_layers, n_head=n_head,
+                            slice_num=slice_num)
+
+    @MODEL_REGISTRY.register("Transolver2D")
+    def _make_transolver2d(n_modes=12, hidden_dim=64, n_layers=4,
+                           n_head=4, slice_num=64, **kw):
+        return Transolver2d(n_modes1=n_modes, n_modes2=n_modes,
+                            hidden_dim=hidden_dim, n_layers=n_layers,
+                            n_head=n_head, slice_num=slice_num)
+
+    # ── Time-Marching DeepONet (FE-NO coupling — CMAME 2025) ─────────────────
+    @MODEL_REGISTRY.register("TimeDeepONet")
+    def _make_time_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return TimeDeepONet1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
+                              p=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("DualDeepONet")
+    def _make_dual_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return DualBranchDeepONet1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
+                                    p=hidden_dim, n_layers=n_layers)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────
     _std = {"burgers_1d", "darcy_2d"}

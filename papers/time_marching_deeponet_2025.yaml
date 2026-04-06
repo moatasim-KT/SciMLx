@@ -1,0 +1,89 @@
+title: "Time-marching neural operator–FE coupling: AI-accelerated physics modeling"
+short_id: time_marching_deeponet_2025
+authors: "Wei Wang, Maryam Hakimzadeh, Haihui Ruan, Somdatta Goswami"
+year: 2025
+venue: "Computer Methods in Applied Mechanics and Engineering, vol. 446"
+doi: "https://doi.org/10.1016/j.cma.2025.118319"
+arxiv: "https://arxiv.org/abs/2504.11383"
+source_repo: "https://github.com/moatasim-KT/Time-Marching-Neural-Operator-FE-Coupling"
+
+key_idea: |
+  FE–Neural Operator hybrid solver via domain decomposition:
+  - FEM handles "easy" regions (linear, coarse mesh)
+  - Physics-informed DeepONet handles "hard" regions (nonlinear, fine mesh)
+  - Spatial coupling: Schwarz alternating method at overlapping boundaries
+  - Temporal coupling: Newmark-β method integrated into DeepONet (time-marching)
+
+  Time-marching DeepONet architecture (2 branches + 1 trunk):
+    branch1: encodes displacement BC at current time step u(t) → b1[p]
+    branch2: encodes previous state [u(t-1), v(t-1)] → b2[p]
+    trunk:   encodes spatial coordinates x → T[N, p]
+    output:  (b1 ⊙ b2) · T  (element-wise product, then dot with trunk)
+
+  Training: PHYSICS-ONLY (no data!) via PDE residual + BC loss.
+  Error bounded below 2.5% with non-monotonic fluctuation → limiting autoregressive error.
+
+applications_from_paper:
+  - "Elasto-dynamic: plane wave propagation (FE-NO coupling)"
+  - "Linear elasticity: static loading (Schwarz method only)"
+  - "Hyperelasticity: quasi-static loading (nonlinear subdomain)"
+
+adaptation_to_pipeline: |
+  We implement TimeDeepONet1d which adapts the two-branch structure:
+    branch1: IC encoder u0[N] → b1[p]     (analogous to BC branch)
+    branch2: time encoder t → b2[p]        (temporal gating of IC features)
+    trunk:   spatial coords x → T[N, p]
+  Enables training on our standard (IC → future state) pairs.
+
+  Also DualBranchDeepONet1d for problems with two input fields (u0 + v0).
+  Both models are physics-architecture motivated, not just engineering tweaks.
+
+research_directions:
+  - "Two-branch architectures separate physical contexts (IC vs boundary, displacement vs velocity)"
+  - "Time-marching: autoregressive rollout for long-horizon prediction"
+  - "Hybrid FE-NO: use our trained neural operators as subdomain solvers"
+  - "Physics-only training: no labeled data, only PDE residuals"
+
+suggested_experiments:
+  - name: "time_deeponet_wave_h64_l4_p64"
+    benchmark: "wave_1d"
+    model: "TimeDeepONet"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "TimeDeepONet on wave_1d — temporal gating naturally suits wave propagation"
+
+  - name: "time_deeponet_wave_h128_l4_p128"
+    benchmark: "wave_1d"
+    model: "TimeDeepONet"
+    hidden_dim: 128
+    n_layers: 4
+    n_modes: 16
+    rationale: "Wider TimeDeepONet on wave_1d — more expressive temporal gating"
+
+  - name: "dual_deeponet_wave_h64_l4"
+    benchmark: "wave_1d"
+    model: "DualDeepONet"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "DualBranchDeepONet: encode u0 and du0/dt separately — matches paper's branch1+branch2"
+
+  - name: "time_deeponet_burgers_h64_l4_p64"
+    benchmark: "burgers_1d"
+    model: "TimeDeepONet"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "TimeDeepONet on Burgers — time gating may help generalize across viscosities"
+
+  - name: "time_deeponet_kdv_h64_l4_p64"
+    benchmark: "kdv_1d"
+    model: "TimeDeepONet"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 24
+    rationale: "TimeDeepONet on KdV solitons — temporal operator learning for soliton dynamics"
+
+status: pending
+verdict: ""

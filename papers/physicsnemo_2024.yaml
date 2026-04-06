@@ -1,0 +1,60 @@
+title: "NVIDIA PhysicsNeMo: Open-Source Framework for Physics-AI Model Development"
+short_id: physicsnemo_2024
+authors: "NVIDIA Corporation"
+year: 2024
+venue: "Software Framework / GitHub"
+source_repo: "https://github.com/moatasim-KT/physicsnemo"
+docs: "https://docs.nvidia.com/deeplearning/physicsnemo/physicsnemo-core/index.html"
+
+key_idea: |
+  PhysicsNeMo (formerly NVIDIA Modulus) is a comprehensive open-source framework
+  for Physics-ML combining neural operators, GNNs, transformers, and diffusion models
+  with physics constraints.
+
+  Model zoo relevant to our pipeline:
+  1. TFNO   — Tucker/CP factorized FNO (our models/tfno.py)
+  2. Transolver — Physics Attention Transformer (our models/transolver.py)
+  3. MeshGraphNet — GNN for mesh-based simulation (structural, CFD)
+  4. DoMINO — Domain-decomposed neural operator for external aerodynamics
+  5. FigConvNet — FIGure CONVolution UNet for geometry-based flow
+  6. GraphCast — GNN weather forecasting (O(N log N) spectral + GNN)
+  7. CorrDiff — Score-based diffusion for weather downscaling
+  8. FourCastNet — AFNO-based global weather prediction (ERA5)
+  9. SwinVRNN — Swin Transformer + RNN for spatiotemporal dynamics
+  10. XAeroNet — CFD acceleration for external aerodynamics
+
+  Key techniques across the framework:
+  - Physics-informed losses (PDE residuals, BC enforcement)
+  - Domain decomposition for large-scale problems
+  - Tensor factorization for parameter efficiency
+  - Graph neural operators for unstructured meshes
+  - Diffusion/score models for uncertainty quantification
+  - Multi-objective training (accuracy + efficiency Pareto)
+
+bootcamp_benchmarks:
+  - "Darcy flow (FNO, AFNO, TFNO)"
+  - "Navier-Stokes vorticity (FNO, AFNO)"
+  - "MHD — Magnetohydrodynamics (TFNO + PINO hybrid)"
+  - "FourCastNet weather (AFNO)"
+  - "DoMINO external aerodynamics (Ahmed body, DrivAer)"
+  - "Projectile motion (PINN)"
+  - "1D wave equation (PINN)"
+
+research_directions_for_us:
+  - "MHD benchmark: add magnetohydrodynamics to our benchmark suite"
+  - "Physics-informed TFNO: combine Tucker factorization with PDE residual loss"
+  - "Graph neural operator: implement lightweight GNO for irregular meshes"
+  - "Diffusion-based uncertainty: CorrDiff-inspired UQ on our predictions"
+  - "Multi-objective HPO: extend BayesianHPO to accuracy+VRAM Pareto front"
+
+suggested_experiments:
+  - name: "tfno_mhd_h64_l4_m16"
+    benchmark: "burgers_1d"
+    model: "TFNO"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "Test TFNO on standard benchmarks first before MHD solver addition"
+
+status: reference
+verdict: "Rich model zoo — TFNO and Transolver are highest-priority additions; others (MeshGraphNet, DoMINO) require mesh infrastructure beyond our current scope."

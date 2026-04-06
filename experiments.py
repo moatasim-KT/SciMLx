@@ -1288,6 +1288,202 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="RFNO + augmentation combo; aug alone gave best Burgers (0.1468), RFNO alone 0.1618",
         expected="0.13–0.15",
     ),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # P8 — TFNO: Tucker-Factorized FNO (PhysicsNeMo / Kossaifi et al. ICLR 2024)
+    # Low-rank Tucker decomposition of spectral weights; implicit regularization.
+    # ══════════════════════════════════════════════════════════════════════════
+
+    ExperimentConfig(
+        name="tfno_burgers_h128_l8_m24_r05",
+        benchmark="burgers_1d", model="TFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="Tucker TFNO baseline on Burgers (rank_ratio=0.5). "
+                  "Low-rank regularization may help generalise; fewer spectral params → more steps.",
+        expected="0.13–0.17 (TFNO matched FNO on Darcy; unknown for Burgers)",
+    ),
+    ExperimentConfig(
+        name="tfno_burgers_h128_l8_m24_r075",
+        benchmark="burgers_1d", model="TFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="High-rank Tucker (rank_ratio=0.75) — near-full FNO with mild regularization.",
+        expected="Similar to FNO (0.1468); tests whether mild Tucker hurts",
+    ),
+    ExperimentConfig(
+        name="rtfno_burgers_h128_l10_m24",
+        benchmark="burgers_1d", model="RTFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="RTFNO = Tucker spectral + Pre-LN residual. Unlock depth-10 with dual stability.",
+        expected="0.12–0.15 (combining RFNO stability gains with Tucker regularization)",
+    ),
+    ExperimentConfig(
+        name="cpfno_burgers_h128_l8_m24_r8",
+        benchmark="burgers_1d", model="CPFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="CP-FNO: extreme spectral compression (rank=8). How low can spectral rank go?",
+        expected="0.20–0.35 (rank-8 may be too aggressive; useful lower bound)",
+    ),
+    ExperimentConfig(
+        name="tfno_kdv_h128_l8_m24",
+        benchmark="kdv_1d", model="TFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="Tucker TFNO on KdV. Soliton dynamics are low-rank in spectral space → natural fit.",
+        expected="~0.002–0.005 (our RFNO SOTA 0.0020; TFNO may match or improve)",
+    ),
+    ExperimentConfig(
+        name="rtfno_kdv_h128_l10_m24",
+        benchmark="kdv_1d", model="RTFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        priority=1,
+        rationale="RTFNO on KdV: deeper model with Tucker+Pre-LN — push KdV SOTA further.",
+        expected="0.0015–0.0025",
+    ),
+    ExperimentConfig(
+        name="tfno2d_darcy_h128_m24_l4",
+        benchmark="darcy_2d_fix", model="TFNO2D",
+        hidden_dim=128, n_layers=4, n_modes=24,
+        budget_s=480,
+        priority=1,
+        rationale="Tucker TFNO2D on Darcy. Paper reports Tucker beats FNO2D (0.0094 vs 0.0108). "
+                  "Darcy permeability fields are inherently low-rank → ideal for Tucker.",
+        expected="0.05–0.12 (our FNO2D h=32 got 0.1469; h=128 + Tucker should improve)",
+    ),
+    ExperimentConfig(
+        name="tfno2d_darcy_h64_m16_l4",
+        benchmark="darcy_2d_fix", model="TFNO2D",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        budget_s=480,
+        priority=1,
+        rationale="Smaller Tucker TFNO2D on Darcy — validate Tucker benefit at moderate size.",
+        expected="0.10–0.15",
+    ),
+    ExperimentConfig(
+        name="tfno2d_ns_h64_m12_l4",
+        benchmark="ns_2d_fix", model="TFNO2D",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=2,
+        rationale="Tucker TFNO2D on NS — our FNO2D got 0.0152 ≈ SOTA (0.0128); Tucker may close gap.",
+        expected="0.010–0.015",
+    ),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # P9 — Transolver: Physics Attention Transformer (NeurIPS 2024 / PhysicsNeMo)
+    # Soft slice-assignment attention: O(N·S + S²) vs O(N²); works on any geometry.
+    # ══════════════════════════════════════════════════════════════════════════
+
+    ExperimentConfig(
+        name="transolver_burgers_h64_l4_s32",
+        benchmark="burgers_1d", model="Transolver",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="Transolver baseline on Burgers. Physics slices may separate shock from smooth region.",
+        expected="0.15–0.25 (attention-based; unknown on Burgers)",
+    ),
+    ExperimentConfig(
+        name="transolver_burgers_h128_l6_s32",
+        benchmark="burgers_1d", model="Transolver",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        priority=1,
+        rationale="Wider deeper Transolver on Burgers — closer to paper's default config.",
+        expected="0.12–0.20",
+    ),
+    ExperimentConfig(
+        name="transolver_kdv_h64_l4_s32",
+        benchmark="kdv_1d", model="Transolver",
+        hidden_dim=64, n_layers=4, n_modes=24,
+        priority=1,
+        rationale="Transolver on KdV: solitons are spatially localized → natural physics slice structure.",
+        expected="0.003–0.010",
+    ),
+    ExperimentConfig(
+        name="transolver_wave_h64_l4_s32",
+        benchmark="wave_1d", model="Transolver",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="Transolver on wave_1d — wave fronts may form coherent physics slices.",
+        expected="0.001–0.005",
+    ),
+    ExperimentConfig(
+        name="transolver2d_darcy_h64_l4_s64",
+        benchmark="darcy_2d_fix", model="Transolver2D",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="Transolver2D on Darcy — paper's reported SOTA architecture (0.0084 vs FNO 0.0108).",
+        expected="0.05–0.10 (2D attention more expensive; slice_num=64 for 64×64 grid)",
+    ),
+    ExperimentConfig(
+        name="transolver2d_darcy_h128_l4_s64",
+        benchmark="darcy_2d_fix", model="Transolver2D",
+        hidden_dim=128, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=2,
+        rationale="Wider Transolver2D — closer to paper dim=256; may be step-limited.",
+        expected="0.04–0.10",
+    ),
+    ExperimentConfig(
+        name="transolver2d_ns_h64_l4_s64",
+        benchmark="ns_2d_fix", model="Transolver2D",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=2,
+        rationale="Transolver2D on NS — attention over vorticity slices; paper reports strong NS results.",
+        expected="0.010–0.016",
+    ),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # P10 — Time-Marching DeepONet (FE-NO coupling paper, CMAME 2025)
+    # Two-branch architecture: IC branch + temporal gating branch.
+    # ══════════════════════════════════════════════════════════════════════════
+
+    ExperimentConfig(
+        name="time_deeponet_wave_h64_l4",
+        benchmark="wave_1d", model="TimeDeepONet",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="TimeDeepONet on wave_1d. Temporal gating (branch2) naturally separates "
+                  "IC encoding from time-evolution operator — natural fit for wave propagation.",
+        expected="0.001–0.010 (DeepONet got 0.808; temporal gating should help significantly)",
+    ),
+    ExperimentConfig(
+        name="time_deeponet_wave_h128_l4",
+        benchmark="wave_1d", model="TimeDeepONet",
+        hidden_dim=128, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="Wider TimeDeepONet on wave_1d — more expressive temporal gating.",
+        expected="0.001–0.005",
+    ),
+    ExperimentConfig(
+        name="dual_deeponet_wave_h64_l4",
+        benchmark="wave_1d", model="DualDeepONet",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="DualBranch: encode u0 and du0/dt separately — matches paper's two-branch structure. "
+                  "Wave equation has natural (u, v=du/dt) state pair.",
+        expected="0.001–0.010",
+    ),
+    ExperimentConfig(
+        name="time_deeponet_burgers_h64_l4",
+        benchmark="burgers_1d", model="TimeDeepONet",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="TimeDeepONet on Burgers — temporal gating may help generalize across time horizons.",
+        expected="0.15–0.30",
+    ),
+    ExperimentConfig(
+        name="time_deeponet_kdv_h64_l4",
+        benchmark="kdv_1d", model="TimeDeepONet",
+        hidden_dim=64, n_layers=4, n_modes=24,
+        priority=2,
+        rationale="TimeDeepONet on KdV solitons — temporal operator should capture soliton dynamics.",
+        expected="0.003–0.010",
+    ),
 ]
 
 

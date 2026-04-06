@@ -1,0 +1,86 @@
+title: "Factorized Fourier Neural Operators"
+short_id: tfno_2022
+authors: "Jean Kossaifi, Nikola Kovachki, Kamyar Azizzadenesheli, Anima Anandkumar"
+year: 2022
+venue: "ICLR 2024 (arXiv 2021)"
+arxiv: "https://arxiv.org/abs/2111.13802"
+doi: "https://openreview.net/forum?id=tmIiMPl4IPa"
+source_repo: "https://github.com/moatasim-KT/physicsnemo"
+
+key_idea: |
+  Factorize the spectral weight tensor W[n_modes, in_ch, out_ch] using Tucker or
+  CP tensor decompositions instead of storing the full dense tensor.
+  - Tucker: W = G ×₁ Um ×₂ Ui ×₃ Uo (core + 3 factor matrices)
+  - CP:     W[m,i,o] ≈ Σ_r A[m,r]*B[i,r]*C[o,r]  (R factor triplets)
+  Also extends to factorized 2D and 3D modes, joint mode learning.
+  Implemented in PhysicsNeMo (NVIDIA Modulus) as the default FNO variant.
+
+reported_results:
+  darcy_2d:     0.0094   # beats standard FNO (0.0108)
+  ns_2d:        0.0109   # competitive with FNO
+  elasticity_2d: 0.0072  # strong on structural problems
+
+our_results: {}
+
+advantages:
+  - "~2-4x fewer spectral parameters → can increase hidden_dim or n_layers at same VRAM"
+  - "Low-rank inductive bias reduces overfitting on small datasets (darcy_2d_fix)"
+  - "Tucker rank_ratio is a tunable regularization knob (0.25=aggressive, 0.75=near-full)"
+  - "RTFNO = Tucker + Pre-LN residual: dual benefit for deep stacks"
+  - "CP variant is extremely compact: tests limit of low-rank spectral representation"
+
+suggested_experiments:
+  - name: "tfno_burgers_h128_l8_m24_r05"
+    benchmark: "burgers_1d"
+    model: "TFNO"
+    hidden_dim: 128
+    n_layers: 8
+    n_modes: 24
+    rank_ratio: 0.5
+    rationale: "Tucker TFNO baseline on Burgers — does low-rank regularization help?"
+
+  - name: "tfno_burgers_h128_l8_m24_r075"
+    benchmark: "burgers_1d"
+    model: "TFNO"
+    hidden_dim: 128
+    n_layers: 8
+    n_modes: 24
+    rank_ratio: 0.75
+    rationale: "High-rank Tucker (75%) — near-full FNO but with mild regularization"
+
+  - name: "rtfno_burgers_h128_l10_m24_r05"
+    benchmark: "burgers_1d"
+    model: "RTFNO"
+    hidden_dim: 128
+    n_layers: 10
+    n_modes: 24
+    rank_ratio: 0.5
+    rationale: "RTFNO: Tucker + Pre-LN residual — unlock depth-10 stable training"
+
+  - name: "tfno_kdv_h128_l8_m24_r05"
+    benchmark: "kdv_1d"
+    model: "TFNO"
+    hidden_dim: 128
+    n_layers: 8
+    n_modes: 24
+    rationale: "Tucker TFNO on KdV — low-rank may capture soliton structure efficiently"
+
+  - name: "tfno2d_darcy_h128_m24_l4_r05"
+    benchmark: "darcy_2d_fix"
+    model: "TFNO2D"
+    hidden_dim: 128
+    n_layers: 4
+    n_modes: 24
+    rationale: "Tucker TFNO2D on Darcy — natural match: permeability fields are low-rank"
+
+  - name: "cpfno_burgers_h128_l8_m24_r8"
+    benchmark: "burgers_1d"
+    model: "CPFNO"
+    hidden_dim: 128
+    n_layers: 8
+    n_modes: 24
+    rank: 8
+    rationale: "CP-FNO: extreme compression test — how low can spectral rank go?"
+
+status: pending
+verdict: ""

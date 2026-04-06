@@ -1,0 +1,98 @@
+title: "Transolver: A Fast Transformer Solver for PDEs on General Geometries"
+short_id: transolver_2024
+authors: "Haixu Wu, Huakun Luo, Haowen Wang, Jianmin Wang, Mingsheng Long"
+year: 2024
+venue: "ICML 2024 / NeurIPS 2024"
+arxiv: "https://arxiv.org/abs/2402.02366"
+source_repo: "https://github.com/moatasim-KT/physicsnemo"
+
+key_idea: |
+  Replaces O(N²) self-attention over all grid points with "Physics Attention":
+  1. Soft assignment: N grid points → S physics slices (S << N) via learned softmax gates
+  2. Aggregate: weighted-average grid features into S slice tokens
+  3. Self-attention in O(S²) slice space
+  4. Broadcast: slice outputs back to all N grid points
+
+  Key insight: nearby/similar grid points share physics (similar PDE state), so
+  grouping them into shared slices is a natural inductive bias.
+  Implemented in PhysicsNeMo (NVIDIA Modulus) as the Transolver model.
+  Works on irregular meshes, structured grids, and point clouds without modification.
+
+reported_results:
+  darcy_2d:      0.0084   # beats FNO (0.0108)
+  ns_2d:         0.0105   # near SOTA
+  elasticity_2d: 0.0063
+  airfoil_2d:    0.0012
+
+our_results: {}
+
+advantages:
+  - "O(N*S + S²) attention vs O(N²): 10-100x cheaper for large grids"
+  - "Geometry-agnostic: same model for structured and irregular grids"
+  - "Physics slices act as learned PDE-aware clustering (shock regions, smooth regions)"
+  - "n_head attention heads → each head captures different physics patterns"
+  - "slice_num is a model capacity knob: 16=fast, 64=expressive"
+
+suggested_experiments:
+  - name: "transolver_burgers_h64_l4_s32_h4"
+    benchmark: "burgers_1d"
+    model: "Transolver"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_head: 4
+    slice_num: 32
+    rationale: "Transolver baseline on Burgers — physics slices may separate shock from smooth"
+
+  - name: "transolver_burgers_h128_l6_s32_h4"
+    benchmark: "burgers_1d"
+    model: "Transolver"
+    hidden_dim: 128
+    n_layers: 6
+    n_modes: 16
+    n_head: 4
+    slice_num: 32
+    rationale: "Wider deeper Transolver on Burgers"
+
+  - name: "transolver_kdv_h64_l4_s32"
+    benchmark: "kdv_1d"
+    model: "Transolver"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 24
+    n_head: 4
+    slice_num: 32
+    rationale: "Transolver on KdV: solitons may form natural physics slices"
+
+  - name: "transolver2d_darcy_h64_l4_s64"
+    benchmark: "darcy_2d_fix"
+    model: "Transolver2D"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 12
+    n_head: 4
+    slice_num: 64
+    rationale: "Transolver2D on Darcy — reported SOTA architecture; slice_num=64 for 2D"
+
+  - name: "transolver2d_darcy_h128_l4_s64"
+    benchmark: "darcy_2d_fix"
+    model: "Transolver2D"
+    hidden_dim: 128
+    n_layers: 4
+    n_modes: 12
+    n_head: 4
+    slice_num: 64
+    rationale: "Wider Transolver2D — closer to paper's default dim=256"
+
+  - name: "transolver2d_ns_h64_l4_s64"
+    benchmark: "ns_2d_fix"
+    model: "Transolver2D"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 12
+    n_head: 4
+    slice_num: 64
+    rationale: "Transolver2D on NS — paper reports strong NS results"
+
+status: pending
+verdict: ""
