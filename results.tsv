@@ -101,3 +101,4 @@ b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
 3415d16	darcy_2d_fix	FNO	0.146942	1.80	keep	fno_darcy2d_fix_h32_m8_l4 FNO h=32 l=4 m=8 (fixed f, log-normal a)
 3415d16	ns_2d_fix	FNO	0.015166	1.80	keep	fno_ns2d_fix_h32_m8_l4 FNO baseline (corrected ICs)
 3415d16	darcy_2d_fix	FNO	19.106368	7.20	discard	fno_darcy2d_fix_h128 FNO h=128 l=8 m=24 (too large, only 2 steps)
+675957e	darcy_2d_fix	FNO	0.104137	1.70	keep	darcy2d_fno_h64_l6_m16 FNO  h=64  l=6  m=16
