@@ -1,0 +1,90 @@
+title: "Hamiltonian Neural Networks"
+short_id: hnn_2019
+authors: "Sam Greydanus, Misko Dzamba, Jason Yosinski"
+year: 2019
+venue: "NeurIPS 2019"
+arxiv: "https://arxiv.org/abs/1906.01563"
+source_repo: "https://github.com/moatasim-KT/SciML-and-Physics-Informed-Machine-Learning-Examples"
+
+key_idea: |
+  Learn the Hamiltonian H(q,p) of a mechanical system as a neural network.
+  Time evolution is governed by Hamilton's equations:
+    dq/dt =  ∂H/∂p
+    dp/dt = -∂H/∂q
+
+  Training loss:
+    L_HNN = ||∂H/∂p - dq/dt||² + ||∂H/∂q + dp/dt||²
+
+  Key properties:
+    - Energy is EXACTLY conserved: H(q(t), p(t)) = const
+    - Symplectic integrator: preserves phase-space volume
+    - Requires (q, p, dq/dt, dp/dt) training pairs
+
+  Application to PDEs:
+    For wave_1d: q = u(x,t) (displacement), p = u_t(x,t) (velocity)
+    Hamiltonian: H[u,ut] = (1/2)∫(ut² + c²ux²)dx
+    For KdV: Hamiltonian is H[u] = ∫(ux² - u³/3)dx
+
+  Our adaptation (HamiltonianNO1d):
+    - Encode IC u0 → (q,p) latent pair
+    - Learn H(q,p) → scalar energy
+    - One symplectic step via autodiff of H
+    - Decode back to grid via trunk network
+    - No time-derivative labels needed!
+
+reported_results:
+  spring_mass_ode: "Energy conserved to machine precision; baseline NN drifts in 20 steps"
+  pendulum_ode: "Trajectory stable for 10× longer time than standard NN"
+
+our_results: {}
+
+research_directions:
+  - "Energy conservation as inductive bias for wave_1d (known conservative system)"
+  - "KdV is Hamiltonian — HNN should capture soliton stability"
+  - "EnergyConservingFNO: soft energy loss as regularizer for any FNO model"
+  - "Staged training: pre-train Hamiltonian, then fine-tune trajectory"
+  - "Long-horizon rollout: HNN stays stable where FNO accumulates error"
+
+suggested_experiments:
+  - name: "hnn_wave_h64_l4"
+    benchmark: "wave_1d"
+    model: "HNN"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "HNN on wave_1d — wave equation is Hamiltonian; energy conservation is exact"
+
+  - name: "hnn_wave_h128_l4"
+    benchmark: "wave_1d"
+    model: "HNN"
+    hidden_dim: 128
+    n_layers: 4
+    n_modes: 16
+    rationale: "Wider HNN on wave_1d — more expressive Hamiltonian"
+
+  - name: "hnn_kdv_h64_l4"
+    benchmark: "kdv_1d"
+    model: "HNN"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 24
+    rationale: "HNN on KdV — KdV is Hamiltonian; solitons conserve energy and momentum"
+
+  - name: "energy_fno_wave_h64_l8_m24"
+    benchmark: "wave_1d"
+    model: "EnergyFNO"
+    hidden_dim: 64
+    n_layers: 8
+    n_modes: 24
+    rationale: "EnergyConservingFNO: standard FNO + soft energy loss on wave_1d"
+
+  - name: "energy_fno_kdv_h128_l8_m24"
+    benchmark: "kdv_1d"
+    model: "EnergyFNO"
+    hidden_dim: 128
+    n_layers: 8
+    n_modes: 24
+    rationale: "EnergyFNO on KdV — energy regularization may further improve SOTA 0.0020"
+
+status: pending
+verdict: ""

@@ -1,0 +1,122 @@
+title: "Neural ODEs and Universal Differential Equations for SciML"
+short_id: neural_ode_ude_2020
+authors: |
+  Neural ODE: Ricky T. Q. Chen, Yulia Rubanova, Jesse Bettencourt, David Duvenaud (NeurIPS 2018)
+  UDE: Christopher Rackauckas, Yingbo Ma, Julius Martensen et al. (arXiv 2020)
+year: 2020
+venue: "NeurIPS 2018 / arXiv 2020"
+arxiv_node: "https://arxiv.org/abs/1806.07366"
+arxiv_ude: "https://arxiv.org/abs/2001.04385"
+source_repo: "https://github.com/moatasim-KT/SciML-and-Physics-Informed-Machine-Learning-Examples"
+
+key_idea: |
+  Neural ODE:
+    Replace discrete residual layers with a continuous ODE:
+      dh/dt = f_θ(h, t)
+    Output: h(T) via numerical ODE integration.
+    - Memory-efficient: adjoint method avoids storing intermediate states
+    - Time-continuous: can query any t, not just fixed steps
+    - For PDEs: learn ∂u/∂t = F_θ(u, x), integrate to u(T)
+
+  Universal Differential Equations (UDE):
+    Combine known physics with a neural network correction:
+      du/dt = known_physics(u, x) + NN_θ(u, x)
+    The NN only models the UNKNOWN or MISSING terms.
+
+    For Burgers: known = -u * ∂u/∂x (advection), NN learns ν * ∂²u/∂x²
+    For wave:    known = c² * ∂²u/∂x² (wave operator), NN corrects boundary effects
+
+    Key benefits:
+    - Orders of magnitude fewer NN parameters (correction, not full model)
+    - Interpretable: the NN is a residual from known physics
+    - Generalizes better: inductive bias from known physics
+    - Can discover unknown PDE terms (SINDy post-processing for symbolic regression)
+
+  Sparse Identification of Nonlinear Dynamics (SINDy):
+    Post-process the learned NN to find symbolic expressions.
+    Not implemented here but noted as follow-on research direction.
+
+our_implementations:
+  NeuralODE1d: "Pure neural ODE — learn ∂u/∂t = F_θ(u,x), RK4 integration, n_steps steps"
+  UniversalDE1d: "UDE for Burgers — known advection + NN correction for diffusion"
+  LatentODE1d: "Latent-space ODE — encode IC → latent, integrate, decode back to grid"
+
+advantages_over_fno:
+  - "NeuralODE: time-continuous, same model for any prediction horizon"
+  - "UDE: physics-constrained — NN only learns the unknown terms → generalizes better"
+  - "LatentODE: efficient in high dimensions — ODE runs in latent_dim << N space"
+  - "All three: autoregressive — can roll out for any number of steps"
+
+reported_results:
+  spiral_ode: "NeuralODE extrapolates 5× further than standard RNN"
+  lotka_volterra_ude: "UDE discovers true equations with <10% data vs standard regression"
+
+our_results: {}
+
+suggested_experiments:
+  - name: "neural_ode_wave_h64_l4_s20"
+    benchmark: "wave_1d"
+    model: "NeuralODE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_steps: 20
+    rationale: "NeuralODE on wave_1d — time-continuous approach; wave is smooth (ideal for ODE solver)"
+
+  - name: "neural_ode_wave_h64_l4_s40"
+    benchmark: "wave_1d"
+    model: "NeuralODE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_steps: 40
+    rationale: "More integration steps — more accurate RK4 approximation of wave dynamics"
+
+  - name: "neural_ode_kdv_h64_l4_s20"
+    benchmark: "kdv_1d"
+    model: "NeuralODE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 24
+    n_steps: 20
+    rationale: "NeuralODE on KdV — continuous-time soliton propagation learning"
+
+  - name: "ude_burgers_h32_l3_s20"
+    benchmark: "burgers_1d"
+    model: "UDE"
+    hidden_dim: 32
+    n_layers: 3
+    n_modes: 16
+    n_steps: 20
+    rationale: "UDE on Burgers — known advection + NN diffusion correction. "
+               "Physical prior should dramatically reduce the parameter count needed."
+
+  - name: "ude_burgers_h64_l4_s30"
+    benchmark: "burgers_1d"
+    model: "UDE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_steps: 30
+    rationale: "Wider UDE — more expressive correction network for Burgers"
+
+  - name: "latent_ode_wave_h64_l4_s20"
+    benchmark: "wave_1d"
+    model: "LatentODE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_steps: 20
+    rationale: "LatentODE: efficient latent integration for wave_1d"
+
+  - name: "latent_ode_burgers_h64_l4_s20"
+    benchmark: "burgers_1d"
+    model: "LatentODE"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    n_steps: 20
+    rationale: "LatentODE on Burgers — latent space absorbs multi-scale structure"
+
+status: pending
+verdict: ""

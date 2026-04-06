@@ -9,6 +9,8 @@ from .tfno         import (TFNO1d, RTFNO1d, CPFNO1d, TFNO2d,
                             TuckerSpectralConv1d, CPSpectralConv1d, TuckerSpectralConv2d)
 from .transolver   import Transolver1d, Transolver2d
 from .time_deeponet import TimeDeepONet1d, DualBranchDeepONet1d
+from .hnn          import HamiltonianNO1d, HamiltonianNet1d, EnergyConservingFNO1d
+from .neural_ode   import NeuralODE1d, UniversalDE1d, LatentODE1d
 
 __all__ = [
     # FNO family
@@ -36,4 +38,8 @@ __all__ = [
     "Transolver1d", "Transolver2d",
     # Time-Marching DeepONet — from FE-NO coupling paper (CMAME 2025)
     "TimeDeepONet1d", "DualBranchDeepONet1d",
+    # Hamiltonian Neural Networks — from Greydanus et al. NeurIPS 2019 / MathWorks examples
+    "HamiltonianNO1d", "HamiltonianNet1d", "EnergyConservingFNO1d",
+    # Neural ODEs & Universal Differential Equations — from Chen et al. / Rackauckas et al.
+    "NeuralODE1d", "UniversalDE1d", "LatentODE1d",
 ]

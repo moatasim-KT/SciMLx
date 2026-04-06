@@ -1,0 +1,77 @@
+title: "Inverse Problems Using Physics-Informed Neural Networks"
+short_id: inverse_pinn_2023
+authors: "MathWorks Inc. (adapted from Raissi, Perdikaris, Karniadakis 2019)"
+year: 2023
+venue: "MathWorks MATLAB Examples / Journal of Computational Physics 2019"
+original_paper: "https://doi.org/10.1016/j.jcp.2018.10.045"
+source_repo: "https://github.com/moatasim-KT/SciML-and-Physics-Informed-Machine-Learning-Examples"
+
+key_idea: |
+  Standard PINN: given PDE structure and BCs, learn u(x) satisfying the PDE.
+
+  Inverse PINN: given MEASUREMENTS of u(x) and the PDE structure, identify
+  UNKNOWN PDE COEFFICIENTS simultaneously with the solution.
+
+  Poisson example: -∇·(c∇u) = 1 on unit disk
+    Forward:  given c, find u
+    Inverse:  given u_data, find c (thermal diffusivity)
+
+  Two variants:
+    1. Constant coefficient c: optimize scalar c alongside PINN weights
+       Loss = λ_PDE * L_PDE + λ_BC * L_BC + λ_data * L_data
+       (λ_PDE=0.4, λ_BC=0.6, λ_data=0.5)
+       Staged training: train PINN for 10% of epochs, THEN update c
+       Result: c recovered to 0.1% accuracy
+
+    2. Variable coefficient c(x): separate neural network coefNet(x) ≈ c(x)
+       Two networks trained simultaneously: PINN (solution) + coefNet (coefficient)
+       grads = dlgradient(loss, {pinn.Learnables, coefNet.Learnables})
+       Result: spatial coefficient field recovered accurately
+
+  Key techniques:
+    - Joint optimization: both solution and parameter networks trained together
+    - Staged training: let solution network stabilize before updating coefficient
+    - Weighted multi-term loss: balance PDE, BC, and data terms
+    - Automatic differentiation through the PDE operator
+
+applications_in_our_pipeline:
+  darcy_2d_fix: |
+    Darcy: -∇·(a(x)∇u) = f  — a(x) is the permeability field
+    Inverse: given pressure field u measurements, discover a(x)
+    This would enable: train on (f, u) pairs → simultaneously learn operator AND permeability
+
+  unknown_viscosity: |
+    Burgers: ∂u/∂t + u∂u/∂x = ν∂²u/∂x²
+    Inverse: given u(x,t) trajectories, recover unknown ν
+    Already partially done by UDE (NN learns viscosity correction)
+
+research_directions:
+  - "Inverse Darcy: learn permeability a(x,y) from pressure data"
+  - "Adaptive loss weighting: λ_PDE, λ_BC, λ_data should be tuned per benchmark"
+  - "Two-phase training: first fit data, then enforce PDE (better convergence)"
+  - "Coefficient network architecture: MLP vs FNO for spatial a(x,y)"
+  - "Extend to unknown source terms: learn f(x) in -∇·(a∇u) = f"
+
+training_insights:
+  - "Stage training: train solution network first (10% epochs), then update coefficient"
+  - "Loss weights: λ_PDE=0.4, λ_BC=0.6, λ_data=0.5 worked well for Poisson"
+  - "Decaying LR: lr = lr0 / (1 + decay * iteration) — works for Adam"
+  - "Joint gradients: grads = dlgradient(loss, {net1.params, net2.params})"
+  - "Both networks same architecture — coefficient inherits solution network capacity"
+
+suggested_experiments:
+  - name: "inv_pinn_darcy_h64_l4"
+    benchmark: "darcy_2d_fix"
+    model: "FNO2D"
+    hidden_dim: 64
+    n_layers: 4
+    n_modes: 16
+    rationale: "Use FNO2D with physics loss for Darcy coefficient discovery (staged training)"
+
+  note: |
+    Full inverse PINN implementation would require adding a coefficient_net to losses.py
+    and train.py. The models above run standard operator learning; the inverse problem
+    is a training paradigm, not just an architecture.
+
+status: pending
+verdict: ""

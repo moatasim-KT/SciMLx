@@ -1484,6 +1484,140 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="TimeDeepONet on KdV solitons — temporal operator should capture soliton dynamics.",
         expected="0.003–0.010",
     ),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # P11 — Hamiltonian Neural Networks (Greydanus NeurIPS 2019 / MathWorks SciML examples)
+    # Energy-conserving operator learning via learned Hamiltonian H(q,p).
+    # ══════════════════════════════════════════════════════════════════════════
+
+    ExperimentConfig(
+        name="hnn_wave_h64_l4",
+        benchmark="wave_1d", model="HNN",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="HamiltonianNO on wave_1d. Wave equation is Hamiltonian: H = (1/2)∫(ut² + c²ux²)dx. "
+                  "Symplectic inductive bias should give exact energy conservation at inference.",
+        expected="0.001–0.010 (wave is well-matched to HNN inductive bias)",
+    ),
+    ExperimentConfig(
+        name="hnn_wave_h128_l4",
+        benchmark="wave_1d", model="HNN",
+        hidden_dim=128, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="Wider HNN on wave_1d — more expressive (q,p) encoder and Hamiltonian MLP.",
+        expected="0.001–0.005",
+    ),
+    ExperimentConfig(
+        name="hnn_kdv_h64_l4",
+        benchmark="kdv_1d", model="HNN",
+        hidden_dim=64, n_layers=4, n_modes=24,
+        priority=1,
+        rationale="HNN on KdV. KdV is Hamiltonian: H[u] = ∫(ux² - u³/3)dx. "
+                  "Solitons conserve energy — HNN prior matches perfectly.",
+        expected="0.002–0.008 (may approach or beat RFNO SOTA 0.0020)",
+    ),
+    ExperimentConfig(
+        name="energy_fno_wave_h64_l8_m24",
+        benchmark="wave_1d", model="EnergyFNO",
+        hidden_dim=64, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="EnergyConservingFNO: standard FNO + soft energy conservation loss. "
+                  "Lightweight energy bias; no autodiff overhead of full HNN.",
+        expected="0.000–0.002 (FNO already 0.000992; soft energy may push further)",
+    ),
+    ExperimentConfig(
+        name="energy_fno_kdv_h128_l8_m24",
+        benchmark="kdv_1d", model="EnergyFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=1,
+        rationale="EnergyFNO on KdV — energy regularization on top of our SOTA RFNO config.",
+        expected="0.0015–0.0025",
+    ),
+    ExperimentConfig(
+        name="hnn_burgers_h64_l4",
+        benchmark="burgers_1d", model="HNN",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=3,
+        rationale="HNN on Burgers — Burgers IS dissipative (energy decays), so HNN "
+                  "conservation bias may conflict. Useful ablation to measure the effect.",
+        expected="0.20–0.40 (mismatch expected; quantify energy-conservation penalty)",
+    ),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # P12 — Neural ODEs + Universal DEs (Chen NeurIPS 2018 / Rackauckas 2020 / MathWorks examples)
+    # Continuous time integration: learn ∂u/∂t, integrate n_steps to u(T).
+    # ══════════════════════════════════════════════════════════════════════════
+
+    ExperimentConfig(
+        name="neural_ode_wave_h64_l4_s20",
+        benchmark="wave_1d", model="NeuralODE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="NeuralODE on wave_1d. Learns ∂u/∂t = F(u,x); integrates 20 RK4 steps. "
+                  "Wave is smooth and amenable to ODE integration — natural fit.",
+        expected="0.001–0.010",
+    ),
+    ExperimentConfig(
+        name="neural_ode_wave_h64_l4_s40",
+        benchmark="wave_1d", model="NeuralODE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="More integration steps (40) — more accurate RK4 for wave propagation.",
+        expected="0.0005–0.005",
+    ),
+    ExperimentConfig(
+        name="neural_ode_kdv_h64_l4_s20",
+        benchmark="kdv_1d", model="NeuralODE",
+        hidden_dim=64, n_layers=4, n_modes=24,
+        priority=1,
+        rationale="NeuralODE on KdV. Soliton dynamics are smooth and time-reversible — "
+                  "excellent match for continuous-time integration.",
+        expected="0.002–0.010",
+    ),
+    ExperimentConfig(
+        name="ude_burgers_h32_l3_s20",
+        benchmark="burgers_1d", model="UDE",
+        hidden_dim=32, n_layers=3, n_modes=16,
+        priority=1,
+        rationale="Universal DE on Burgers. Known: -u*ux (nonlinear advection via FFT). "
+                  "NN correction: ν*uxx + model error. Physics prior should massively "
+                  "reduce parameter count and improve generalization.",
+        expected="0.05–0.15 (UDE should outperform pure data-driven with fewer params)",
+    ),
+    ExperimentConfig(
+        name="ude_burgers_h64_l4_s30",
+        benchmark="burgers_1d", model="UDE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=1,
+        rationale="Wider UDE on Burgers with 30 integration steps — more expressive correction.",
+        expected="0.04–0.12",
+    ),
+    ExperimentConfig(
+        name="latent_ode_wave_h64_l4_s20",
+        benchmark="wave_1d", model="LatentODE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="LatentODE: encode u0 → latent, integrate in low-dim space, decode. "
+                  "Memory-efficient; latent space captures dominant modes.",
+        expected="0.001–0.010",
+    ),
+    ExperimentConfig(
+        name="latent_ode_burgers_h64_l4_s20",
+        benchmark="burgers_1d", model="LatentODE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="LatentODE on Burgers — latent dynamics absorb the multi-scale shock structure.",
+        expected="0.10–0.20",
+    ),
+    ExperimentConfig(
+        name="neural_ode_burgers_h64_l4_s20",
+        benchmark="burgers_1d", model="NeuralODE",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="NeuralODE on Burgers — learns full tendency; compare vs UDE (which uses "
+                  "known advection). Ablates the value of the physics prior.",
+        expected="0.10–0.20",
+    ),
 ]
 
 

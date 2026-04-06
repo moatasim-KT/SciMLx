@@ -155,6 +155,10 @@ def _register_defaults():
         Transolver1d, Transolver2d,
         # Time-Marching DeepONet (FE-NO coupling — CMAME 2025)
         TimeDeepONet1d, DualBranchDeepONet1d,
+        # Hamiltonian Neural Networks (Greydanus et al. NeurIPS 2019 / MathWorks SciML examples)
+        HamiltonianNO1d, EnergyConservingFNO1d,
+        # Neural ODEs + Universal Differential Equations (Chen et al. / Rackauckas et al.)
+        NeuralODE1d, UniversalDE1d, LatentODE1d,
     )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
@@ -275,6 +279,37 @@ def _register_defaults():
     def _make_dual_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
         return DualBranchDeepONet1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
                                     p=hidden_dim, n_layers=n_layers)
+
+    # ── Hamiltonian Neural Networks (MathWorks SciML examples / Greydanus 2019) ──
+    @MODEL_REGISTRY.register("HNN")
+    def _make_hnn(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return HamiltonianNO1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
+                               n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("EnergyFNO")
+    def _make_energy_fno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return EnergyConservingFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                                     n_layers=n_layers)
+
+    # ── Neural ODEs + Universal DEs (Rackauckas 2020 / Chen 2018) ────────────
+    @MODEL_REGISTRY.register("NeuralODE")
+    def _make_neural_ode(n_modes=16, hidden_dim=64, n_layers=4,
+                         n_steps=20, **kw):
+        return NeuralODE1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                           n_layers=n_layers, n_steps=n_steps)
+
+    @MODEL_REGISTRY.register("UDE")
+    def _make_ude(n_modes=16, hidden_dim=32, n_layers=3,
+                  n_steps=20, **kw):
+        return UniversalDE1d(n_modes=n_modes, hidden_dim=hidden_dim,
+                             n_layers=n_layers, n_steps=n_steps,
+                             nu=0.01 / 3.14159)
+
+    @MODEL_REGISTRY.register("LatentODE")
+    def _make_latent_ode(n_modes=16, hidden_dim=64, n_layers=4,
+                         n_steps=20, **kw):
+        return LatentODE1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
+                           n_layers=n_layers, n_steps=n_steps)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────
     _std = {"burgers_1d", "darcy_2d"}
