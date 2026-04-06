@@ -1,12 +1,12 @@
 commit	benchmark	model	val_l2_rel	memory_gb	status	description
-2c511b0	burgers_1d	FNO	0.237418	0.1	keep	baseline FNO-1D (12x32)
-2c511b0	darcy_2d	FNO	0.998617	1.7	keep	baseline FNO-2D (12x32)
-2c511b0	navier_stokes_2d	FNO	1.000000	0.0	crash	diverged in step 67
-37100	burgers_1d	FNO	0.230707	0.1	keep	FNO-1D (12x64) - slightly better
-37436	burgers_1d	FNO	0.269450	0.1	discard	FNO-1D (8x64) - worse
-37803	burgers_1d	FNO	0.255476	0.1	discard	FNO-1D (16x32) - worse, timer issue?
-36513	burgers_1d	DeepONet	0.808308	0.1	discard	DeepONet (64) - poor
-36099	burgers_1d	FNO	0.249884	0.1	discard	FNO-1D (12x32) + residual - worse
+2c511b0	burgers_1d	FNO	0.237418	0.10	keep	baseline FNO-1D (12x32)
+2c511b0	darcy_2d	FNO	0.998617	1.70	keep	baseline FNO-2D (12x32)
+2c511b0	navier_stokes_2d	FNO	1.000000	0.00	crash	diverged in step 67
+37100	burgers_1d	FNO	0.230707	0.10	keep	FNO-1D (12x64) - slightly better
+37436	burgers_1d	FNO	0.269450	0.10	discard	FNO-1D (8x64) - worse
+37803	burgers_1d	FNO	0.255476	0.10	discard	FNO-1D (16x32) - worse, timer issue?
+36513	burgers_1d	DeepONet	0.808308	0.10	discard	DeepONet (64) - poor
+36099	burgers_1d	FNO	0.249884	0.10	discard	FNO-1D (12x32) + residual - worse
 0b02868	burgers_1d	FNO	0.216930	0.16	keep	fno_h128_m16_l4 FNO  h=128  l=4  m=16
 5394a18	burgers_1d	FNO	0.199864	0.39	keep	fno_h256_m16_l4 FNO  h=256  l=4  m=16
 9616e25	burgers_1d	FNO	0.200541	0.09	discard	fno_h64_m16_l6 FNO  h=64  l=6  m=16
@@ -81,7 +81,7 @@ a567132	burgers_1d	RFNO	0.171636	0.29	discard	rfno_h128_m24_l8_h1 RFNO  h=128  l
 8af7cc7	burgers_1d	FFNO	0.246536	0.34	discard	ffno_h256_m24_l8 FFNO  h=256  l=8  m=24
 8af7cc7	burgers_1d	FFNO	0.240487	0.37	discard	ffno_h256_m32_l8 FFNO  h=256  l=8  m=32
 8af7cc7	burgers_1d	AFNO	0.659331	0.48	discard	afno_v2_h256_m24_l8 AFNO  h=256  l=8  m=24
-8af7cc7	burgers_1d	FFNO	N/A	0.00	crash	ffno_h128_m48_l8 FFNO  h=128  l=8  m=48
+8af7cc7	burgers_1d	FFNO	1.000000	0.00	crash	ffno_h128_m48_l8 FFNO  h=128  l=8  m=48
 8af7cc7	burgers_1d	FFNO	0.350967	0.45	discard	ffno_h256_m32_l10 FFNO  h=256  l=10  m=32
 8af7cc7	burgers_1d	FFNO	0.302069	0.70	discard	ffno_h512_m24_l8 FFNO  h=512  l=8  m=24
 b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
@@ -98,3 +98,6 @@ b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
 73e08fc	burgers_1d	FNO	0.146759	0.28	keep	fno_h128_m24_l8_aug FNO  h=128  l=8  m=24
 6c809e1	burgers_1d	RFNO	0.161805	0.30	discard	rfno_h128_m24_l8_aug RFNO  h=128  l=8  m=24
 5ff4306	darcy_2d_fix	FNO	1.000003	1.81	keep	fno_darcy2d_fix_h32_m8_l4 FNO  h=32  l=4  m=8
+3415d16	darcy_2d_fix	FNO	0.146942	1.80	keep	fno_darcy2d_fix_h32_m8_l4 FNO h=32 l=4 m=8 (fixed f, log-normal a)
+3415d16	ns_2d_fix	FNO	0.015166	1.80	keep	fno_ns2d_fix_h32_m8_l4 FNO baseline (corrected ICs)
+3415d16	darcy_2d_fix	FNO	19.106368	7.20	discard	fno_darcy2d_fix_h128 FNO h=128 l=8 m=24 (too large, only 2 steps)

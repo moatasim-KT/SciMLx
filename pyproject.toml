@@ -10,4 +10,6 @@ dependencies = [
     "scipy>=1.14.0",
     "matplotlib>=3.9.0",
     "pyyaml>=6.0",
+    "fastapi>=0.135.3",
+    "uvicorn>=0.43.0",
 ]

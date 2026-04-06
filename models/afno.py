@@ -90,14 +90,15 @@ class AdaptiveSpectralMixer1d(nn.Module):
         xr = x_ft[:, :m, :].real                   # [B, m, C]
         xi = x_ft[:, :m, :].imag
 
-        # Stack real & imag → [B*m, 2C] so MLP learns complex interactions
-        ri_flat = mx.concatenate(
-            [xr.reshape(B * m, C), xi.reshape(B * m, C)], axis=-1
-        )                                           # [B*m, 2C]
+        # Interleave real & imag → [B*m, 2C] so [r0, i0, r1, i1, ...] are together.
+        # This ensures the same MLP block sees both components of each channel,
+        # allowing it to learn the proper complex-valued mapping.
+        ri_flat = mx.stack([xr, xi], axis=-1).reshape(B * m, 2 * C)
 
         out     = self.mixer(ri_flat)               # [B*m, 2C]
-        out_r   = out[:, :C].reshape(B, m, C)
-        out_i   = out[:, C:].reshape(B, m, C)
+        out     = out.reshape(B, m, C, 2)
+        out_r   = out[:, :, :, 0]
+        out_i   = out[:, :, :, 1]
 
         # Learned sparsity
         if self.sparsity > 0:

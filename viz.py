@@ -19,11 +19,11 @@ Usage:
     uv run viz.py --mode validation               # solver accuracy
     uv run viz.py --mode spectral                 # frequency analysis
     uv run viz.py --mode concerns                 # concern dashboard
+    uv run viz.py --mode arch --benchmark burgers_1d --model FNO  # arch sanity check
     uv run viz.py --show                          # display (don't save)
 """
 
 import argparse
-import csv
 import math
 import os
 import re
@@ -42,17 +42,7 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.ticker import LogLocator, NullFormatter
 
-REPO  = Path(__file__).parent
-FIGS  = REPO / "figs"
-LOGS  = REPO / "logs"
-RESULTS = REPO / "results.tsv"
-
-SOTA = {
-    "burgers_1d": 0.0149,
-    "kdv_1d":     0.010,
-    "wave_1d":    0.005,
-    "darcy_2d":   0.0108,
-}
+from utils import REPO_ROOT as REPO, FIGS_DIR as FIGS, LOGS_DIR as LOGS, RESULTS_FILE as RESULTS, SOTA, load_results as _load_rows
 
 BM_COLORS = {
     "burgers_1d": "#e74c3c",
@@ -83,17 +73,9 @@ def _save(fig, name: str):
 
 
 def load_results() -> list[dict]:
-    rows = []
-    if not RESULTS.exists():
-        return rows
-    with open(RESULTS) as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        for row in reader:
-            try:
-                row["val"] = float(row["val_l2_rel"])
-            except (KeyError, ValueError):
-                row["val"] = float("nan")
-            rows.append(row)
+    rows = _load_rows()
+    for row in rows:
+        row["val"] = row["val_l2_rel"]  # alias expected by viz internals
     return rows
 
 
@@ -1156,6 +1138,72 @@ def plot_input_statistics():
     _save(fig, "input_statistics")
 
 
+# ── Architecture sanity-check (merged from vis.py) ───────────────────────────
+
+def plot_model_arch(benchmark: str = "burgers_1d", model_type: str = "FNO",
+                   modes: int = 16, levels: int = 3,
+                   hidden: int = 64, layers: int = 4, samples: int = 3):
+    """Run an untrained model forward pass and plot prediction vs ground truth.
+
+    Useful for verifying shape compatibility before a full training run.
+    Saves to figs/arch_<benchmark>_<model_type>.png.
+    """
+    import mlx.core as mx
+    import mlx.nn as nn
+    from prepare import make_dataloader, GRID_SIZE
+    from research_plugins import MODEL_REGISTRY
+
+    is_1d  = benchmark.endswith("_1d")
+    mk     = ("FNO2D" if model_type == "FNO" and not is_1d else model_type)
+    model  = MODEL_REGISTRY.build(mk, n_modes=modes, hidden_dim=hidden,
+                                   n_layers=layers, n_levels=levels)
+    mx.eval(model.parameters())
+
+    loader       = make_dataloader(benchmark, "val", samples)
+    x, y         = next(loader)
+    if model_type == "DeepONet":
+        B      = x.shape[0]
+        coords = mx.linspace(0, 1, GRID_SIZE).reshape(1, GRID_SIZE, 1)
+        coords = mx.broadcast_to(coords, (B, GRID_SIZE, 1))
+        pred   = model(x, coords)
+    else:
+        pred = model(x)
+    mx.eval(pred)
+
+    x_np   = np.array(x)
+    y_np   = np.array(y)
+    p_np   = np.array(pred)
+
+    if is_1d:
+        fig, axes = plt.subplots(samples, 1, figsize=(10, 3 * samples))
+        if samples == 1:
+            axes = [axes]
+        grid = np.linspace(0, 1, x_np.shape[1])
+        for i in range(samples):
+            axes[i].plot(grid, x_np[i], "k--", alpha=0.7, label="Input")
+            axes[i].plot(grid, y_np[i], "b-",  linewidth=2, label="Target")
+            axes[i].plot(grid, p_np[i], "r--", linewidth=2, label="Pred (untrained)")
+            axes[i].legend(fontsize=8)
+            axes[i].set_title(f"Sample {i+1} — untrained {model_type}")
+    else:
+        fig, axes = plt.subplots(samples, 3, figsize=(15, 4 * samples))
+        if samples == 1:
+            axes = axes[None, :]
+        for i in range(samples):
+            kw = dict(cmap="RdBu_r",
+                      vmin=float(min(y_np[i].min(), p_np[i].min())),
+                      vmax=float(max(y_np[i].max(), p_np[i].max())))
+            for ax, img, title in zip(axes[i],
+                                       [x_np[i], y_np[i], p_np[i]],
+                                       ["Input", "Target", f"Pred ({model_type})"]):
+                im = ax.imshow(img, **(dict(cmap="viridis") if title == "Input" else kw))
+                ax.set_title(f"{title} {i+1}")
+                plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    _save(fig, f"arch_{benchmark}_{model_type}")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 ALL_MODES = [
@@ -1163,6 +1211,8 @@ ALL_MODES = [
     "data", "validation", "spectral", "concerns",
     "architecture", "distribution",
 ]
+# "arch" is not included in "all" — it requires a live model forward pass
+
 
 
 def main():
@@ -1176,6 +1226,18 @@ def main():
                    help="Path to a specific .log file (for training mode)")
     p.add_argument("--show",      action="store_true",
                    help="Display plots interactively (requires display)")
+    p.add_argument("--model",     default="FNO",
+                   help="Model type for --mode arch (default: FNO)")
+    p.add_argument("--hidden",    type=int, default=64,
+                   help="Hidden dim for --mode arch")
+    p.add_argument("--layers",    type=int, default=4,
+                   help="Num layers for --mode arch")
+    p.add_argument("--modes",     type=int, default=16,
+                   help="Fourier modes for --mode arch")
+    p.add_argument("--levels",    type=int, default=3,
+                   help="Wavelet levels for --mode arch (WNO)")
+    p.add_argument("--samples",   type=int, default=3,
+                   help="Num samples to plot for --mode arch")
     args = p.parse_args()
 
     SHOW = args.show
@@ -1210,6 +1272,14 @@ def main():
             plot_architecture_comparison()
         elif m == "distribution":
             plot_input_statistics()
+        elif m == "arch":
+            plot_model_arch(
+                benchmark=args.benchmark or "burgers_1d",
+                model_type=args.model,
+                modes=args.modes, levels=args.levels,
+                hidden=args.hidden, layers=args.layers,
+                samples=args.samples,
+            )
         else:
             print(f"  Unknown mode: {m!r}")
 

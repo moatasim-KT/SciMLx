@@ -1,320 +1,304 @@
-# SciML Autoresearch Experiment Protocol
+# SciML AutoResearch — Agent Field Guide
 
-This repository is an Apple Silicon (MLX) platform for autonomous **Scientific
-Machine Learning (SciML)** research.  An AI agent modifies `train.py`, runs a
-5-minute experiment, and keeps or discards each result based on `val_l2_rel`.
+This file is the primary reference for an **external AI agent** (Claude Code,
+Gemini, GPT-4, human researcher) driving the research loop in **Mode A**.
 
----
-
-## Knowledge Base
-
-Before starting experiments, consult:
-- `docs/LITERATURE.md` – foundational + recent SciML papers
-- `docs/TERMINOLOGY.md` – standardised terms
-- `docs/SOTA.md`        – performance targets per benchmark
+For a quick overview see `CLAUDE.md` or `GEMINI.md`. This file goes deeper:
+the full tool chain, interpretation guide, and what to do next.
 
 ---
 
-## Setup & Benchmarks
+## Orchestration Modes
 
-| Benchmark           | PDE                      | Metric target (SOTA) |
-|---------------------|--------------------------|----------------------|
-| `burgers_1d`        | 1D viscous Burgers        | ≤ 0.05 rel-L2        |
-| `darcy_2d`          | 2D steady Darcy flow      | ≤ 0.02 rel-L2        |
-| `navier_stokes_2d`  | 2D incompressible NS      | ≤ 0.02 rel-L2        |
+### Mode A · External Agent (this file)
+
+The agent reads state, reasons about it, edits files, and runs commands.
+Full control. Best for: novel architecture ideas, hypothesis-driven branching,
+human intuition, careful steering.
 
 ```bash
-uv run prepare.py          # one-time: generates + caches val set
-uv run train.py            # run experiment (5-min budget)
-uv run train.py > run.log 2>&1   # redirect for autonomous loops
-grep "^val_l2_rel:" run.log
+# Canonical session:
+uv run analyze.py --papers          # 1. read current state
+uv run auto_suggest.py              # 2. get ranked suggestions
+# 3. edit experiments.py or models/*.py
+uv run autorun.py --priority 1 --commit   # 4. run
+# 5. go to 1
 ```
 
----
+### Mode B · agent_loop.py (optional, automated)
 
-## Experiment Loop
-
-Each experiment has a **5-minute training budget** (`TIME_BUDGET = 300`).
-
-### Permitted edits
-- `train.py`   – hyperparameters, architecture selection, loss design
-- `models/*.py` – add or modify model classes
-- `results.tsv` – append result rows
-
-### Forbidden edits
-- `prepare.py` – defines the ground-truth metric; must not be changed
-
-### Protocol
-
-1. Create branch `autoresearch/<tag>`
-2. Run baseline once to confirm hardware speed
-3. Edit `train.py`, commit, run, read `val_l2_rel`
-4. **Keep** if improved: `git add train.py results.tsv && git commit --amend`
-5. **Discard** if not: log as `discard`, then `git reset --hard <last-kept>`
-6. Never use `git add -A`
-
----
-
-## Architecture Zoo
-
-All models share the same interface: `model(u0)` where `u0: [B, N]` (1D) or
-`[B, N, N]` (2D).  Switch via `MODEL_TYPE` constant or `--model` flag.
-
-| MODEL_TYPE     | Key idea                              | Best for               |
-|----------------|---------------------------------------|------------------------|
-| `FNO`          | Global Fourier spectral conv          | Periodic, smooth PDEs  |
-| `UNO`          | U-Net encoder-decoder + FNO layers    | Multi-scale phenomena  |
-| `WNO`          | Haar wavelet conv (multi-level)       | Non-periodic, shocks   |
-| `DeepONet`     | Branch + Trunk inner product          | Irregular geometries   |
-| `PODDeepONet`  | Shared POD basis + branch coeff net   | Low-dim solution space |
-
----
-
-## Research Directions (8 Advanced Topics)
-
-Work through these in order; earlier ones are higher expected yield.
-
----
-
-### Direction 1 · Architecture Depth & Width Sweep
-
-**Hypothesis:** The current baseline (FNO, 4 layers, hidden=64) may under-use
-the 5-minute budget on Apple Silicon.  Wider/deeper models could converge to
-better solutions.
-
-**What to try:**
-```python
-# Vary one at a time; record val_l2_rel for each
-HIDDEN_DIM in [32, 64, 128, 256]
-N_LAYERS   in [2, 4, 6, 8]
-N_MODES    in [8, 12, 16, 24, 32]  # ≤ GRID_SIZE//2 = 32
-```
-
-**Expected outcome:** hidden=128, layers=6 should outperform the hidden=64,
-layers=4 baseline without exceeding memory.
-
-**Stop condition:** if step time exceeds 200ms (model too large for budget).
-
----
-
-### Direction 2 · U-shaped Neural Operator (UNO)
-
-**Hypothesis:** UNO's encoder-decoder structure captures multi-scale features
-that a flat FNO misses, especially important for Burgers' equation where the
-shock lives at a different scale from the smooth background.
-
-**What to try:**
-```python
-MODEL_TYPE = "UNO"
-N_MODES    = 16
-HIDDEN_DIM = 64   # per-level; bottleneck uses 4×HIDDEN_DIM
-N_LAYERS   = 2    # FNO blocks per level (6 total across 3 levels)
-```
-
-**Expected outcome:** 10–30% improvement over FNO baseline on `burgers_1d`.
-Reference: Rahman et al. (2022) report ~20% error reduction vs flat FNO.
-
----
-
-### Direction 3 · Wavelet Neural Operator (WNO)
-
-**Hypothesis:** Haar wavelets have compact support and handle non-periodic
-boundary conditions better than global Fourier modes.  Better suited for
-`darcy_2d` (inhomogeneous domain).
-
-**What to try:**
-```python
-MODEL_TYPE = "WNO"
-N_LEVELS   = 3    # 3 decomposition levels → N/8 = 8-point approximation
-HIDDEN_DIM = 64
-N_LAYERS   = 4
-```
-
-**Expected outcome:** Comparable to FNO on `burgers_1d`; meaningfully better
-on non-periodic problems.
-
----
-
-### Direction 4 · Physics-Informed Neural Operator (PINO)
-
-**Hypothesis:** Adding the Burgers PDE residual as an auxiliary loss encourages
-the model to learn physically consistent solutions, especially in regions poorly
-covered by training data.
-
-**What to try:**
-```python
-MODEL_TYPE  = "FNO"   # or UNO
-PINO_LAMBDA = 0.01    # start small; try 0.001, 0.01, 0.1
-HIDDEN_DIM  = 64
-```
-
-The `burgers_residual()` function in `train.py` computes `u·∂u/∂x − ν·∂²u/∂x²`
-spectrally.  The combined loss is:
-```
-L = L_data + λ · mean(residual²)
-```
-
-**Key pitfall:** λ too large → physics loss dominates, data loss increases.
-Binary-search λ: start at 0.01, halve/double based on whether val_l2_rel
-improves.
-
-**Expected outcome:** 5–15% improvement over data-only baseline.
-Reference: Li et al. (2021) PINO paper reports consistent improvements.
-
----
-
-### Direction 5 · Learning Rate & Schedule Tuning
-
-**Hypothesis:** The default LR=1e-3 and 40% cosine warmdown may not be optimal
-for the fixed 5-minute budget.
-
-**What to try:**
-```python
-LR             in [3e-4, 1e-3, 3e-3]
-WARMUP_RATIO   in [0.02, 0.05, 0.10]
-WARMDOWN_RATIO in [0.20, 0.40, 0.60]
-FINAL_LR_FRAC  in [0.001, 0.01, 0.1]
-```
-
-**Note:** higher LR can diverge without GRAD_CLIP.  Keep `GRAD_CLIP = 1.0`.
-
-**Expected outcome:** 5–10% improvement from better schedule.
-
----
-
-### Direction 6 · Gradient Clipping Sensitivity
-
-**Hypothesis:** The default GRAD_CLIP=1.0 was chosen conservatively.  Looser
-or tighter clipping affects convergence speed and stability.
-
-**What to try:**
-```python
-GRAD_CLIP in [0.1, 0.5, 1.0, 5.0, 0.0]  # 0 = disabled
-```
-
-Check `max_grad_norm` in the log to see how often clipping fires.  If
-`max_grad_norm` is consistently < 0.5, clipping is unnecessary; try disabling.
-
----
-
-### Direction 7 · Sobolev / H1 Loss Function
-
-**Hypothesis:** Standard L2 loss treats all spatial frequencies equally.  A
-Sobolev H1 norm penalises high-frequency errors more, which can improve
-smoothness of the predicted solution and overall accuracy.
-
-**What to try** (implement in `loss_fn`):
-```python
-# H1 loss: L2 of (pred - y) + α * L2 of (∂pred/∂x - ∂y/∂x)
-def h1_loss(pred, y, alpha=0.1):
-    N = pred.shape[-1]
-    k = mx.arange(N // 2 + 1, dtype=mx.float32)
-    def grad_fft(u):
-        u_ft = mx.fft.rfft(u, axis=-1)
-        return mx.fft.irfft(mx.complex(-u_ft.imag * k, u_ft.real * k),
-                            n=N, axis=-1)
-    diff   = pred - y
-    grad_d = grad_fft(diff)
-    axes   = tuple(range(1, y.ndim))
-    return mx.mean(mx.mean(diff ** 2, axis=axes) +
-                   alpha * mx.mean(grad_d ** 2, axis=axes))
-```
-
-Try α in [0.01, 0.1, 1.0].
-
----
-
-### Direction 8 · DeepONet Architecture Search
-
-**Hypothesis:** The current DeepONet uses 4 hidden layers with LayerNorm.
-Changing width, depth, or the branch/trunk asymmetry could unlock better
-performance on this benchmark.
-
-**What to try:**
-```python
-MODEL_TYPE = "DeepONet"
-HIDDEN_DIM in [64, 128, 256]    # branch/trunk width
-N_LAYERS   in [3, 4, 6]         # layers in each net
-```
-
-Also try `PODDeepONet`:
-```python
-MODEL_TYPE = "PODDeepONet"
-HIDDEN_DIM = 64                 # also controls n_basis
-```
-
-**Expected target:** val_l2_rel < 0.15 (vs current 0.808).  SOTA for DeepONet
-on Burgers is 0.05–0.10.
-
----
-
-### Direction 9 · Cross-PDE Generalisation
-
-**Hypothesis:** A single model trained simultaneously on multiple PDEs can
-learn shared structure (e.g., advection, diffusion) and achieve better
-generalisation than benchmark-specific models.
-
-**How to implement** (requires changes to `loss_fn` and data loading):
-```python
-# Interleave batches from two benchmarks:
-loader_b = make_dataloader("burgers_1d",  "train", BATCH_SIZE // 2)
-loader_d = make_dataloader("darcy_2d",    "train", BATCH_SIZE // 2)
-# Concatenate along batch dim; use same FNO1d/FNO2d for respective shapes
-# or embed both into a shared latent space
-```
-
----
-
-### Direction 10 · Resolution-Invariant Evaluation
-
-**Hypothesis:** FNO is theoretically resolution-invariant.  Verify by training
-at GRID_SIZE=64 and manually evaluating at N=128 or N=256.
-
-**How to implement:**
-```python
-# After training, create a new eval set at higher resolution:
-from prepare import solve_burgers_batch
-import numpy as np
-# Generate high-res ICs and solutions, evaluate using trained model
-# (The model's FFT layers handle variable N automatically)
-```
-
-This tests whether learned operators truly generalise across resolutions.
-
----
-
-## Logging
-
-`results.tsv` schema:
-```
-commit  benchmark  model  val_l2_rel  memory_gb  status  description
-```
-
-Statuses: `keep` | `discard` | `crash`
-
-Example:
-```
-a1b2c3d  burgers_1d  FNO   0.043210  0.1  keep     FNO1d hidden=128 layers=6
-e5f6a7b  burgers_1d  UNO   0.038500  0.2  keep     UNO1d hidden=64 n_layers=2
-f9g0h1i  burgers_1d  WNO   0.051200  0.1  discard  WNO1d n_levels=3 - worse
-```
-
----
-
-## Useful one-liners
+An in-process loop that proposes + appends + runs new experiments with no
+human input. Use after a Mode A session to saturate the queue overnight.
 
 ```bash
-# Quick result check
-grep "^val_l2_rel:" run.log
-
-# Diagnose a crash
-tail -n 50 run.log
-
-# Show current best
-sort -t$'\t' -k4 -n results.tsv | head -5
-
-# Run with explicit model/hyperparams via CLI
-uv run train.py --model UNO --hidden 128 --layers 2 > run.log 2>&1
-uv run train.py --model WNO --levels 3 --hidden 64  > run.log 2>&1
-uv run train.py --model FNO --pino_lambda 0.01      > run.log 2>&1
+uv run agent_loop.py --dry-run       # see what it would do
+uv run agent_loop.py --top 5         # propose 5 new configs
+uv run agent_loop.py --run           # propose + run top-3
 ```
+
+Both modes share the same `experiments.py` queue and `results.json` lineage.
+You can pause/resume either from the dashboard or terminal:
+
+```bash
+# Pause (autorun/agent_loop checks this before each experiment)
+curl -X POST http://localhost:8000/api/pause
+# or:
+touch .autorun_pause
+
+# Resume
+curl -X POST http://localhost:8000/api/resume
+# or:
+rm .autorun_pause
+```
+
+---
+
+## Tool-by-tool guide
+
+### 1. Read state: `analyze.py`
+
+```bash
+uv run analyze.py           # results summary, model ranking
+uv run analyze.py --papers  # adds SOTA gap from papers/*.yaml
+```
+
+Output tells you: best val_l2_rel per benchmark, model comparison, whether
+any run beat SOTA, hyperparameter sensitivity.
+
+### 2. Get suggestions: `auto_suggest.py`
+
+```bash
+uv run auto_suggest.py              # full ranked list
+uv run auto_suggest.py --gaps       # SOTA gap table only
+uv run auto_suggest.py --generate   # print ready-to-paste ExperimentConfig snippets
+```
+
+Suggestion sources (in priority order):
+1. **Empirical wins** — configs that worked well on related benchmarks
+2. **Paper ideas** — `papers/*.yaml` entries with `status: pending`
+3. **Spectral diagnostic feedback** — if `diag_high_freq_error` is high,
+   suggests increasing n_modes or switching to spectral loss
+4. **Cross-benchmark transfer** — winning config on kdv_1d suggested on wave_1d,
+   winning config on burgers_1d suggested on ns_2d_fix, etc.
+
+### 3. Run the queue: `autorun.py`
+
+```bash
+uv run autorun.py --priority 1 --commit      # run all priority-1 pending
+uv run autorun.py --priority 2 --commit      # run priority 1 + 2
+uv run autorun.py --auto --commit            # run + re-suggest loop until queue empty
+uv run autorun.py --dry-run                  # preview without running
+uv run autorun.py --model RFNO               # run only RFNO experiments
+uv run autorun.py --benchmark kdv_1d         # run only kdv_1d experiments
+```
+
+What autorun does:
+- Skips experiments whose `name` is already in `results.json`
+- Writes full stdout to `logs/<name>.log`
+- Parses `val_l2_rel`, `peak_vram_mb`, `diag_*`, `inspect_id` from log
+- Classifies crashes: OOM / NaN-Inf / ImportError / ValueError / Timeout / UnknownError
+- Auto-retries once with halved hidden_dim + n_layers on non-fatal crashes
+- With `--commit`: stages `train.py results.tsv` and commits each kept result
+
+### 4. Add experiments: `experiments.py`
+
+Every experiment is a `ExperimentConfig` in the `EXPERIMENTS` list:
+
+```python
+ExperimentConfig(
+    name="my_exp",             # unique string — dedup key
+    benchmark="burgers_1d",   # see Benchmark Catalog
+    model="FNO",               # see Model Zoo
+    hidden_dim=128,
+    n_layers=8,
+    n_modes=24,
+    budget_s=300,              # seconds (300 for 1D, 480 for 2D)
+    priority=1,                # 1=highest; autorun runs lowest first
+    parent_name="",            # name of experiment this branches from (for DAG)
+    rationale="Why this experiment?",
+)
+```
+
+Priority conventions:
+- `1` — high value, run immediately
+- `2` — medium value, run after priority-1 queue is clear
+- `3` — speculative, auto-generated, run when queue is otherwise empty
+
+### 5. Inspect failures: `hypothesis.py` + `diagnostics.py`
+
+When a run underperforms:
+
+```python
+from hypothesis import HypothesisEngine
+engine = HypothesisEngine()
+
+# Analyze a benchmark's failure pattern
+report = engine.analyze_benchmark("burgers_1d")
+# Returns: best_val, trend, hp_importance, model_ranking
+
+# Get a concrete config suggestion
+intervention = engine.suggest_intervention("burgers_1d", best_val=0.1468)
+# Returns: {model, hidden_dim, n_layers, n_modes, rationale, paper_ref}
+```
+
+HypothesisEngine detects:
+- **Spectral bias** (`diag_high_freq_error` high) → increase n_modes or use spectral loss
+- **Shock/gradient errors** → switch to UNO or WNO
+- **Gradient collapse** → switch to RFNO (pre-LN residual)
+- **Step-time saturation** → reduce hidden_dim
+
+Spectral diagnostics (FFT-based, logged during training):
+```bash
+grep "^diag_" logs/<name>.log
+# diag_high_freq_error: 0.312
+# diag_low_freq_error: 0.021
+# diag_spectral_gap: 0.291
+```
+
+### 6. Adaptive HPO: `bayesian_hpo.py`
+
+```bash
+# See top-5 configs predicted by GP surrogate
+uv run bayesian_hpo.py --benchmark burgers_1d --top 5
+
+# Next EI-optimal config
+uv run bayesian_hpo.py --benchmark burgers_1d
+
+# Multi-objective: accuracy + memory
+uv run bayesian_hpo.py --benchmark burgers_1d --multi --pareto --mem-weight 0.3
+```
+
+In Python (used by agent_loop.py):
+```python
+from bayesian_hpo import BayesianHPO
+hpo = BayesianHPO("burgers_1d", objectives=[
+    ("val_l2_rel", 1.0, "minimize"),
+    ("memory_gb",  0.3, "minimize"),   # optional secondary objective
+])
+hpo.load_history()      # seeds from results.json automatically
+cfg = hpo.ask()         # returns {hidden_dim, n_layers, n_modes, lr}
+hpo.tell_multi(cfg, {"val_l2_rel": 0.15, "memory_gb": 0.12})
+front = hpo.pareto_front()   # Pareto-optimal configs
+```
+
+### 7. New model code generation: `model_scaffold.py`
+
+```bash
+# Generate a stub
+uv run model_scaffold.py --stub MyFNO --base FNO --notes "Add self-attention after each block"
+# → writes models/myfno.py
+
+# Edit the stub, then validate + register in one step
+uv run model_scaffold.py --register MyFNO models/myfno.py \
+    --benchmarks burgers_1d kdv_1d
+
+# The register command:
+# 1. Validates syntax → import → smoke test (shape check on 1D and 2D inputs)
+# 2. Copies to models/
+# 3. Adds export to models/__init__.py
+# 4. Registers in research_plugins.py MODEL_REGISTRY
+# 5. Appends ExperimentConfig entries to experiments.py
+```
+
+### 8. Dashboard: `app.py` + `ui/dashboard.html`
+
+```bash
+uv run uvicorn app:app --reload --port 8000
+# Then open ui/dashboard.html in a browser
+```
+
+Dashboard panels:
+- **Left sidebar** — per-benchmark SOTA comparison bars + quick stats
+- **Results tab** — all 102 completed experiments, sortable by any column, searchable, filterable by benchmark/status
+- **Queue tab** — all 38 pending experiments with priority, config, rationale
+- **Right inspector** — click any experiment for:
+  - `details`: config grid, val_l2_rel vs SOTA bar, rationale, conclusion, parent lineage
+  - `log`: full log file viewer with colorized output and SVG training loss curve
+  - `diag`: spectral bias values and diagnostic PNG
+
+API endpoints (all re-load results.json fresh on each call):
+```
+GET  /api/experiments          all completed experiments
+GET  /api/experiment/{id}      detail + inspect_url
+GET  /api/sota                 SOTA targets + our best + ratio per benchmark
+GET  /api/queue                all pending experiments with full config
+GET  /api/logs/{name}?tail=N   last N lines of logs/<name>.log
+GET  /api/status               VRAM, count, paused flag
+POST /api/pause                create .autorun_pause sentinel
+POST /api/resume               remove .autorun_pause sentinel
+POST /api/inject               add experiment to .injected_experiments.json
+POST /api/priority             override priority via .priority_overrides.json
+GET  /api/lineage              nodes + links for DAG visualization
+```
+
+### 9. Lineage tracking: `tracker.py`
+
+All runs are logged with DAG structure. To log programmatically:
+```python
+from tracker import Tracker
+t = Tracker()
+t.log_experiment(
+    benchmark="burgers_1d",
+    model="FNO",
+    val_l2_rel=0.155,
+    memory_gb=0.12,
+    status="keep",
+    description="FNO h=128 l=8 m=24",
+    config={"hidden_dim": 128, "n_layers": 8, "n_modes": 24},
+    diag={"diag_high_freq_error": 0.05, "diag_low_freq_error": 0.01},
+    parent_name="fno_h128_m24_l6",   # links to parent in DAG
+)
+
+# Analyze lineage
+analysis = t.analyze_lineage("burgers_1d")
+# Returns: best_val, hp_importance (Pearson correlations), model ranking, trend
+```
+
+---
+
+## Current state at-a-glance
+
+| Benchmark      | SOTA   | Our best      | Gap     | Priority |
+|----------------|--------|---------------|---------|----------|
+| burgers_1d     | 0.0149 | 0.1468        | 10×     | HIGH     |
+| kdv_1d         | 0.010  | **0.0020** ✓  | 0.2× SOTA | hold |
+| wave_1d        | 0.005  | **0.000992** ✓ | 0.2× SOTA | hold |
+| darcy_2d_fix   | 0.0108 | 0.1469        | 14×     | HIGH     |
+| ns_2d_fix      | 0.0128 | 0.0152        | 1.2×    | MEDIUM   |
+| euler_1d       | ~0.015 | not run       | —       | MEDIUM   |
+| swe_2d         | ~0.002 | not run       | —       | LOW      |
+| allen_cahn_2d  | ~0.020 | not run       | —       | LOW      |
+
+Queue: **38 pending experiments** (check `uv run autorun.py --dry-run` for list)
+
+---
+
+## Suggested next actions (ranked)
+
+1. **Burgers gap** — try curriculum training, stronger augmentation, ensemble of FNO+RFNO, PINN variants (not PINO)
+2. **darcy_2d_fix** — FNO h=128 l=6 m=24 (current h=32 is too small)
+3. **Unrun models on burgers** — S4NO, GNOT, PODDeepONet
+4. **euler_1d** — first run, use `--model FNO` with `--benchmark euler_1d` (note: FNO_MC for multi-channel)
+5. **ns_2d_fix** — try RFNO or wider FNO to beat SOTA 0.0128
+
+```bash
+# Quick wins to run right now:
+uv run train.py --benchmark darcy_2d_fix --model FNO --hidden 128 --layers 6 --modes 24
+uv run train.py --benchmark euler_1d     --model FNO --hidden 128 --layers 8 --modes 24
+uv run train.py --benchmark burgers_1d   --model S4NO --hidden 64 --layers 4 --modes 16
+```
+
+---
+
+## Invariants the agent must respect
+
+| Rule | Why |
+|------|-----|
+| Never modify `prepare.py` | Defines ground-truth metric for all experiments |
+| `ExperimentConfig.name` must be globally unique | Dedup key in results.json |
+| Never hand-edit `results.json` | Use tracker.py; hand edits break DAG |
+| `darcy_2d` is broken | Wrong solver — only use `darcy_2d_fix` |
+| Never add PINO experiments | Endpoint-only formulation always fails |
+| 2D benchmarks need `budget_s=480` | Extra time for 2D model compilation |
+| Stage only specific files with git | Never `git add -A` (avoids committing secrets/data) |
+| No new packages | Only mlx, numpy, scipy, matplotlib, pyyaml, fastapi, uvicorn |

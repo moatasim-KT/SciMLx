@@ -21,8 +21,6 @@ CLI:
 """
 
 import argparse
-import csv
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -32,9 +30,7 @@ try:
 except ImportError:
     _HAS_YAML = False
 
-
-PAPERS_DIR   = Path(__file__).parent / "papers"
-RESULTS_FILE = Path(__file__).parent / "results.tsv"
+from utils import PAPERS_DIR, RESULTS_FILE, load_results as _load_rows
 
 
 # ── YAML fallback (tiny parser for simple key: value files) ──────────────────
@@ -143,21 +139,8 @@ class PaperRegistry:
     @staticmethod
     def _load_results() -> dict[str, float]:
         """Return best val_l2_rel per benchmark from results.tsv."""
-        best: dict[str, float] = {}
-        if not RESULTS_FILE.exists():
-            return best
-        with open(RESULTS_FILE) as f:
-            reader = csv.DictReader(f, delimiter="\t")
-            for row in reader:
-                if row.get("status") == "keep":
-                    bm = row.get("benchmark", "")
-                    try:
-                        v = float(row["val_l2_rel"])
-                    except (ValueError, KeyError):
-                        continue
-                    if bm not in best or v < best[bm]:
-                        best[bm] = v
-        return best
+        from utils import best_per_benchmark
+        return best_per_benchmark(_load_rows())
 
     def gap_table(self) -> None:
         """Print our results vs SOTA targets from paper registry."""

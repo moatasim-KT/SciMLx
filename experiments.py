@@ -40,6 +40,8 @@ class ExperimentConfig:
     h1_alpha:    float = 0.1      # H1 loss derivative weight (used when loss_type="h1")
     augment:     bool  = False    # spatial-shift augmentation (periodic BCs only)
     save_ckpt:   bool  = False    # save model checkpoint after training
+    budget_s:    int  = 300       # training time budget in seconds (default 5 min)
+    parent_name: str  = ""        # name of parent experiment this branches from (for DAG lineage)
     priority:    int  = 5         # 1 = highest; run in ascending order
     rationale:   str  = ""        # why this experiment?
     expected:    str  = ""        # expected val_l2_rel range or direction
@@ -65,6 +67,8 @@ class ExperimentConfig:
             args += ["--augment"]
         if self.save_ckpt:
             args += ["--save_ckpt"]
+        if self.budget_s != 300:
+            args += ["--budget", str(self.budget_s)]
         return args
 
     def short(self) -> str:
@@ -413,7 +417,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="~0.16–0.18; slower per step (~45ms) but still meaningful.",
     ),
     ExperimentConfig(
-        name="fno_h128_m24_l6",
+        name="fno_h128_m24_l6_v2",
         benchmark="burgers_1d", model="FNO",
         hidden_dim=128, n_layers=6, n_modes=24,
         priority=1,
@@ -1086,6 +1090,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_darcy2d_fix_h32_m8_l4",
         benchmark="darcy_2d_fix", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=1,
         rationale="Baseline FNO on corrected Darcy 2D benchmark. "
                   "prepare.py solver used mean(a) only and fixed-seed f → val≈0.998. "
@@ -1096,6 +1101,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_darcy2d_fix_h64_m12_l4",
         benchmark="darcy_2d_fix", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
         priority=2,
         rationale="Larger FNO on corrected Darcy 2D to approach SOTA 0.0108.",
         expected="~0.02–0.08",
@@ -1104,6 +1110,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_ns2d_fix_h32_m8_l4",
         benchmark="ns_2d_fix", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=1,
         rationale="Baseline FNO on corrected NS 2D benchmark. "
                   "prepare.py solver: IC scale=1.0 → CFL≈61 → NaN. "
@@ -1114,9 +1121,172 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_ns2d_fix_h64_m12_l4",
         benchmark="ns_2d_fix", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
         priority=2,
         rationale="Larger FNO on corrected NS 2D benchmark.",
         expected="~0.03–0.10",
+    ),
+
+    # ── P22 · State Space Models (S4D) ──────────────────────────────────────
+    ExperimentConfig(
+        name="s4no_h64_l4_burgers",
+        benchmark="burgers_1d", model="S4NO",
+        hidden_dim=64, n_layers=4,
+        priority=2,
+        rationale="S4D (Diagonal S4) on Burgers. State-space model captures "
+                  "global interactions with O(N log N) complexity.",
+        expected="~0.15–0.25",
+        paper_ref="ssm-s4-2022",
+    ),
+    ExperimentConfig(
+        name="s4no_h128_l6_burgers",
+        benchmark="burgers_1d", model="S4NO",
+        hidden_dim=128, n_layers=6,
+        priority=3,
+        rationale="Wider/deeper S4D on Burgers.",
+        expected="~0.12–0.20",
+        paper_ref="ssm-s4-2022",
+    ),
+
+    # ── P23 · Neural Operator Transformer (GNOT) ─────────────────────────────
+    ExperimentConfig(
+        name="gnot_h64_l3_burgers",
+        benchmark="burgers_1d", model="GNOT",
+        hidden_dim=64, n_layers=3,
+        priority=3,
+        rationale="Simplified GNOT (self-attention) on Burgers. Transformer "
+                  "architecture for operator learning.",
+        expected="~0.15–0.25",
+        paper_ref="gnot-2023",
+    ),
+
+    # ── P24 · Physics-Informed Neural Operator (PINO - MLP Surrogate) ────────
+    # NOTE: original PINO entries commented out — fundamentally broken for
+    # endpoint-only formulation. Only "fixed" variants below are active.
+    # ExperimentConfig(
+    #     name="pino_mlp_h128_l6_burgers",
+    #     benchmark="burgers_1d", model="PINO",
+    #     hidden_dim=128, n_layers=6,
+    #     priority=2,
+    #     rationale="BROKEN — endpoint-only PINO. Physics residual not applicable.",
+    #     paper_ref="pino-2021",
+    # ),
+    # ExperimentConfig(
+    #     name="pino_mlp_h128_l6_pino01",
+    #     benchmark="burgers_1d", model="PINO",
+    #     hidden_dim=128, n_layers=6,
+    #     pino_lambda=0.01,
+    #     priority=3,
+    #     rationale="BROKEN — endpoint-only PINO with lambda.",
+    #     paper_ref="pino-2021",
+    # ),
+
+    # ── New benchmark baselines and near-SOTA pushes ──────────────────────────
+
+    # ns_2d_fix — currently 1.2x SOTA (0.0152 vs 0.0128) with only 1 run
+    ExperimentConfig(
+        name="ns2d_fno_h64_l4_m12",
+        benchmark="ns_2d_fix",
+        model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="Smaller FNO gets more steps in budget; wave_1d showed h=64 l=4 wins over h=128 l=8",
+        expected="0.010–0.013",
+    ),
+    ExperimentConfig(
+        name="ns2d_rfno_h128_l8_m24",
+        benchmark="ns_2d_fix",
+        model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        budget_s=480,
+        priority=1,
+        rationale="RFNO pre-LN stability; KdV best config transferred to 2D NS",
+        expected="0.010–0.014",
+    ),
+    ExperimentConfig(
+        name="ns2d_fno_h128_l6_m16",
+        benchmark="ns_2d_fix",
+        model="FNO",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        budget_s=480,
+        priority=1,
+        rationale="Medium-size FNO; balance between capacity and training steps for 2D",
+        expected="0.010–0.015",
+    ),
+
+    # darcy_2d_fix — currently 13.6x SOTA; h=32 too small, h=128 ran out of time
+    ExperimentConfig(
+        name="darcy2d_rfno_h64_l8_m12",
+        benchmark="darcy_2d_fix",
+        model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="RFNO h=64 fits 2D budget; pre-LN stability for deeper Darcy net",
+        expected="0.05–0.10",
+    ),
+    ExperimentConfig(
+        name="darcy2d_fno_h64_l6_m16",
+        benchmark="darcy_2d_fix",
+        model="FNO",
+        hidden_dim=64, n_layers=6, n_modes=16,
+        budget_s=480,
+        priority=1,
+        rationale="FNO h=64 — goldilocks size for 2D budget constraint",
+        expected="0.05–0.12",
+    ),
+
+    # Untested high-fidelity simulation baselines
+    ExperimentConfig(
+        name="euler1d_fno_h64_l4_m16",
+        benchmark="euler_1d",
+        model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        priority=2,
+        rationale="First baseline on compressible Euler 1D; multi-channel FNO auto-routed to FNO_MC",
+        expected="0.05–0.20",
+    ),
+    ExperimentConfig(
+        name="euler1d_rfno_h128_l8_m24",
+        benchmark="euler_1d",
+        model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        priority=2,
+        rationale="RFNO for multi-channel Euler; best KdV arch transferred",
+        expected="0.02–0.10",
+    ),
+    ExperimentConfig(
+        name="swe2d_fno_h64_l4_m12",
+        benchmark="swe_2d",
+        model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=2,
+        rationale="First baseline on 2D shallow water; analytic solver makes data generation instant",
+        expected="0.005–0.05",
+    ),
+    ExperimentConfig(
+        name="allen_cahn_fno_h64_l4_m12",
+        benchmark="allen_cahn_2d",
+        model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=2,
+        rationale="First baseline on Allen-Cahn phase field; ETDRK2 solver generates data in ~16s",
+        expected="0.02–0.10",
+    ),
+
+    # Cross-benchmark transfer: RFNO+aug on Burgers (KdV insight)
+    ExperimentConfig(
+        name="burgers_rfno_h128_l8_m24_aug",
+        benchmark="burgers_1d",
+        model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        augment=True,
+        priority=2,
+        rationale="RFNO + augmentation combo; aug alone gave best Burgers (0.1468), RFNO alone 0.1618",
+        expected="0.13–0.15",
     ),
 ]
 

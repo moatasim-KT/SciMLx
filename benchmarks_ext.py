@@ -53,9 +53,8 @@ WAVE_T      = 1.0    # final time
 WAVE_NSTEPS = 400    # Störmer-Verlet steps
 
 # Darcy fix parameters
-DARCY_FIX_N_ITER  = 40   # Richardson iterations (converges in ~4; 40 = machine precision)
-DARCY_FIX_SCALE_A = 0.2  # permeability variation: a ∈ [0.6, 1.4] → well-conditioned
-DARCY_FIX_MODES_F = 5    # source term Fourier modes (zero-mean, compatible with periodic BCs)
+DARCY_FIX_N_ITER  = 40   # PCG iterations
+DARCY_FIX_MODES_F = 5    # source term Fourier modes
 
 # NS fix parameters — reduces CFL from ~61 to ~0.6
 NS_FIX_SCALE  = 0.1     # IC vorticity amplitude (vs 1.0 in prepare.py → 10× smaller)
@@ -72,53 +71,76 @@ def solve_darcy_2d_fix_batch(
 ) -> np.ndarray:
     """Solve -∇·(a(x,y)∇u) = f on [0,1]² with periodic BCs.
 
-    Uses Richardson iteration preconditioned by the constant-coefficient Poisson
-    operator P = a_mean·(-Δ).  Convergence: spectral_radius(I - P⁻¹A) ≤
-    (a_max - a_min)/(a_max + a_min) ≈ 0.4 for DARCY_FIX_SCALE_A=0.2.
-    40 iterations gives residual < 1e-18 — effectively machine precision.
+    Uses Preconditioned Conjugate Gradient (PCG) with the constant-coefficient
+    Poisson operator P = a_mean·(-Δ) as a preconditioner.
+    PCG is much faster and more robust than Richardson iteration.
 
     Fixes for prepare.py's broken solver:
       1. Uses the full spatial field a(x,y), not just mean(a)
-      2. Source f is passed in from the IC generator (tied to data seed)
-      3. DC mode (mean u) is zeroed — periodic Darcy has no unique mean
+      2. Source f is fixed and deterministic (passed in)
+      3. DC mode (mean u) is zeroed and handled via zero-mean projections
     """
     B, N, _ = a.shape
     a_d = a.astype(np.float64)
     f_d = f.astype(np.float64)
 
     # Physical wavenumbers on [0,1]²: d/dx ↔ multiply by 2πi·k_int
-    k_int = np.fft.fftfreq(N, d=1.0 / N)          # [0, 1, ..., N/2-1, -N/2, ..., -1]
-    kx, ky = np.meshgrid(2 * np.pi * k_int,
-                          2 * np.pi * k_int)       # (N, N) physical wavenumbers
-    lap_pos = kx ** 2 + ky ** 2                    # |k|² — positive Laplacian eigenvalues
-    lap_pos[0, 0] = 1.0                            # avoid div-by-zero at DC
+    k_int = np.fft.fftfreq(N, d=1.0 / N)
+    kx, ky = np.meshgrid(2 * np.pi * k_int, 2 * np.pi * k_int)
+    lap_pos = kx ** 2 + ky ** 2
+    lap_pos[0, 0] = 1.0
 
-    a_mean = a_d.mean(axis=(1, 2), keepdims=True)  # (B, 1, 1)
+    a_mean = a_d.mean(axis=(1, 2), keepdims=True)
 
-    u = np.zeros((B, N, N), dtype=np.float64)
-
-    for _ in range(n_iter):
-        # Compute A·u = -∇·(a∇u) via spectral differentiation
-        u_hat = np.fft.fft2(u, axes=(1, 2))
-        ux = np.fft.ifft2(1j * kx[None] * u_hat, axes=(1, 2)).real
-        uy = np.fft.ifft2(1j * ky[None] * u_hat, axes=(1, 2)).real
-        Au = -np.fft.ifft2(
-            1j * kx[None] * np.fft.fft2(a_d * ux, axes=(1, 2))
-            + 1j * ky[None] * np.fft.fft2(a_d * uy, axes=(1, 2)),
+    def apply_A(v):
+        """Compute A·v = -∇·(a∇v) via spectral differentiation."""
+        v_hat = np.fft.fft2(v, axes=(1, 2))
+        vx = np.fft.ifft2(1j * kx[None] * v_hat, axes=(1, 2)).real
+        vy = np.fft.ifft2(1j * ky[None] * v_hat, axes=(1, 2)).real
+        Av = -np.fft.ifft2(
+            1j * kx[None] * np.fft.fft2(a_d * vx, axes=(1, 2))
+            + 1j * ky[None] * np.fft.fft2(a_d * vy, axes=(1, 2)),
             axes=(1, 2),
         ).real
+        return Av
 
-        # Residual r = f - Au
-        r = f_d - Au
-
-        # Preconditioned step: P⁻¹r = r̂ / (a_mean · |k|²)  (spectral inversion)
+    def apply_P_inv(r):
+        """Preconditioned step: P⁻¹r = r̂ / (a_mean · |k|²)."""
         r_hat = np.fft.fft2(r, axes=(1, 2))
         Pr = np.fft.ifft2(r_hat / (a_mean * lap_pos[None]), axes=(1, 2)).real
-        Pr[:, 0, 0] = 0.0   # zero DC (mean u is free for periodic BCs)
+        Pr -= Pr.mean(axis=(1, 2), keepdims=True)  # project to zero-mean space
+        return Pr
 
-        u = u + Pr
+    u = np.zeros((B, N, N), dtype=np.float64)
+    r = f_d - apply_A(u)
+    r -= r.mean(axis=(1, 2), keepdims=True)
+    
+    z = apply_P_inv(r)
+    p = z.copy()
+    
+    rz_old = np.sum(r * z, axis=(1, 2), keepdims=True)
+    
+    for _ in range(n_iter):
+        Ap = apply_A(p)
+        pAp = np.sum(p * Ap, axis=(1, 2), keepdims=True)
+        alpha = rz_old / (pAp + 1e-16)
+        
+        u += alpha * p
+        r -= alpha * Ap
+        # Project residual to zero-mean space to avoid drift
+        r -= r.mean(axis=(1, 2), keepdims=True)
+        
+        z = apply_P_inv(r)
+        rz_new = np.sum(r * z, axis=(1, 2), keepdims=True)
+        
+        if np.max(np.abs(rz_new)) < 1e-18:
+            break
+            
+        beta = rz_new / (rz_old + 1e-16)
+        p = z + beta * p
+        rz_old = rz_new
 
-    u -= u.mean(axis=(1, 2), keepdims=True)  # enforce zero mean
+    u -= u.mean(axis=(1, 2), keepdims=True)
     return u.astype(np.float32)
 
 
@@ -198,15 +220,22 @@ def _darcy_fix_ic(n: int, N: int, rng: np.random.RandomState
     """ICs for corrected Darcy benchmark.
 
     Returns:
-        a: permeability field in [0.6, 1.4], GRF with n_modes=5
-        f: source term with zero mean (required for periodic-BC Darcy), GRF n_modes=5
+        a: log-normal permeability field (always positive)
+        f: FIXED source term with zero mean (required for periodic-BC Darcy).
 
-    Both a and f are generated from the SAME rng so (a, f) pairs are consistent
-    across train/val splits (same seed → same data).  This is the key fix over
-    prepare.py, where f used a FIXED global seed and was uncorrelated with a.
+    f is now fixed for the entire benchmark (deterministic), matching the
+    standard FNO paper setup. a uses exp(GRF) to ensure positivity, which
+    is critical for the elliptic operator to be well-defined.
     """
-    a = _random_ic_2d(n, N, rng, n_modes=5, scale=DARCY_FIX_SCALE_A, offset=1.0)
-    f = _random_ic_2d(n, N, rng, n_modes=DARCY_FIX_MODES_F, scale=1.0, offset=0.0)
+    # GRF with zero mean and scale 0.5
+    z = _random_ic_2d(n, N, rng, n_modes=5, scale=0.5, offset=0.0)
+    a = np.exp(z)
+    
+    # Generate fixed source f (same for all samples in all splits)
+    f_rng = np.random.RandomState(12345)
+    f_single = _random_ic_2d(1, N, f_rng, n_modes=DARCY_FIX_MODES_F, scale=1.0, offset=0.0)
+    f = np.broadcast_to(f_single, (n, N, N))
+    
     return a, f
 
 

@@ -144,9 +144,11 @@ BENCHMARK_REGISTRY = BenchmarkRegistry()
 def _register_defaults():
     """Register all built-in models and benchmarks."""
     from models import (
-        FNO1d, FNO2d, UNO1d, RFNO1d,
+        FNO1d, FNO2d, FNO1dMC, UNO1d, RFNO1d,
         AFNO1d, FFNO1d,
         WNO1d, DeepONet, PODDeepONet,
+        S4NO1d, GNOT1d, GNOT2d,
+        PINO1d,
     )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
@@ -163,8 +165,8 @@ def _register_defaults():
         return RFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
 
     @MODEL_REGISTRY.register("AFNO")
-    def _make_afno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return AFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
+    def _make_afno(n_modes=16, hidden_dim=64, n_layers=4, sparsity=0.01, **kw):
+        return AFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers, sparsity=sparsity)
 
     @MODEL_REGISTRY.register("FFNO")
     def _make_ffno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
@@ -189,12 +191,34 @@ def _register_defaults():
         return PODDeepONet(branch_dim=GRID_SIZE, n_basis=hidden_dim,
                            hidden_dim=hidden_dim, n_layers=n_layers)
 
+    @MODEL_REGISTRY.register("S4NO")
+    def _make_s4no(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return S4NO1d(hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("GNOT")
+    def _make_gnot(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return GNOT1d(hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("GNOT2D")
+    def _make_gnot2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
+        return GNOT2d(hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("PINO")
+    def _make_pino(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return PINO1d(sensor_dim=GRID_SIZE, hidden_dim=hidden_dim, n_layers=n_layers)
+
     @MODEL_REGISTRY.register("FNO2D")
     def _make_fno2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
         return FNO2d(n_modes1=n_modes, n_modes2=n_modes,
                      hidden_dim=hidden_dim, n_layers=n_layers)
 
-    # ── Benchmarks ────────────────────────────────────────────────────────────
+    @MODEL_REGISTRY.register("FNO_MC")
+    def _make_fno_mc(n_modes=16, hidden_dim=64, n_layers=4,
+                     in_channels=3, out_channels=3, **kw):
+        return FNO1dMC(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers,
+                       in_channels=in_channels, out_channels=out_channels)
+
+    # ── Benchmarks (standard + ext) ───────────────────────────────────────────
     _std = {"burgers_1d", "darcy_2d"}
     for bm in _std:
         BENCHMARK_REGISTRY.register(
@@ -217,6 +241,21 @@ def _register_defaults():
                 "darcy_2d_fix": "2D Darcy -∇·(a∇u)=f (corrected solver)",
                 "ns_2d_fix":    "2D NS vorticity (CFL-stable ICs)",
             }.get(bm, ""),
+        )
+
+    # ── High-fidelity simulation benchmarks ───────────────────────────────────
+    from simulations import (
+        SIM_BENCHMARKS, SIM_SOTA, SIM_METADATA,
+        make_sim_dataloader, evaluate_l2_rel_sim,
+    )
+    for bm in SIM_BENCHMARKS:
+        meta = SIM_METADATA[bm]
+        BENCHMARK_REGISTRY.register(
+            bm,
+            make_loader=make_sim_dataloader,
+            evaluate=lambda name, fn: evaluate_l2_rel_sim(name, fn),
+            sota=SIM_SOTA.get(bm),
+            description=meta.get("pde", ""),
         )
 
 

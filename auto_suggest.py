@@ -23,87 +23,132 @@ get the next experiments to run, drawn from both empirical findings and papers.
 """
 
 import argparse
-import csv
+import json
 import math
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
-RESULTS_FILE = Path(__file__).parent / "results.tsv"
-PAPERS_DIR   = Path(__file__).parent / "papers"
+from utils import PAPERS_DIR, SOTA as _SOTA_TARGETS, load_results, best_per_benchmark as _best_per_bm, done_names as _done_names_fn
+
+# Related benchmark groups for cross-benchmark transfer
+# When a config wins on benchmark A, also suggest it on its relatives
+BENCHMARK_RELATIVES = {
+    "burgers_1d":   ["kdv_1d", "wave_1d"],
+    "kdv_1d":       ["burgers_1d", "wave_1d"],
+    "wave_1d":      ["burgers_1d", "kdv_1d"],
+    "darcy_2d_fix": ["ns_2d_fix", "swe_2d", "allen_cahn_2d"],
+    "ns_2d_fix":    ["darcy_2d_fix", "swe_2d"],
+    "swe_2d":       ["darcy_2d_fix", "ns_2d_fix"],
+    "allen_cahn_2d":["darcy_2d_fix"],
+    "euler_1d":     ["burgers_1d", "kdv_1d"],
+}
 
 # ── Empirical heuristics (from accumulated results) ───────────────────────────
 
 # Known bad ideas — skip suggesting these again
 BLACKLIST = {
-    "pino",          # Physics loss at endpoint → fundamentally broken
-    "wno_burgers",   # Wrong inductive bias for periodic Burgers
-    "l=10_fno",      # FNO step-time-limited at l=10 without residuals
-    "l=12_fno",      # FNO collapses at l=12
-    "h=256_fno",     # Width doesn't help — step-time-limited
+    "pino",              # Physics loss at endpoint → fundamentally broken (original variant)
+    "wno_burgers",       # Wrong inductive bias for periodic Burgers
+    "l=10_fno",          # FNO step-time-limited at l=10 without residuals
+    "l=12_fno",          # FNO collapses at l=12
+    "h=256_fno",         # Width doesn't help — step-time-limited
+    "afno_burgers",      # AFNO consistently 0.50-0.72 on Burgers — wrong inductive bias
+    "h=128_2d_budget",   # 2D models with h=128 only get 2 steps in 5-min budget
+    "darcy_2d",          # Original darcy_2d has broken solver — use darcy_2d_fix
+    "navier_stokes_2d",  # Original NS-2D has broken ICs — use ns_2d_fix
 }
 
-# Known good patterns (from empirical findings)
+# Known good patterns (from empirical findings across all benchmarks)
 KNOWN_WINS = {
     "burgers_1d": {
         "best_modes":  24,
         "best_hidden": 128,
         "best_layers": 8,
         "best_model":  "FNO",
-        "best_val":    0.155287,
-        "best_config": "fno_h128_m24_l8",
+        "best_val":    0.146759,
+        "best_config": "fno_h128_m24_l8_aug",
         "key_findings": [
             "m=24 beats m=16 by 11% and m=32 catastrophically",
             "h=128 beats h=64 and h=256 (step-time-limited)",
             "l=8 is depth sweet spot for FNO; l=10+ degrades",
             "lr=1e-3 optimal; bs=32 better than bs=16",
+            "Augmentation helps: +0.6% improvement over no-aug",
             "Pre-LN residuals (RFNO) needed to unlock l>8",
             "PINO fundamentally broken for endpoint-only training",
             "WNO wrong inductive bias for periodic Burgers",
+            "AFNO weak on Burgers: 0.50-0.72 regardless of depth",
+            "FFNO moderate: 0.24-0.35, worse than FNO",
         ],
-    }
+    },
+    "kdv_1d": {
+        "best_modes":  24,
+        "best_hidden": 128,
+        "best_layers": 8,
+        "best_model":  "RFNO",
+        "best_val":    0.002023,
+        "best_config": "rfno_kdv_h128_m24_l8",
+        "key_findings": [
+            "RFNO beats FNO on KdV: 0.002023 vs 0.002374 (soliton dynamics benefit from stability)",
+            "Wide models (h=256) hurt: 0.0061 — fewer training steps",
+            "l=8 is sweet spot; l=10: 0.002625, l=12: 0.003297",
+            "m=24 beats m=32: 0.002023 vs 0.002394",
+            "FFNO weak on KdV: 0.005267",
+            "Beats SOTA by 5x: 0.002023 vs ~0.010",
+        ],
+    },
+    "wave_1d": {
+        "best_modes":  16,
+        "best_hidden": 64,
+        "best_layers": 4,
+        "best_model":  "FNO",
+        "best_val":    0.000992,
+        "best_config": "fno_wave_h64_m16_l4",
+        "key_findings": [
+            "SMALLER model wins: FNO h=64 l=4 m=16 beats RFNO h=128 l=8 m=24",
+            "Mechanism: smaller model gets 4x more training steps in 5-min budget",
+            "Wave 1D is easy for Fourier methods; more steps > bigger model",
+            "Beats SOTA by 5x: 0.000992 vs ~0.005",
+            "h=128 l=8: 0.002098 (RFNO) — still very good but not best",
+        ],
+    },
+    "darcy_2d_fix": {
+        "best_modes":  8,
+        "best_hidden": 32,
+        "best_layers": 4,
+        "best_model":  "FNO",
+        "best_val":    0.146942,
+        "best_config": "fno_darcy2d_fix_h32_m8_l4",
+        "key_findings": [
+            "h=32 too small (0.1469) — needs more capacity",
+            "h=128 l=8 m=24 ran out of time (only 2 steps in 5-min budget for 2D)",
+            "2D models need extended budget (~480s) to train meaningfully",
+            "Use darcy_2d_fix only — original darcy_2d solver is broken in prepare.py",
+            "FNO2D auto-routed from FNO for 2D benchmarks",
+        ],
+    },
+    "ns_2d_fix": {
+        "best_modes":  8,
+        "best_hidden": 32,
+        "best_layers": 4,
+        "best_model":  "FNO",
+        "best_val":    0.015166,
+        "best_config": "fno_ns2d_fix_h32_m8_l4",
+        "key_findings": [
+            "Only 1 run so far — baseline FNO h=32 l=4 m=8",
+            "1.2x from SOTA (0.0152 vs 0.0128) — very close, likely beatable",
+            "Use ns_2d_fix only — original ns_2d has broken ICs (CFL>60, NaN)",
+            "2D models need extended budget (~480s)",
+            "Wave 1D finding suggests smaller model + more steps may help",
+        ],
+    },
 }
 
 
-# ── Data loading ──────────────────────────────────────────────────────────────
-
-def _load_results(benchmark: Optional[str] = None) -> list[dict]:
-    rows = []
-    if not RESULTS_FILE.exists():
-        return rows
-    with open(RESULTS_FILE) as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        for row in reader:
-            try:
-                row["val_l2_rel"] = float(row["val_l2_rel"])
-            except (ValueError, KeyError):
-                row["val_l2_rel"] = float("nan")
-            if benchmark and row.get("benchmark") != benchmark:
-                continue
-            rows.append(row)
-    return rows
-
-
-def _done_names() -> set[str]:
-    done = set()
-    if not RESULTS_FILE.exists():
-        return done
-    with open(RESULTS_FILE) as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        for row in reader:
-            desc = row.get("description", "")
-            done.add(desc.split()[0] if desc else "")
-    return done
-
-
-def _best_per_benchmark(rows: list[dict]) -> dict[str, float]:
-    best: dict[str, float] = {}
-    for row in rows:
-        if row.get("status") == "keep" and not math.isnan(row["val_l2_rel"]):
-            bm = row["benchmark"]
-            if bm not in best or row["val_l2_rel"] < best[bm]:
-                best[bm] = row["val_l2_rel"]
-    return best
+# Aliases to shared utils (kept as module-level names for call-site clarity)
+_load_results        = load_results
+_done_names          = _done_names_fn
+_best_per_benchmark  = _best_per_bm
 
 
 # ── Suggestion generation ─────────────────────────────────────────────────────
@@ -253,6 +298,110 @@ def _generate_paper_suggestions(rows: list[dict],
     return suggs
 
 
+def _load_diag_from_results() -> dict[str, dict]:
+    """Load spectral diagnostics from results.json diag fields.
+
+    Returns: {exp_name_prefix: {"diag_high_freq_error": float, ...}}
+    """
+    results_path = Path(__file__).parent / "results.json"
+    diag_map: dict[str, dict] = {}
+    if not results_path.exists():
+        return diag_map
+    try:
+        with open(results_path) as f:
+            data = json.load(f)
+        for e in data:
+            d = e.get("diag") or {}
+            if d:
+                name = e.get("description", "").split()[0]
+                diag_map[name] = d
+    except Exception:
+        pass
+    return diag_map
+
+
+def _generate_diagnostic_suggestions(benchmark: str) -> list[Suggestion]:
+    """Suggest loss/mode changes based on spectral bias diagnostics."""
+    suggs = []
+    done  = _done_names()
+    diag_map = _load_diag_from_results()
+    wins = KNOWN_WINS.get(benchmark, {})
+    bh = wins.get("best_hidden", 128)
+    bm = wins.get("best_modes", 24)
+    bl = wins.get("best_layers", 8)
+
+    # Find experiments for this benchmark with high spectral bias
+    high_freq_experiments = [
+        (name, d) for name, d in diag_map.items()
+        if d.get("diag_high_freq_error", 0) > 0.3
+    ]
+
+    if high_freq_experiments:
+        # H1 loss targets high-frequency errors directly
+        name = f"fno_h{bh}_m{bm}_l{bl}_h1_diag"
+        if name not in done:
+            suggs.append(Suggestion(
+                name=name, benchmark=benchmark,
+                cli=f"uv run train.py --model FNO --hidden {bh} --layers {bl} "
+                    f"--modes {bm} --loss h1 --h1_alpha 0.1 --benchmark {benchmark}",
+                rationale=f"Spectral bias detected (high_freq_error>0.3 in {len(high_freq_experiments)} runs). "
+                          f"H1 Sobolev loss directly penalises derivative errors at high frequencies.",
+                expected="5-15% improvement on high-freq errors",
+                priority=1, source="diagnostic:spectral_bias",
+            ))
+        # More modes to cover the under-sampled frequency range
+        more_modes = min(bm + 8, 32)
+        name = f"fno_h{bh}_m{more_modes}_l{bl}_diag"
+        if name not in done:
+            suggs.append(Suggestion(
+                name=name, benchmark=benchmark,
+                cli=f"uv run train.py --model FNO --hidden {bh} --layers {bl} "
+                    f"--modes {more_modes} --benchmark {benchmark}",
+                rationale=f"Spectral bias: increasing modes {bm}→{more_modes} to capture missing high-freq components.",
+                expected="3-10% improvement",
+                priority=2, source="diagnostic:spectral_bias",
+            ))
+
+    return suggs
+
+
+def _generate_transfer_suggestions(benchmark: str) -> list[Suggestion]:
+    """When a config wins on a related benchmark, suggest it here too."""
+    suggs = []
+    done  = _done_names()
+    relatives = BENCHMARK_RELATIVES.get(benchmark, [])
+
+    for rel_bm in relatives:
+        rel_wins = KNOWN_WINS.get(rel_bm, {})
+        if not rel_wins or rel_wins.get("best_val", float("inf")) > 0.5:
+            continue  # no useful result on the relative benchmark
+
+        rel_model  = rel_wins.get("best_model", "FNO")
+        rel_hidden = rel_wins.get("best_hidden", 128)
+        rel_layers = rel_wins.get("best_layers", 8)
+        rel_modes  = rel_wins.get("best_modes", 24)
+        rel_val    = rel_wins.get("best_val", 1.0)
+
+        name = f"{rel_model.lower()}_transfer_{rel_bm[:5]}_h{rel_hidden}_l{rel_layers}_m{rel_modes}_{benchmark[:5]}"
+        if name in done:
+            continue
+
+        is_2d = benchmark.endswith("_2d") or benchmark.endswith("_2d_fix")
+        budget_flag = " --budget 480" if is_2d else ""
+        suggs.append(Suggestion(
+            name=name, benchmark=benchmark,
+            cli=f"uv run train.py --model {rel_model} --hidden {rel_hidden} "
+                f"--layers {rel_layers} --modes {rel_modes} "
+                f"--benchmark {benchmark}{budget_flag}",
+            rationale=f"Cross-benchmark transfer: {rel_model} h={rel_hidden} l={rel_layers} m={rel_modes} "
+                      f"achieved {rel_val:.4f} on {rel_bm}. Testing if this config transfers to {benchmark}.",
+            expected=f"Unknown — {rel_bm} insight may transfer",
+            priority=2, source=f"transfer:{rel_bm}",
+        ))
+
+    return suggs
+
+
 def _rank_suggestions(suggs: list[Suggestion]) -> list[Suggestion]:
     """Sort by priority, then by estimated impact."""
     return sorted(suggs, key=lambda s: (s.priority, s.name))
@@ -271,15 +420,8 @@ def _print_findings(rows: list[dict], benchmark: str) -> None:
 
 
 def _sota_gap(rows: list[dict], benchmark: str) -> None:
-    SOTA_TARGETS = {
-        "burgers_1d":       0.0149,
-        "darcy_2d":         0.0108,
-        "navier_stokes_2d": 0.0128,
-        "kdv_1d":           0.010,
-        "wave_1d":          0.005,
-    }
     best = _best_per_benchmark(rows)
-    sota = SOTA_TARGETS.get(benchmark)
+    sota = _SOTA_TARGETS.get(benchmark)
     our  = best.get(benchmark)
     if sota and our:
         gap = our / sota
@@ -308,10 +450,12 @@ def report(benchmark: Optional[str], top_n: int) -> None:
         _sota_gap(all_rows, bm)
         _print_findings(all_rows, bm)
 
-        # Generate suggestions
-        emp_suggs   = _generate_empirical_suggestions(all_rows, bm)
-        paper_suggs = _generate_paper_suggestions(all_rows, bm)
-        all_suggs   = _rank_suggestions(emp_suggs + paper_suggs)
+        # Generate suggestions (empirical + paper + diagnostic + transfer)
+        emp_suggs      = _generate_empirical_suggestions(all_rows, bm)
+        paper_suggs    = _generate_paper_suggestions(all_rows, bm)
+        diag_suggs     = _generate_diagnostic_suggestions(bm)
+        transfer_suggs = _generate_transfer_suggestions(bm)
+        all_suggs      = _rank_suggestions(emp_suggs + paper_suggs + diag_suggs + transfer_suggs)
 
         if not all_suggs:
             print(f"\n  No new suggestions — all known experiments have been run!")

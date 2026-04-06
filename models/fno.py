@@ -117,6 +117,37 @@ class RFNO1d(nn.Module):
         return self.proj2(x)[:, :, 0]
 
 
+class FNO1dMC(nn.Module):
+    """Multi-channel Fourier Neural Operator for 1-D operator learning.
+
+    Handles inputs of shape [B, N, C_in] → [B, N, C_out].
+    Extends FNO1d to multi-component PDEs (e.g., Euler: ρ,u,p → ρ,u,p).
+    An appended spatial coordinate is used as an extra input channel.
+    """
+
+    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int,
+                 in_channels: int = 3, out_channels: int = 3):
+        super().__init__()
+        self.in_ch  = in_channels
+        self.out_ch = out_channels
+        self.lift   = nn.Linear(in_channels + 1, hidden_dim)   # +1 for grid
+        self.blocks = [FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.norm   = nn.LayerNorm(hidden_dim)
+        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2  = nn.Linear(hidden_dim // 2, out_channels)
+
+    def __call__(self, u0: mx.array) -> mx.array:
+        B, N, _ = u0.shape
+        grid    = mx.broadcast_to(
+            mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
+        x = mx.concatenate([u0, grid], axis=-1)  # [B, N, C+1]
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x = nn.gelu(self.proj1(self.norm(x)))
+        return self.proj2(x)                     # [B, N, C_out]
+
+
 class SpectralConv2d(nn.Module):
     """2-D Fourier spectral convolution."""
 

@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SciML Research Command Center</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg0: #0D1117; --bg1: #161B22; --bg2: #21262D;
+      --border: #30363D;
+      --indigo: #7C3AED; --indigo-dim: rgba(124,58,237,0.15);
+      --cyan: #22D3EE; --green: #4ADE80; --red: #F87171;
+      --amber: #FBBF24; --purple: #A78BFA;
+      --txt: #E6EDF3; --txt2: #8B949E; --txt3: #484F58;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; overflow: hidden; }
+    body { background: var(--bg0); color: var(--txt); font-family: var(--sans); font-size: 13px; }
+
+    /* ── Layout ── */
+    .shell { display: flex; flex-direction: column; height: 100vh; }
+    .topbar {
+      height: 48px; background: var(--bg1); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px; padding: 0 20px;
+      flex-shrink: 0;
+    }
+    .logo { font-family: var(--mono); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: var(--cyan); }
+    .spacer { flex: 1; }
+    .body { display: flex; flex: 1; overflow: hidden; }
+    .sidebar { width: 220px; background: var(--bg1); border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg1); flex-shrink: 0; padding: 0 16px; gap: 4px; }
+    .tab { padding: 10px 14px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--txt2); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
+    .tab:hover { color: var(--txt); }
+    .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .tab-body { flex: 1; overflow: hidden; display: flex; }
+    .inspector { width: 360px; background: var(--bg1); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; display: flex; flex-direction: column; }
+    .insp-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .insp-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Controls ── */
+    .btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg2); color: var(--txt); cursor: pointer; font-size: 12px; font-family: var(--sans); transition: background .15s; }
+    .btn:hover { background: #2D333B; }
+    .btn-danger { border-color: var(--red); color: var(--red); }
+    .btn-danger:hover { background: rgba(248,113,113,.1); }
+    .btn-success { border-color: var(--green); color: var(--green); }
+    .btn-success:hover { background: rgba(74,222,128,.1); }
+    .btn-primary { border-color: var(--indigo); color: var(--purple); }
+    .btn-primary:hover { background: var(--indigo-dim); }
+    input[type=text] {
+      background: var(--bg0); border: 1px solid var(--border); color: var(--txt);
+      border-radius: 6px; padding: 5px 10px; font-size: 12px; font-family: var(--sans);
+      width: 100%; outline: none;
+    }
+    input[type=text]:focus { border-color: var(--indigo); }
+
+    /* ── Section labels ── */
+    .sec-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--txt2); margin-bottom: 6px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* ── Benchmark cards ── */
+    .bm-card {
+      padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);
+      cursor: pointer; transition: border-color .15s;
+    }
+    .bm-card:hover { border-color: var(--indigo); }
+    .bm-card.active { border-color: var(--cyan); background: rgba(34,211,238,.05); }
+    .bm-name { font-family: var(--mono); font-size: 11px; color: var(--cyan); }
+    .bm-vals { display: flex; gap: 8px; margin-top: 4px; font-family: var(--mono); font-size: 10px; }
+    .bm-best { color: var(--green); }
+    .bm-sota { color: var(--txt2); }
+    .bm-bar { height: 3px; background: var(--bg2); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+    .bm-bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ── Table ── */
+    .table-wrap { flex: 1; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+    thead th {
+      position: sticky; top: 0; background: var(--bg1); padding: 8px 12px;
+      text-align: left; color: var(--txt2); font-weight: 600; font-size: 11px;
+      border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: var(--txt); }
+    tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+    tbody tr:hover { background: rgba(255,255,255,.03); }
+    tbody tr.selected { background: var(--indigo-dim); }
+    td { padding: 7px 12px; color: var(--txt); }
+    .td-bm { color: var(--cyan); }
+    .td-model { color: var(--purple); }
+    .td-val { font-weight: 700; }
+    .td-val.good { color: var(--green); }
+    .td-val.mid { color: var(--amber); }
+    .td-val.bad { color: var(--red); }
+    .td-mem { color: var(--txt2); }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+    .badge-keep { background: rgba(74,222,128,.12); color: var(--green); }
+    .badge-discard { background: rgba(248,113,113,.12); color: var(--red); }
+    .badge-crash { background: rgba(251,191,36,.12); color: var(--amber); }
+    .badge-pending { background: rgba(124,58,237,.15); color: var(--purple); }
+
+    /* ── Filter bar ── */
+    .filter-bar { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .filter-select { background: var(--bg0); border: 1px solid var(--border); color: var(--txt); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: var(--sans); }
+
+    /* ── Inspector detail ── */
+    .metric-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .metric-key { color: var(--txt2); font-size: 12px; }
+    .metric-val { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+    .sota-bar { height: 6px; background: var(--bg2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+    .sota-bar-fill { height: 100%; border-radius: 3px; }
+    .text-block { font-size: 12px; line-height: 1.6; color: var(--txt2); }
+    .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .kv-item { background: var(--bg0); border-radius: 4px; padding: 6px 8px; }
+    .kv-k { font-size: 10px; color: var(--txt2); margin-bottom: 2px; }
+    .kv-v { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--cyan); }
+
+    /* ── Log terminal ── */
+    .terminal {
+      background: #000; border-radius: 6px; padding: 10px; font-family: var(--mono);
+      font-size: 11px; line-height: 1.5; color: #7dd3fc; overflow-y: auto;
+      max-height: 280px; border: 1px solid var(--border);
+    }
+    .log-step { color: var(--txt2); }
+    .log-loss { color: var(--amber); }
+    .log-lr { color: var(--purple); }
+    .log-final { color: var(--green); font-weight: 700; }
+    .log-err { color: var(--red); }
+
+    /* ── Mini chart ── */
+    .chart-wrap { background: var(--bg0); border-radius: 6px; border: 1px solid var(--border); padding: 8px; }
+    .chart-title { font-size: 10px; color: var(--txt2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    svg.chart { width: 100%; height: 80px; display: block; }
+
+    /* ── Status dots ── */
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s infinite; }
+    .dot-paused { background: var(--amber); }
+    @keyframes blink { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+    /* ── Empty states ── */
+    .empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--txt2); font-size: 13px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3D444D; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+const API = "http://localhost:8000";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = (v, d=4) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
+const fmtTime = ts => ts ? new Date(ts * 1000).toLocaleString() : "—";
+const fmtDur = ts => {
+  if (!ts) return "—";
+  const d = new Date().getTime()/1000 - ts;
+  if (d < 60) return `${Math.round(d)}s ago`;
+  if (d < 3600) return `${Math.round(d/60)}m ago`;
+  return `${Math.round(d/3600)}h ago`;
+};
+
+function valClass(v, sota) {
+  if (!v || !sota) return "";
+  const r = v / sota;
+  if (r < 1.2) return "good";
+  if (r < 3.0) return "mid";
+  return "bad";
+}
+
+function barColor(ratio) {
+  if (!ratio) return "#484F58";
+  if (ratio < 1.0) return "#4ADE80";
+  if (ratio < 2.0) return "#FBBF24";
+  return "#F87171";
+}
+
+// Parse training steps from log lines
+function parseTrainingCurve(lines) {
+  const pts = [];
+  const re = /step (\d+) \([\d.]+%\) \| loss: ([\d.e+\-]+)/;
+  for (const line of lines) {
+    const m = line.match(re);
+    if (m) pts.push({ step: parseInt(m[1]), loss: parseFloat(m[2]) });
+  }
+  // downsample to ~80 points
+  if (pts.length <= 80) return pts;
+  const step = Math.ceil(pts.length / 80);
+  return pts.filter((_, i) => i % step === 0);
+}
+
+// ── Mini SVG line chart ───────────────────────────────────────────────────────
+function MiniChart({ points }) {
+  if (!points || points.length < 2) return null;
+  const W = 300, H = 70, PAD = { t:4, b:20, l:8, r:8 };
+  const xs = points.map(p => p.step);
+  const ys = points.map(p => p.loss);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scX = v => PAD.l + (v - minX) / (maxX - minX || 1) * (W - PAD.l - PAD.r);
+  const scY = v => PAD.t + (1 - (v - minY) / (maxY - minY || 1)) * (H - PAD.t - PAD.b);
+  const d = points.map((p,i) => `${i===0?"M":"L"}${scX(p.step).toFixed(1)},${scY(p.loss).toFixed(1)}`).join(" ");
+  const lastY = scY(ys[ys.length-1]);
+  return (
+    <div className="chart-wrap">
+      <div className="chart-title">Training loss curve ({points.length} steps sampled)</div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="chart">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.4"/>
+            <stop offset="100%" stopColor="#7C3AED" stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={`${d} L${scX(maxX)},${H-PAD.b} L${scX(minX)},${H-PAD.b} Z`} fill="url(#lg)"/>
+        <path d={d} fill="none" stroke="#A78BFA" strokeWidth="1.5"/>
+        <line x1={PAD.l} y1={H-PAD.b} x2={W-PAD.r} y2={H-PAD.b} stroke="#30363D" strokeWidth="1"/>
+        <text x={PAD.l} y={H-6} fill="#8B949E" fontSize="9">{minX}</text>
+        <text x={W-PAD.r} y={H-6} fill="#8B949E" fontSize="9" textAnchor="end">{maxX}</text>
+        <text x={W-PAD.r} y={lastY-4} fill="#4ADE80" fontSize="9" textAnchor="end">{ys[ys.length-1].toFixed(4)}</text>
+      </svg>
+    </div>
+  );
+}
+
+// ── SOTA sidebar card ─────────────────────────────────────────────────────────
+function BmCard({ bm, data, active, onClick }) {
+  const ratio = data?.ratio;
+  const fillPct = ratio ? Math.min(100, (1/ratio)*100) : 0;
+  const color = barColor(ratio);
+  return (
+    <div className={`bm-card ${active ? "active" : ""}`} onClick={onClick}>
+      <div className="bm-name">{bm.replace("_"," ").replace("_"," ")}</div>
+      <div className="bm-vals">
+        <span className="bm-best">▲ {data?.our_best ? fmt(data.our_best, 4) : "—"}</span>
+        <span className="bm-sota">/ {data?.sota ? fmt(data.sota,4) : "—"}</span>
+        {data?.beats_sota && <span style={{color:"#4ADE80",fontSize:10}}>✓ SOTA</span>}
+      </div>
+      <div className="bm-bar">
+        <div className="bm-bar-fill" style={{width:`${fillPct}%`, background: color}}/>
+      </div>
+    </div>
+  );
+}
+
+// ── Log inspector ─────────────────────────────────────────────────────────────
+function LogPanel({ expName }) {
+  const [logData, setLogData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const termRef = useRef(null);
+
+  useEffect(() => {
+    if (!expName) { setLogData(null); return; }
+    setLoading(true);
+    fetch(`${API}/api/logs/${expName}?tail=400`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { setLogData(d); setLoading(false); })
+      .catch(() => { setLogData(null); setLoading(false); });
+  }, [expName]);
+
+  useEffect(() => {
+    if (termRef.current) termRef.current.scrollTop = termRef.current.scrollHeight;
+  }, [logData]);
+
+  if (!expName) return <div className="text-block" style={{padding:8}}>No experiment selected.</div>;
+  if (loading) return <div className="text-block" style={{padding:8}}>Loading log…</div>;
+  if (!logData) return <div className="text-block" style={{padding:8,color:"var(--red)"}}>Log not found for <code>{expName}</code></div>;
+
+  const curve = parseTrainingCurve(logData.lines);
+
+  const colorLine = (line) => {
+    if (/val_l2_rel:/.test(line)) return <span className="log-final">{line}</span>;
+    if (/peak_vram|memory/.test(line)) return <span style={{color:"var(--purple)"}}>{line}</span>;
+    if (/error|Error|exception/i.test(line)) return <span className="log-err">{line}</span>;
+    if (/step \d+/.test(line)) {
+      return line.replace(/loss: ([\d.e+\-]+)/, (_, v) =>
+        `loss: <span class="log-loss">${v}</span>`);
+    }
+    return <span className="log-step">{line}</span>;
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{fontSize:11,color:"var(--txt2)"}}>
+        {logData.path} · {logData.total_lines} lines (showing last {logData.lines.length})
+      </div>
+      {curve.length > 1 && <MiniChart points={curve}/>}
+      <div className="terminal" ref={termRef}>
+        {logData.lines.map((line, i) => (
+          <div key={i} dangerouslySetInnerHTML={{__html: typeof colorLine(line) === "string"
+            ? colorLine(line) : line}}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Experiment inspector (right panel) ────────────────────────────────────────
+function Inspector({ exp, sota, onClose }) {
+  const [tab, setTab] = useState("details");
+  if (!exp) return (
+    <div className="inspector">
+      <div className="insp-header" style={{color:"var(--txt2)",fontSize:12}}>Select an experiment</div>
+    </div>
+  );
+
+  const bmSota = sota?.[exp.benchmark];
+  const sotaTarget = bmSota?.sota;
+  const ratio = sotaTarget && exp.val_l2_rel ? exp.val_l2_rel / sotaTarget : null;
+  const fillPct = ratio ? Math.min(100, (1/ratio)*100) : 0;
+  const badgeClass = exp.status === "keep" ? "badge-keep" : exp.status === "discard" ? "badge-discard" : "badge-crash";
+
+  const cfg = exp.config || {};
+  const diag = exp.diag || {};
+
+  return (
+    <div className="inspector" style={{width:380}}>
+      <div className="insp-header">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <span className={`badge ${badgeClass}`}>{exp.status?.toUpperCase()}</span>
+          <span style={{fontFamily:"var(--mono)",fontSize:12,color:"var(--cyan)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{exp.id}</span>
+          <button className="btn" style={{padding:"2px 8px",fontSize:11}} onClick={onClose}>✕</button>
+        </div>
+        <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>{exp.description}</div>
+        <div style={{marginTop:6,display:"flex",gap:6}}>
+          {["details","log","diag"].map(t => (
+            <button key={t} className={`btn ${tab===t?"btn-primary":""}`} style={{padding:"3px 10px",fontSize:11}} onClick={()=>setTab(t)}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="insp-body">
+        {tab === "details" && <>
+          {/* Key metrics */}
+          <div>
+            <div className="sec-label">Metrics</div>
+            <div className="metric-row">
+              <span className="metric-key">val_l2_rel</span>
+              <span className={`metric-val ${valClass(exp.val_l2_rel, sotaTarget)}`}>{fmt(exp.val_l2_rel,6)}</span>
+            </div>
+            {sotaTarget && <>
+              <div className="sota-bar">
+                <div className="sota-bar-fill" style={{width:`${fillPct}%`,background:barColor(ratio)}}/>
+              </div>
+              <div style={{fontSize:10,color:"var(--txt2)",marginTop:3}}>
+                {ratio ? `${(ratio*100).toFixed(0)}% of SOTA (${sotaTarget})` : ""}
+                {ratio && ratio < 1 ? " — beats SOTA ✓" : ""}
+              </div>
+            </>}
+            <div className="metric-row">
+              <span className="metric-key">memory_gb</span>
+              <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(exp.memory_gb,3)} GB</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-key">benchmark</span>
+              <span className="metric-val" style={{color:"var(--cyan)"}}>{exp.benchmark}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-key">model</span>
+              <span className="metric-val" style={{color:"var(--purple)"}}>{exp.model}</span>
+            </div>
+            <div className="metric-row">
+              <span className="metric-key">timestamp</span>
+              <span style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>{fmtDur(exp.timestamp)}</span>
+            </div>
+          </div>
+
+          {/* Config */}
+          {Object.keys(cfg).length > 0 && <div>
+            <div className="sec-label">Config</div>
+            <div className="kv-grid">
+              {Object.entries(cfg).map(([k,v]) => (
+                <div key={k} className="kv-item">
+                  <div className="kv-k">{k}</div>
+                  <div className="kv-v">{typeof v === "number" && v < 1 ? v.toExponential(2) : v}</div>
+                </div>
+              ))}
+            </div>
+          </div>}
+
+          {/* Rationale */}
+          {exp.rationale && exp.rationale !== "Migrated from legacy results.tsv" && <div>
+            <div className="sec-label">Rationale</div>
+            <div className="text-block">{exp.rationale}</div>
+          </div>}
+
+          {/* Conclusion */}
+          {exp.conclusion && <div>
+            <div className="sec-label">Conclusion</div>
+            <div className="text-block">{exp.conclusion}</div>
+          </div>}
+
+          {/* Lineage */}
+          {exp.parent_id && <div>
+            <div className="sec-label">Lineage</div>
+            <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>
+              parent: {exp.parent_id}
+            </div>
+          </div>}
+
+          {/* Inspect image */}
+          {exp.inspect_url && <div>
+            <div className="sec-label">Spectral Diagnostic</div>
+            <img src={`${API}${exp.inspect_url}`} style={{width:"100%",borderRadius:4,border:"1px solid var(--border)"}} alt="diagnostic"/>
+          </div>}
+        </>}
+
+        {tab === "log" && <LogPanel expName={exp.id.replace(/^legacy_\d+_/, "")}/>}
+
+        {tab === "diag" && <>
+          {Object.keys(diag).length > 0 ? <>
+            <div className="sec-label">Spectral Diagnostics</div>
+            {Object.entries(diag).map(([k,v]) => (
+              <div key={k} className="metric-row">
+                <span className="metric-key">{k}</span>
+                <span className="metric-val" style={{color:"var(--amber)"}}>{fmt(v,6)}</span>
+              </div>
+            ))}
+          </> : <div className="text-block">No spectral diagnostics recorded for this experiment.</div>}
+          {exp.inspect_url && <img src={`${API}${exp.inspect_url}`} style={{width:"100%",borderRadius:4,border:"1px solid var(--border)"}} alt="diagnostic"/>}
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── Experiment table ──────────────────────────────────────────────────────────
+function ExpTable({ experiments, sota, selectedId, onSelect, bmFilter }) {
+  const [sortKey, setSortKey] = useState("timestamp");
+  const [sortDir, setSortDir] = useState(-1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const toggleSort = key => {
+    if (sortKey === key) setSortDir(d => -d);
+    else { setSortKey(key); setSortDir(-1); }
+  };
+
+  const filtered = useMemo(() => {
+    let rows = experiments;
+    if (bmFilter && bmFilter !== "all") rows = rows.filter(e => e.benchmark === bmFilter);
+    if (statusFilter !== "all") rows = rows.filter(e => e.status === statusFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(e =>
+        e.id?.toLowerCase().includes(q) ||
+        e.model?.toLowerCase().includes(q) ||
+        e.benchmark?.toLowerCase().includes(q) ||
+        e.description?.toLowerCase().includes(q)
+      );
+    }
+    rows = [...rows].sort((a,b) => {
+      const av = a[sortKey] ?? 0, bv = b[sortKey] ?? 0;
+      return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
+    });
+    return rows;
+  }, [experiments, bmFilter, statusFilter, search, sortKey, sortDir]);
+
+  const Th = ({k, label}) => (
+    <th onClick={()=>toggleSort(k)}>
+      {label} {sortKey===k ? (sortDir>0?"↑":"↓") : ""}
+    </th>
+  );
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+      <div className="filter-bar">
+        <input type="text" placeholder="Search id / model / benchmark…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:220}}/>
+        <select className="filter-select" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+          <option value="all">All status</option>
+          <option value="keep">Keep</option>
+          <option value="discard">Discard</option>
+          <option value="crash">Crash</option>
+        </select>
+        <span style={{marginLeft:"auto",color:"var(--txt2)",fontSize:11}}>{filtered.length} / {experiments.length} experiments</span>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <Th k="timestamp" label="Time"/>
+              <Th k="benchmark" label="Benchmark"/>
+              <Th k="model" label="Model"/>
+              <Th k="val_l2_rel" label="val_l2_rel"/>
+              <Th k="memory_gb" label="Mem GB"/>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(e => {
+              const bmSota = sota?.[e.benchmark]?.sota;
+              return (
+                <tr key={e.id} className={selectedId===e.id?"selected":""} onClick={()=>onSelect(e)}>
+                  <td style={{color:"var(--txt2)",whiteSpace:"nowrap"}}>{fmtDur(e.timestamp)}</td>
+                  <td className="td-bm">{e.benchmark}</td>
+                  <td className="td-model">{e.model}</td>
+                  <td className={`td-val ${valClass(e.val_l2_rel, bmSota)}`}>{fmt(e.val_l2_rel,6)}</td>
+                  <td className="td-mem">{fmt(e.memory_gb,2)}</td>
+                  <td><span className={`badge ${e.status==="keep"?"badge-keep":e.status==="discard"?"badge-discard":"badge-crash"}`}>{e.status}</span></td>
+                  <td style={{color:"var(--txt2)",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.description}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div className="empty">No experiments match the filter.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Queue table ───────────────────────────────────────────────────────────────
+function QueueTable({ queue, onSelect }) {
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    if (!search) return queue;
+    const q = search.toLowerCase();
+    return queue.filter(e => e.name?.toLowerCase().includes(q) || e.benchmark?.toLowerCase().includes(q) || e.model?.toLowerCase().includes(q));
+  }, [queue, search]);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+      <div className="filter-bar">
+        <input type="text" placeholder="Search queue…" value={search} onChange={e=>setSearch(e.target.value)} style={{width:220}}/>
+        <span style={{marginLeft:"auto",color:"var(--txt2)",fontSize:11}}>{filtered.length} pending</span>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Name</th>
+              <th>Benchmark</th>
+              <th>Model</th>
+              <th>h</th>
+              <th>l</th>
+              <th>m</th>
+              <th>Budget</th>
+              <th>Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(e => (
+              <tr key={e.name}>
+                <td><span className="badge badge-pending">{e.priority}</span></td>
+                <td style={{fontFamily:"var(--mono)",fontSize:11}}>{e.name}</td>
+                <td className="td-bm">{e.benchmark}</td>
+                <td className="td-model">{e.model}</td>
+                <td>{e.hidden_dim}</td>
+                <td>{e.n_layers}</td>
+                <td>{e.n_modes}</td>
+                <td style={{color:"var(--txt2)"}}>{e.budget_s}s</td>
+                <td style={{color:"var(--txt2)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.rationale}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div className="empty">Queue is empty.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App() {
+  const [experiments, setExperiments] = useState([]);
+  const [queue, setQueue] = useState([]);
+  const [sota, setSota] = useState({});
+  const [status, setStatus] = useState({});
+  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState("results");
+  const [bmFilter, setBmFilter] = useState("all");
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [expR, qR, sotaR, stR] = await Promise.all([
+        fetch(`${API}/api/experiments`),
+        fetch(`${API}/api/queue`),
+        fetch(`${API}/api/sota`),
+        fetch(`${API}/api/status`),
+      ]);
+      if (!expR.ok) throw new Error(`API ${expR.status}`);
+      const [exps, q, s, st] = await Promise.all([expR.json(), qR.json(), sotaR.json(), stR.json()]);
+      setExperiments([...exps].reverse());
+      setQueue(q.experiments || []);
+      setSota(s);
+      setStatus(st);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const t = setInterval(refresh, 8000);
+    return () => clearInterval(t);
+  }, [refresh]);
+
+  // Fetch full detail when selecting
+  const handleSelect = async (exp) => {
+    setSelected(exp);
+    try {
+      const r = await fetch(`${API}/api/experiment/${exp.id}`);
+      if (r.ok) setSelected(await r.json());
+    } catch {}
+  };
+
+  const benchmarks = useMemo(() => {
+    const bms = [...new Set(experiments.map(e => e.benchmark))].sort();
+    return ["all", ...bms];
+  }, [experiments]);
+
+  const paused = status.paused;
+
+  const togglePause = async () => {
+    await fetch(`${API}/api/${paused ? "resume" : "pause"}`, {method:"POST"});
+    refresh();
+  };
+
+  const keepCount = experiments.filter(e=>e.status==="keep").length;
+  const pendingCount = queue.length;
+
+  return (
+    <div className="shell">
+      {/* Topbar */}
+      <div className="topbar">
+        <div className="logo">SCIML · COMMAND CENTER</div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <div className={`dot ${paused ? "dot-paused" : "dot-live"}`}/>
+          <span style={{fontSize:11,color:"var(--txt2)"}}>{paused ? "PAUSED" : "LIVE"}</span>
+        </div>
+        <div style={{fontSize:11,color:"var(--txt2)",fontFamily:"var(--mono)"}}>
+          {experiments.length} runs · {keepCount} kept · {pendingCount} queued
+        </div>
+        {error && <div style={{fontSize:11,color:"var(--red)"}}>⚠ {error}</div>}
+        <div className="spacer"/>
+        <button className={`btn ${paused?"btn-success":"btn-danger"}`} onClick={togglePause}>
+          {paused ? "▶ Resume" : "⏸ Pause"}
+        </button>
+        <button className="btn" onClick={refresh}>↻ Refresh</button>
+      </div>
+
+      <div className="body">
+        {/* Sidebar: benchmarks + SOTA */}
+        <div className="sidebar">
+          <div>
+            <div className="sec-label">Benchmarks</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div
+                className={`bm-card ${bmFilter==="all"?"active":""}`}
+                onClick={()=>setBmFilter("all")}
+                style={{padding:"6px 10px"}}
+              >
+                <div style={{fontSize:12,color:"var(--txt2)"}}>All benchmarks</div>
+              </div>
+              {Object.entries(sota).map(([bm, data]) => (
+                <BmCard key={bm} bm={bm} data={data} active={bmFilter===bm} onClick={()=>setBmFilter(bm)}/>
+              ))}
+            </div>
+          </div>
+
+          <hr className="divider"/>
+
+          <div>
+            <div className="sec-label">Quick stats</div>
+            {status.experiments_count != null && <>
+              <div className="metric-row">
+                <span className="metric-key">Total runs</span>
+                <span className="metric-val" style={{color:"var(--cyan)"}}>{status.experiments_count}</span>
+              </div>
+              <div className="metric-row">
+                <span className="metric-key">VRAM peak</span>
+                <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(status.vram_peak_mb,0)} MB</span>
+              </div>
+              <div className="metric-row">
+                <span className="metric-key">Last update</span>
+                <span style={{fontSize:11,color:"var(--txt2)"}}>{fmtDur(status.last_updated)}</span>
+              </div>
+            </>}
+          </div>
+        </div>
+
+        {/* Main area */}
+        <div className="main">
+          <div className="tabs">
+            <div className={`tab ${tab==="results"?"active":""}`} onClick={()=>setTab("results")}>
+              Results ({experiments.filter(e=>bmFilter==="all"||e.benchmark===bmFilter).length})
+            </div>
+            <div className={`tab ${tab==="queue"?"active":""}`} onClick={()=>setTab("queue")}>
+              Queue ({pendingCount})
+            </div>
+          </div>
+          <div className="tab-body">
+            {tab==="results" && (
+              <ExpTable
+                experiments={experiments}
+                sota={sota}
+                selectedId={selected?.id}
+                onSelect={handleSelect}
+                bmFilter={bmFilter}
+              />
+            )}
+            {tab==="queue" && <QueueTable queue={queue} onSelect={handleSelect}/>}
+          </div>
+        </div>
+
+        {/* Inspector */}
+        <Inspector exp={selected} sota={sota} onClose={()=>setSelected(null)}/>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

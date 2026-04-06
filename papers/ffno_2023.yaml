@@ -12,17 +12,17 @@ key_idea: >
   This separates "which frequency modes to weight" from "how to mix channels".
   Fewer parameters (O(m*C + C²) vs O(m*C²)) → allows wider models in same budget.
 
-architecture: FFNO1d  # not yet implemented
+architecture: FFNO1d
 model_class: FFNO
-status: pending  # implementation needed
+status: implemented  # FFNO1d in models/fno.py; 7 runs on burgers_1d (best 0.2405), 1 run on kdv_1d (0.005267)
 
 benchmarks:
   kdv_1d:
     reported_val_l2_rel: 0.008
-    our_best: null
+    our_best: 0.005267
   burgers_1d:
     reported_val_l2_rel: "similar to FNO with fewer params"
-    our_best: null
+    our_best: 0.240487
 
 suggested_experiments:
   - name: ffno_h128_m32_l8

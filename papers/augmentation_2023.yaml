@@ -29,12 +29,13 @@ key_idea: >
 
 architecture: DataAugmentation   # not a model, a training trick
 model_class: null
-status: pending
+status: implemented  # --augment flag in train.py; spatial shift on burgers_1d gave best result 0.146759
 
 benchmarks:
   burgers_1d:
     reported_val_l2_rel: null  # our estimate
-    notes: "Expected ~10-20% improvement from 2× augmentation via spatial shifts."
+    our_best: 0.146759  # fno_h128_m24_l8_aug — best result on burgers_1d
+    notes: "Confirmed: augmentation gave best Burgers result. FNO+aug 0.1468 vs FNO 0.1553 (0.6% gain)."
   kdv_1d:
     reported_val_l2_rel: null
     notes: "Expected ~5-10% improvement; KdV already near SOTA."

@@ -13,45 +13,11 @@ Usage:
 """
 
 import argparse
-import csv
 import math
-import os
 from collections import defaultdict
-from pathlib import Path
 from typing import Optional
 
-RESULTS_FILE = Path(__file__).parent / "results.tsv"
-LOGS_DIR     = Path(__file__).parent / "logs"
-
-# SOTA targets per benchmark (from docs/SOTA.md and paper registry)
-SOTA = {
-    "burgers_1d":       0.0149,
-    "darcy_2d":         0.0108,
-    "navier_stokes_2d": 0.0128,
-    "kdv_1d":           0.010,
-    "wave_1d":          0.005,
-}
-
-
-# ── Data loading ──────────────────────────────────────────────────────────────
-
-def load_results(benchmark: Optional[str] = None) -> list[dict]:
-    """Return rows from results.tsv as list of dicts."""
-    rows = []
-    if not RESULTS_FILE.exists():
-        print(f"results.tsv not found at {RESULTS_FILE}")
-        return rows
-    with open(RESULTS_FILE) as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        for row in reader:
-            try:
-                row["val_l2_rel"] = float(row["val_l2_rel"])
-            except (ValueError, KeyError):
-                row["val_l2_rel"] = float("nan")
-            if benchmark and row.get("benchmark") != benchmark:
-                continue
-            rows.append(row)
-    return rows
+from utils import RESULTS_FILE, LOGS_DIR, FIGS_DIR, SOTA, load_results
 
 
 # ── Analysis helpers ──────────────────────────────────────────────────────────
@@ -268,7 +234,8 @@ def plot_results(rows: list[dict], benchmark: str) -> None:
     ax.set_yscale("log")
     ax.grid(True, alpha=0.3)
 
-    out = Path(__file__).parent / f"analysis_{benchmark}.png"
+    FIGS_DIR.mkdir(exist_ok=True)
+    out = FIGS_DIR / f"analysis_{benchmark}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"\nPlot saved: {out}")
