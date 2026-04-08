@@ -300,7 +300,8 @@ def _register_defaults():
 
     @MODEL_REGISTRY.register("UDE")
     def _make_ude(n_modes=16, hidden_dim=32, n_layers=3,
-                  n_steps=20, **kw):
+                  n_steps=50, **kw):
+        # n_steps=50 → dt=0.02, satisfying CFL dt < 1/(N/2)=1/32≈0.031
         return UniversalDE1d(n_modes=n_modes, hidden_dim=hidden_dim,
                              n_layers=n_layers, n_steps=n_steps,
                              nu=0.01 / 3.14159)

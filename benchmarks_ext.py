@@ -290,15 +290,27 @@ def _load_or_gen_ext_val(benchmark: str) -> tuple:
     return inp, tgt
 
 
+def _get_ext_train_cache_path(benchmark: str) -> str:
+    return os.path.join(CACHE_DIR, f"{benchmark}_train_N{N_TRAIN}_ext.npz")
+
+
 _ext_train_cache: dict = {}
 
 
 def _get_ext_train(benchmark: str) -> tuple:
     if benchmark not in _ext_train_cache:
-        print(f"Generating {benchmark} train data ({N_TRAIN} samples)…")
-        t0 = time.time()
-        _ext_train_cache[benchmark] = _generate_ext_dataset(benchmark, N_TRAIN, TRAIN_SEED)
-        print(f"  {N_TRAIN} samples in {time.time()-t0:.1f}s")
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        cache_path = _get_ext_train_cache_path(benchmark)
+        if os.path.exists(cache_path):
+            data = np.load(cache_path)
+            _ext_train_cache[benchmark] = (data["inputs"], data["targets"])
+        else:
+            print(f"Generating {benchmark} train data ({N_TRAIN} samples)…")
+            t0 = time.time()
+            inputs, targets = _generate_ext_dataset(benchmark, N_TRAIN, TRAIN_SEED)
+            np.savez(cache_path, inputs=inputs, targets=targets)
+            print(f"  {N_TRAIN} samples in {time.time()-t0:.1f}s → {cache_path}")
+            _ext_train_cache[benchmark] = (inputs, targets)
     return _ext_train_cache[benchmark]
 
 

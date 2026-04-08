@@ -17,6 +17,7 @@ results.tsv is updated after every experiment.
 """
 
 import argparse
+import dataclasses
 import subprocess
 import sys
 import time
@@ -28,7 +29,7 @@ from experiments import ExperimentConfig, get_experiments
 from utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, load_results, done_names, best_per_benchmark
 from tracker import Tracker
 
-TIMEOUT_S = 720   # 12 min per experiment (5-min budget + data/compile overhead)
+TIMEOUT_S = 1500  # 25 min per experiment (20-min budget + data/compile overhead)
 
 tracker = Tracker()
 
@@ -78,7 +79,9 @@ def parse_log(log_path: Path) -> dict:
         # Classify crash type if no val_l2_rel found
         if results["val"] is None:
             lower = content.lower()
-            if "out of memory" in lower or ("memory" in lower and "error" in lower):
+            if "vram limit exceeded" in lower:
+                results["crash_type"] = "VRAMLimit"
+            elif "out of memory" in lower or ("memory" in lower and "error" in lower):
                 results["crash_type"] = "OOM"
             elif "nan" in lower or "inf" in lower or "diverged" in lower:
                 results["crash_type"] = "NaN/Inf"
@@ -97,6 +100,93 @@ def parse_log(log_path: Path) -> dict:
     return results
 
 
+def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[tuple]:
+    """Analyse crash log and return (fix_description, fixed_ExperimentConfig) or None.
+
+    Priority order of diagnoses:
+      1. 1D model on 2D data (shape unpack)  → unfixable, skip
+      2. Modes broadcast mismatch            → halve n_modes
+      3. OOM                                 → halve batch_size
+      4. NaN / Inf                           → lr÷10, grad_clip→5
+      5. Timeout                             → halve hidden_dim + n_layers
+      6. Generic ValueError / RuntimeError   → halve n_modes first
+      7. Unknown                             → halve hidden_dim + n_layers
+    """
+    try:
+        content = log_path.read_text()
+    except Exception:
+        content = ""
+    lower = content.lower()
+
+    def _replace(**kw):
+        return dataclasses.replace(exp, name=f"{exp.name}_retry", **kw)
+
+    # ── 1. 1D model receiving 2D input ───────────────────────────────────────
+    if "too many values to unpack" in lower:
+        print("  DIAGNOSIS: 1D model given 2D input — incompatible pairing, skipping.")
+        return None
+
+    # ── 2. Fourier modes too wide for grid ───────────────────────────────────
+    if "broadcast_shapes" in lower or (
+        "cannot be broadcast" in lower and ("modes" in lower or "shapes" in lower)
+    ):
+        new_modes = max(4, exp.n_modes // 2)
+        desc = f"modes {exp.n_modes}→{new_modes} (broadcast shape error)"
+        print(f"  DIAGNOSIS: modes too large for grid. Fix: {desc}")
+        return desc, _replace(n_modes=new_modes)
+
+    # ── 3a. VRAM soft limit exceeded (our own guard) ─────────────────────────
+    if "vram limit exceeded" in lower:
+        new_hidden = max(32, exp.hidden_dim // 2)
+        new_layers = max(2, exp.n_layers // 2)
+        new_batch  = max(8, exp.batch_size // 2)
+        desc = (f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers}, "
+                f"batch {exp.batch_size}→{new_batch} (VRAM limit)")
+        print(f"  DIAGNOSIS: VRAM limit exceeded. Fix: {desc}")
+        return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers, batch_size=new_batch)
+
+    # ── 3b. Out of memory (Metal OOM) ────────────────────────────────────────
+    if "out of memory" in lower or ("memory" in lower and "alloc" in lower):
+        new_batch = max(8, exp.batch_size // 2)
+        desc = f"batch_size {exp.batch_size}→{new_batch} (OOM — preserve hidden_dim)"
+        print(f"  DIAGNOSIS: OOM. Fix: {desc}")
+        return desc, _replace(batch_size=new_batch)
+
+    # ── 4. NaN / Inf divergence ──────────────────────────────────────────────
+    if "nan" in lower or ("inf" in lower and "loss" in lower):
+        new_lr = round(exp.lr / 10, 8)
+        desc = f"lr {exp.lr:.1e}→{new_lr:.1e}, grad_clip 1.0→5.0 (NaN/Inf)"
+        print(f"  DIAGNOSIS: numerical instability. Fix: {desc}")
+        return desc, _replace(lr=new_lr, grad_clip=5.0)
+
+    # ── 5. Timeout (ran too long, no result) ─────────────────────────────────
+    if results.get("crash_type") == "Timeout":
+        new_hidden = max(32, exp.hidden_dim // 2)
+        new_layers = max(2, exp.n_layers // 2)
+        desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (timeout — smaller model)"
+        print(f"  DIAGNOSIS: timeout. Fix: {desc}")
+        return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
+
+    # ── 6. ValueError / RuntimeError — try modes first ───────────────────────
+    if "valueerror" in lower or "runtimeerror" in lower or "assertionerror" in lower:
+        # Extract the actual error line for better diagnosis
+        for line in reversed(content.splitlines()):
+            if "error:" in line.lower() or "Error" in line:
+                print(f"  DIAGNOSIS: {line.strip()}")
+                break
+        new_modes = max(4, exp.n_modes // 2)
+        desc = f"modes {exp.n_modes}→{new_modes} (ValueError — reduce spectral width)"
+        print(f"  Fix: {desc}")
+        return desc, _replace(n_modes=new_modes)
+
+    # ── 7. Unknown — generic size reduction ──────────────────────────────────
+    new_hidden = max(32, exp.hidden_dim // 2)
+    new_layers = max(2, exp.n_layers // 2)
+    desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (unknown error)"
+    print(f"  DIAGNOSIS: unknown crash. Fix: {desc}")
+    return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
+
+
 def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
     """Run one experiment. Returns dict of results."""
     cmd = ["uv", "run", "train.py"] + exp.to_cli_args()
@@ -106,35 +196,43 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    t0 = time.time()
+    active_file = REPO_ROOT / ".active_experiment"
+    active_file.write_text(exp.name)
     try:
-        with open(log_path, "w") as log_f:
-            proc = subprocess.run(
-                cmd,
-                stdout=log_f,
-                stderr=subprocess.STDOUT,
-                cwd=REPO_ROOT,
-                timeout=TIMEOUT_S,
-            )
-        elapsed = time.time() - t0
-        print(f"  Finished in {elapsed:.0f}s  (exit code {proc.returncode})")
+        t0 = time.time()
+        try:
+            with open(log_path, "w") as log_f:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=log_f,
+                    stderr=subprocess.STDOUT,
+                    cwd=REPO_ROOT,
+                )
+            try:
+                proc.wait(timeout=TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                print(f"  TIMEOUT after {TIMEOUT_S}s — process killed")
+                return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
+            elapsed = time.time() - t0
+            print(f"  Finished in {elapsed:.0f}s  (exit code {proc.returncode})")
 
-        if proc.returncode != 0:
-            print(f"  Non-zero exit — checking log for details...")
-            with open(log_path) as f:
-                tail = f.readlines()[-10:]
-            for line in tail:
-                print(f"    {line}", end="")
+            if proc.returncode != 0:
+                print(f"  Non-zero exit — checking log for details...")
+                with open(log_path) as f:
+                    tail = f.readlines()[-10:]
+                for line in tail:
+                    print(f"    {line}", end="")
+                return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
+
+        except Exception as e:
+            print(f"  ERROR: {e}")
             return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
 
-    except subprocess.TimeoutExpired:
-        print(f"  TIMEOUT after {TIMEOUT_S}s")
-        return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
-    except Exception as e:
-        print(f"  ERROR: {e}")
-        return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
-
-    return parse_log(log_path)
+        return parse_log(log_path)
+    finally:
+        active_file.unlink(missing_ok=True)
 
 
 # ── Git integration ───────────────────────────────────────────────────────────
@@ -233,24 +331,21 @@ def main() -> None:
         results  = run_experiment(exp, log_path)
         val, mem_gb = results["val"], results["mem_mb"] / 1024.0
 
-        # ── Crash auto-retry with reduced config ─────────────────────────────
+        # ── Smart crash recovery ──────────────────────────────────────────────
         if val is None and results.get("crash_type") not in ("ImportError", "NoOutput"):
-            retry_hidden = max(32, exp.hidden_dim // 2)
-            retry_layers = max(2, exp.n_layers // 2)
-            print(f"  Retrying with reduced config: h={retry_hidden} l={retry_layers}")
-            import dataclasses
-            retry_exp = dataclasses.replace(exp,
-                name=f"{exp.name}_retry",
-                hidden_dim=retry_hidden,
-                n_layers=retry_layers,
-            )
-            retry_log = LOGS_DIR / f"{retry_exp.name}.log"
-            retry_res = run_experiment(retry_exp, retry_log)
-            if retry_res["val"] is not None:
-                print(f"  Retry succeeded: val_l2_rel={retry_res['val']:.6f}")
-                results = retry_res
-                val = retry_res["val"]
-                mem_gb = retry_res["mem_mb"] / 1024.0
+            fix = smart_fix(exp, log_path, results)
+            if fix is None:
+                print("  No auto-fix available — skipping retry.")
+            else:
+                fix_desc, retry_exp = fix
+                print(f"  Retrying with targeted fix: {fix_desc}")
+                retry_log = LOGS_DIR / f"{retry_exp.name}.log"
+                retry_res = run_experiment(retry_exp, retry_log)
+                if retry_res["val"] is not None:
+                    print(f"  Retry succeeded: val_l2_rel={retry_res['val']:.6f}")
+                    results = retry_res
+                    val = retry_res["val"]
+                    mem_gb = retry_res["mem_mb"] / 1024.0
 
         if val is None:
             status = "crash"

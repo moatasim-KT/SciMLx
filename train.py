@@ -71,6 +71,8 @@ def _parse_args():
     p.add_argument("--budget",      type=int,   default=TIME_BUDGET)
     p.add_argument("--augment",     action="store_true", default=AUGMENT)
     p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT)
+    p.add_argument("--max_vram_gb", type=float, default=5.0,
+                   help="Abort training if peak VRAM exceeds this (GB). 0=disabled.")
     return p.parse_args()
 
 args = _parse_args()
@@ -87,9 +89,19 @@ LR          = args.lr
 GRAD_CLIP   = args.grad_clip
 PINO_LAMBDA = args.pino_lambda
 SPARSITY    = args.sparsity
-TIME_BUDGET = args.budget
-AUGMENT     = args.augment
-SAVE_CKPT   = args.save_ckpt
+TIME_BUDGET  = args.budget
+AUGMENT      = args.augment
+SAVE_CKPT    = args.save_ckpt
+MAX_VRAM_GB  = args.max_vram_gb
+
+# Apply hard memory limit at startup (Metal will raise OOM before swapping)
+if MAX_VRAM_GB > 0:
+    try:
+        _limit_bytes = int(MAX_VRAM_GB * 1024 ** 3)
+        mx.set_memory_limit(_limit_bytes)
+        print(f"VRAM limit set to {MAX_VRAM_GB:.1f} GB")
+    except Exception:
+        pass
 
 # ── Physics residuals (for PINO) ──────────────────────────────────────────────
 
@@ -188,7 +200,8 @@ trainer = Trainer(
     grad_clip=GRAD_CLIP,
     time_budget=TIME_BUDGET,
     lr_base=LR,
-    lr_schedule_fn=lr_sch
+    lr_schedule_fn=lr_sch,
+    max_vram_gb=MAX_VRAM_GB,
 )
 
 print(f"Starting training (budget {TIME_BUDGET}s)...")

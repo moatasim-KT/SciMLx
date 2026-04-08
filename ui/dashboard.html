@@ -158,7 +158,8 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
-const API = "http://localhost:8000";
+// Use relative URL when served from the FastAPI server, fallback to localhost for local dev
+const API = (location.protocol === "file:") ? "http://127.0.0.1:8001" : "";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (v, d=4) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
@@ -360,8 +361,10 @@ function Inspector({ exp, sota, onClose }) {
               </div>
             </>}
             <div className="metric-row">
-              <span className="metric-key">memory_gb</span>
-              <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(exp.memory_gb,3)} GB</span>
+              <span className="metric-key">peak_vram</span>
+              <span className="metric-val" style={{color:"var(--txt2)"}}>
+                {exp.memory_gb != null ? `${fmt(exp.memory_gb,3)} GB` : (exp.name && !exp.val_l2_rel ? `${fmt(status.vram_active_mb/1024,2)} GB active` : "—")}
+              </span>
             </div>
             <div className="metric-row">
               <span className="metric-key">benchmark</span>
@@ -417,7 +420,7 @@ function Inspector({ exp, sota, onClose }) {
           </div>}
         </>}
 
-        {tab === "log" && <LogPanel expName={exp.id.replace(/^legacy_\d+_/, "")}/>}
+        {tab === "log" && <LogPanel expName={exp.config?.name || exp.name || exp.description?.split(" ")[0] || (exp.id||"").replace(/^legacy_\d+_/, "")}/>}
 
         {tab === "diag" && <>
           {Object.keys(diag).length > 0 ? <>
@@ -523,7 +526,7 @@ function ExpTable({ experiments, sota, selectedId, onSelect, bmFilter }) {
 }
 
 // ── Queue table ───────────────────────────────────────────────────────────────
-function QueueTable({ queue, onSelect }) {
+function QueueTable({ queue, active, onSelect }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     if (!search) return queue;
@@ -541,6 +544,7 @@ function QueueTable({ queue, onSelect }) {
         <table>
           <thead>
             <tr>
+              <th>Status</th>
               <th>Priority</th>
               <th>Name</th>
               <th>Benchmark</th>
@@ -553,19 +557,29 @@ function QueueTable({ queue, onSelect }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(e => (
-              <tr key={e.name}>
-                <td><span className="badge badge-pending">{e.priority}</span></td>
-                <td style={{fontFamily:"var(--mono)",fontSize:11}}>{e.name}</td>
-                <td className="td-bm">{e.benchmark}</td>
-                <td className="td-model">{e.model}</td>
-                <td>{e.hidden_dim}</td>
-                <td>{e.n_layers}</td>
-                <td>{e.n_modes}</td>
-                <td style={{color:"var(--txt2)"}}>{e.budget_s}s</td>
-                <td style={{color:"var(--txt2)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.rationale}</td>
-              </tr>
-            ))}
+            {filtered.map(e => {
+              const isRunning = active.includes(e.name);
+              return (
+                <tr key={e.name} onClick={() => onSelect(e)} className={isRunning ? "selected" : ""}>
+                  <td>
+                    {isRunning ? (
+                      <span className="badge badge-keep">RUNNING</span>
+                    ) : (
+                      <span className="badge badge-pending">PENDING</span>
+                    )}
+                  </td>
+                  <td>{e.priority}</td>
+                  <td style={{fontFamily:"var(--mono)",fontSize:11}}>{e.name}</td>
+                  <td className="td-bm">{e.benchmark}</td>
+                  <td className="td-model">{e.model}</td>
+                  <td>{e.hidden_dim}</td>
+                  <td>{e.n_layers}</td>
+                  <td>{e.n_modes}</td>
+                  <td style={{color:"var(--txt2)"}}>{e.budget_s}s</td>
+                  <td style={{color:"var(--txt2)",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.rationale}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {filtered.length === 0 && <div className="empty">Queue is empty.</div>}
@@ -578,6 +592,7 @@ function QueueTable({ queue, onSelect }) {
 function App() {
   const [experiments, setExperiments] = useState([]);
   const [queue, setQueue] = useState([]);
+  const [active, setActive] = useState([]);
   const [sota, setSota] = useState({});
   const [status, setStatus] = useState({});
   const [selected, setSelected] = useState(null);
@@ -587,18 +602,22 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [expR, qR, sotaR, stR] = await Promise.all([
+      const [expR, qR, sotaR, stR, actR] = await Promise.all([
         fetch(`${API}/api/experiments`),
         fetch(`${API}/api/queue`),
         fetch(`${API}/api/sota`),
         fetch(`${API}/api/status`),
+        fetch(`${API}/api/active`),
       ]);
       if (!expR.ok) throw new Error(`API ${expR.status}`);
-      const [exps, q, s, st] = await Promise.all([expR.json(), qR.json(), sotaR.json(), stR.json()]);
+      const [exps, q, s, st, act] = await Promise.all([
+        expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json()
+      ]);
       setExperiments([...exps].reverse());
       setQueue(q.experiments || []);
       setSota(s);
       setStatus(st);
+      setActive(act.active || []);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -615,8 +634,10 @@ function App() {
   const handleSelect = async (exp) => {
     setSelected(exp);
     try {
-      const r = await fetch(`${API}/api/experiment/${exp.id}`);
-      if (r.ok) setSelected(await r.json());
+      // completed experiments have exp.id; queue items only have exp.name
+      const lookupId = exp.id || exp.name;
+      const r = await fetch(`${API}/api/experiment/${lookupId}`);
+      if (r.ok) setSelected({...exp, ...(await r.json())});
     } catch {}
   };
 
@@ -684,6 +705,10 @@ function App() {
                 <span className="metric-val" style={{color:"var(--cyan)"}}>{status.experiments_count}</span>
               </div>
               <div className="metric-row">
+                <span className="metric-key">VRAM active</span>
+                <span className="metric-val" style={{color: status.vram_active_mb > 4096 ? "var(--red)" : status.vram_active_mb > 2048 ? "var(--yellow)" : "var(--green)"}}>{fmt(status.vram_active_mb,0)} MB</span>
+              </div>
+              <div className="metric-row">
                 <span className="metric-key">VRAM peak</span>
                 <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(status.vram_peak_mb,0)} MB</span>
               </div>
@@ -705,6 +730,24 @@ function App() {
               Queue ({pendingCount})
             </div>
           </div>
+
+          {/* Active experiment strip — always visible */}
+          {active.filter(n => n !== "dashboard_server").map(name => {
+            const qExp = queue.find(e => e.name === name);
+            return (
+              <div key={name}
+                style={{background:"var(--bg1)",borderBottom:"1px solid var(--border)",padding:"6px 12px",
+                        display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0}}
+                onClick={() => setSelected({id: name, status:"running", name, ...(qExp||{})})}>
+                <div className="dot dot-live" style={{flexShrink:0}}/>
+                <span style={{fontSize:11,color:"var(--green)",fontFamily:"var(--mono)",fontWeight:600}}>RUNNING</span>
+                <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{name}</span>
+                {qExp && <span style={{fontSize:11,color:"var(--txt2)"}}>· {qExp.benchmark} · {qExp.model} h={qExp.hidden_dim} l={qExp.n_layers} m={qExp.n_modes} · {qExp.budget_s}s budget</span>}
+                <span style={{fontSize:11,color:"var(--txt2)",marginLeft:"auto"}}>click to inspect →</span>
+              </div>
+            );
+          })}
+
           <div className="tab-body">
             {tab==="results" && (
               <ExpTable
@@ -715,7 +758,7 @@ function App() {
                 bmFilter={bmFilter}
               />
             )}
-            {tab==="queue" && <QueueTable queue={queue} onSelect={handleSelect}/>}
+            {tab==="queue" && <QueueTable queue={queue} active={active} onSelect={(e) => setSelected({id: e.name, status: "running", ...e})}/>}
           </div>
         </div>
 

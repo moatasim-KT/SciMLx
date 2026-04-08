@@ -148,3 +148,10 @@ manual	burgers_1d	WNO	0.839705	0.04	discard	wno_h64_lvl4_l4 WNO h=64 l=4 lvl=4
 575e497	allen_cahn_2d	RFNO	1.000000	0.00	crash	allen_cahn_rfno_h64_l8_m12 RFNO  h=64  l=8  m=12
 575e497	burgers_1d	RFNO	0.194549	0.48	discard	burgers_rfno_h128_l8_m24_aug RFNO  h=128  l=8  m=24
 575e497	euler_1d	FNO	0.002413	0.09	keep	euler1d_fno_h64_l4_m16 FNO  h=64  l=4  m=16
+a9676d6	euler_1d	FNO_MC	0.003060	0.43	discard	euler1d_fno_mc_h128_l8_m24 FNO_MC  h=128  l=8
+a9676d6	euler_1d	RFNO	1.000000	0.00	crash	euler1d_rfno_h128_l8_m24 RFNO  h=128  l=8  m=24
+a9676d6	euler_1d	RFNO	1.000000	0.00	crash	euler1d_rfno_h64_l8_m24 RFNO  h=64  l=8  m=24
+a9676d6	darcy_2d_fix	FNO	1.953484	7.37	discard	fno_darcy2d_fix_h128_l8_m24_h1 FNO  h=128  l=8  m=24  loss=h1
+a9676d6	darcy_2d_fix	FNO	0.325146	3.37	discard	fno_darcy2d_fix_h64_m12_l4 FNO  h=64  l=4  m=12
+a9676d6	burgers_1d	FNO	0.180345	0.46	discard	fno_h128_m24_l8_aug_ckpt FNO  h=128  l=8  m=24
+a9676d6	ns_2d_fix	FNO	1.000000	0.00	crash	fno_ns2d_fix_h128_l8_m12 FNO  h=128  l=8  m=12

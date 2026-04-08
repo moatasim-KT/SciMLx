@@ -33,14 +33,14 @@ class ExperimentConfig:
     n_modes:     int  = 16        # Fourier modes (FNO / UNO / RFNO / AFNO)
     n_levels:    int  = 3         # Haar levels (WNO)
     lr:          float = 1e-3     # learning rate
-    batch_size:  int  = 32        # training batch size
+    batch_size:  int  = 64         # training batch size (increased for better GPU utilization)
     grad_clip:   float = 1.0      # gradient clipping (0 = disabled)
     pino_lambda: float = 0.0      # PINO physics-loss weight
     loss_type:   str  = "l2_rel"  # loss function: "l2_rel" | "h1" | "h1_strong" | "spectral"
     h1_alpha:    float = 0.1      # H1 loss derivative weight (used when loss_type="h1")
     augment:     bool  = False    # spatial-shift augmentation (periodic BCs only)
     save_ckpt:   bool  = False    # save model checkpoint after training
-    budget_s:    int  = 300       # training time budget in seconds (default 5 min)
+    budget_s:    int  = 1200      # training time budget in seconds (default 20 min)
     parent_name: str  = ""        # name of parent experiment this branches from (for DAG lineage)
     priority:    int  = 5         # 1 = highest; run in ascending order
     rationale:   str  = ""        # why this experiment?
@@ -67,8 +67,7 @@ class ExperimentConfig:
             args += ["--augment"]
         if self.save_ckpt:
             args += ["--save_ckpt"]
-        if self.budget_s != 300:
-            args += ["--budget", str(self.budget_s)]
+        args += ["--budget", str(self.budget_s)]
         return args
 
     def short(self) -> str:
@@ -92,6 +91,60 @@ class ExperimentConfig:
 # ── Experiment queue ──────────────────────────────────────────────────────────
 
 EXPERIMENTS: List[ExperimentConfig] = [
+
+    # ── P25 · Untouched Benchmarks & Models ──────────────────────────────────
+    # [swe_2d] 2D Shallow Water - 480s budget
+    ExperimentConfig(
+        name="fno_swe2d_h64_l4_m12",
+        benchmark="swe_2d", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="Baseline FNO for untouched swe_2d benchmark.",
+    ),
+    ExperimentConfig(
+        name="rfno_swe2d_h64_l4_m12",
+        benchmark="swe_2d", model="RFNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="RFNO for untouched swe_2d benchmark; pre-LN residual stability.",
+    ),
+    ExperimentConfig(
+        name="fno2d_swe2d_h32_l4_m12",
+        benchmark="swe_2d", model="FNO2D",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="Unrun FNO2D model on untouched swe_2d benchmark.",
+    ),
+    ExperimentConfig(
+        name="gnot2d_swe2d_h32_l4",
+        benchmark="swe_2d", model="GNOT2D",
+        hidden_dim=32, n_layers=4,
+        budget_s=480, priority=1,
+        rationale="Unrun GNOT2D model on untouched swe_2d benchmark.",
+    ),
+
+    # [ns_hre_2d] 2D NS Re=1000 - 480s budget
+    ExperimentConfig(
+        name="fno_nshre2d_h64_l4_m12",
+        benchmark="ns_hre_2d", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="Baseline FNO for untouched ns_hre_2d benchmark.",
+    ),
+    ExperimentConfig(
+        name="gnot2d_nshre2d_h32_l4",
+        benchmark="ns_hre_2d", model="GNOT2D",
+        hidden_dim=32, n_layers=4,
+        budget_s=480, priority=1,
+        rationale="Unrun GNOT2D model on untouched ns_hre_2d benchmark.",
+    ),
+    ExperimentConfig(
+        name="fno2d_nshre2d_h32_l4_m12",
+        benchmark="ns_hre_2d", model="FNO2D",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="Unrun FNO2D model on untouched ns_hre_2d benchmark.",
+    ),
 
     # ── P1 · FNO width sweep ─────────────────────────────────────────────────
     ExperimentConfig(
@@ -1090,7 +1143,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_darcy2d_fix_h32_m8_l4",
         benchmark="darcy_2d_fix", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Baseline FNO on corrected Darcy 2D benchmark. "
                   "prepare.py solver used mean(a) only and fixed-seed f → val≈0.998. "
@@ -1101,7 +1154,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_darcy2d_fix_h64_m12_l4",
         benchmark="darcy_2d_fix", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="Larger FNO on corrected Darcy 2D to approach SOTA 0.0108.",
         expected="~0.02–0.08",
@@ -1110,7 +1163,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_ns2d_fix_h32_m8_l4",
         benchmark="ns_2d_fix", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Baseline FNO on corrected NS 2D benchmark. "
                   "prepare.py solver: IC scale=1.0 → CFL≈61 → NaN. "
@@ -1121,7 +1174,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="fno_ns2d_fix_h64_m12_l4",
         benchmark="ns_2d_fix", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="Larger FNO on corrected NS 2D benchmark.",
         expected="~0.03–0.10",
@@ -1189,8 +1242,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="ns_2d_fix",
         model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
-        priority=1,
+        budget_s=1200,
+        priority=2,  # deprioritized: ns_2d_fix train data takes ~96min to generate
         rationale="Smaller FNO gets more steps in budget; wave_1d showed h=64 l=4 wins over h=128 l=8",
         expected="0.010–0.013",
     ),
@@ -1199,8 +1252,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="ns_2d_fix",
         model="RFNO",
         hidden_dim=128, n_layers=8, n_modes=24,
-        budget_s=480,
-        priority=1,
+        budget_s=1200,
+        priority=2,  # deprioritized: ns_2d_fix train data takes ~96min to generate
         rationale="RFNO pre-LN stability; KdV best config transferred to 2D NS",
         expected="0.010–0.014",
     ),
@@ -1209,7 +1262,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="ns_2d_fix",
         model="FNO",
         hidden_dim=128, n_layers=6, n_modes=16,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Medium-size FNO; balance between capacity and training steps for 2D",
         expected="0.010–0.015",
@@ -1221,7 +1274,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="darcy_2d_fix",
         model="RFNO",
         hidden_dim=64, n_layers=8, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="RFNO h=64 fits 2D budget; pre-LN stability for deeper Darcy net",
         expected="0.05–0.10",
@@ -1231,7 +1284,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="darcy_2d_fix",
         model="FNO",
         hidden_dim=64, n_layers=6, n_modes=16,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="FNO h=64 — goldilocks size for 2D budget constraint",
         expected="0.05–0.12",
@@ -1261,7 +1314,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="swe_2d",
         model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="First baseline on 2D shallow water; analytic solver makes data generation instant",
         expected="0.005–0.05",
@@ -1271,7 +1324,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         benchmark="allen_cahn_2d",
         model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="First baseline on Allen-Cahn phase field; ETDRK2 solver generates data in ~16s",
         expected="0.02–0.10",
@@ -1298,6 +1351,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno_burgers_h128_l8_m24_r05",
         benchmark="burgers_1d", model="TFNO",
         hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128,
         priority=1,
         rationale="Tucker TFNO baseline on Burgers (rank_ratio=0.5). "
                   "Low-rank regularization may help generalise; fewer spectral params → more steps.",
@@ -1307,6 +1361,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno_burgers_h128_l8_m24_r075",
         benchmark="burgers_1d", model="TFNO",
         hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128,
         priority=1,
         rationale="High-rank Tucker (rank_ratio=0.75) — near-full FNO with mild regularization.",
         expected="Similar to FNO (0.1468); tests whether mild Tucker hurts",
@@ -1331,6 +1386,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno_kdv_h128_l8_m24",
         benchmark="kdv_1d", model="TFNO",
         hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128,
         priority=1,
         rationale="Tucker TFNO on KdV. Soliton dynamics are low-rank in spectral space → natural fit.",
         expected="~0.002–0.005 (our RFNO SOTA 0.0020; TFNO may match or improve)",
@@ -1347,7 +1403,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno2d_darcy_h128_m24_l4",
         benchmark="darcy_2d_fix", model="TFNO2D",
         hidden_dim=128, n_layers=4, n_modes=24,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Tucker TFNO2D on Darcy. Paper reports Tucker beats FNO2D (0.0094 vs 0.0108). "
                   "Darcy permeability fields are inherently low-rank → ideal for Tucker.",
@@ -1357,7 +1413,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno2d_darcy_h64_m16_l4",
         benchmark="darcy_2d_fix", model="TFNO2D",
         hidden_dim=64, n_layers=4, n_modes=16,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Smaller Tucker TFNO2D on Darcy — validate Tucker benefit at moderate size.",
         expected="0.10–0.15",
@@ -1366,7 +1422,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="tfno2d_ns_h64_m12_l4",
         benchmark="ns_2d_fix", model="TFNO2D",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="Tucker TFNO2D on NS — our FNO2D got 0.0152 ≈ SOTA (0.0128); Tucker may close gap.",
         expected="0.010–0.015",
@@ -1380,7 +1436,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="transolver_burgers_h64_l4_s32",
         benchmark="burgers_1d", model="Transolver",
-        hidden_dim=64, n_layers=4, n_modes=16,
+        hidden_dim=128, n_layers=4, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="Transolver baseline on Burgers. Physics slices may separate shock from smooth region.",
         expected="0.15–0.25 (attention-based; unknown on Burgers)",
@@ -1388,7 +1445,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="transolver_burgers_h128_l6_s32",
         benchmark="burgers_1d", model="Transolver",
-        hidden_dim=128, n_layers=6, n_modes=16,
+        hidden_dim=256, n_layers=6, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="Wider deeper Transolver on Burgers — closer to paper's default config.",
         expected="0.12–0.20",
@@ -1396,7 +1454,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="transolver_kdv_h64_l4_s32",
         benchmark="kdv_1d", model="Transolver",
-        hidden_dim=64, n_layers=4, n_modes=24,
+        hidden_dim=128, n_layers=4, n_modes=24,
+        batch_size=128,
         priority=1,
         rationale="Transolver on KdV: solitons are spatially localized → natural physics slice structure.",
         expected="0.003–0.010",
@@ -1413,7 +1472,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="transolver2d_darcy_h64_l4_s64",
         benchmark="darcy_2d_fix", model="Transolver2D",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=1,
         rationale="Transolver2D on Darcy — paper's reported SOTA architecture (0.0084 vs FNO 0.0108).",
         expected="0.05–0.10 (2D attention more expensive; slice_num=64 for 64×64 grid)",
@@ -1422,7 +1481,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="transolver2d_darcy_h128_l4_s64",
         benchmark="darcy_2d_fix", model="Transolver2D",
         hidden_dim=128, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="Wider Transolver2D — closer to paper dim=256; may be step-limited.",
         expected="0.04–0.10",
@@ -1431,7 +1490,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         name="transolver2d_ns_h64_l4_s64",
         benchmark="ns_2d_fix", model="Transolver2D",
         hidden_dim=64, n_layers=4, n_modes=12,
-        budget_s=480,
+        budget_s=1200,
         priority=2,
         rationale="Transolver2D on NS — attention over vorticity slices; paper reports strong NS results.",
         expected="0.010–0.016",
@@ -1445,7 +1504,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="time_deeponet_wave_h64_l4",
         benchmark="wave_1d", model="TimeDeepONet",
-        hidden_dim=64, n_layers=4, n_modes=16,
+        hidden_dim=128, n_layers=4, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="TimeDeepONet on wave_1d. Temporal gating (branch2) naturally separates "
                   "IC encoding from time-evolution operator — natural fit for wave propagation.",
@@ -1454,7 +1514,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="time_deeponet_wave_h128_l4",
         benchmark="wave_1d", model="TimeDeepONet",
-        hidden_dim=128, n_layers=4, n_modes=16,
+        hidden_dim=256, n_layers=4, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="Wider TimeDeepONet on wave_1d — more expressive temporal gating.",
         expected="0.001–0.005",
@@ -1577,7 +1638,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="ude_burgers_h32_l3_s20",
         benchmark="burgers_1d", model="UDE",
-        hidden_dim=32, n_layers=3, n_modes=16,
+        hidden_dim=64, n_layers=3, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="Universal DE on Burgers. Known: -u*ux (nonlinear advection via FFT). "
                   "NN correction: ν*uxx + model error. Physics prior should massively "
@@ -1587,9 +1649,29 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ExperimentConfig(
         name="ude_burgers_h64_l4_s30",
         benchmark="burgers_1d", model="UDE",
-        hidden_dim=64, n_layers=4, n_modes=16,
+        hidden_dim=128, n_layers=4, n_modes=16,
+        batch_size=128,
         priority=1,
         rationale="Wider UDE on Burgers with 30 integration steps — more expressive correction.",
+        expected="0.04–0.12",
+    ),
+    # UDE re-runs after fixing spectral instability (dealiasing + n_steps=50 + tendency clip)
+    ExperimentConfig(
+        name="ude_burgers_fixed_h64_l3",
+        benchmark="burgers_1d", model="UDE",
+        hidden_dim=64, n_layers=3, n_modes=16,
+        batch_size=128,
+        priority=1,
+        rationale="UDE re-run after CFL fix: 2/3 dealiasing, n_steps=50 (dt=0.02<1/32), tendency clip.",
+        expected="0.05–0.15",
+    ),
+    ExperimentConfig(
+        name="ude_burgers_fixed_h128_l4",
+        benchmark="burgers_1d", model="UDE",
+        hidden_dim=128, n_layers=4, n_modes=16,
+        batch_size=128,
+        priority=1,
+        rationale="Wider UDE re-run after CFL fix.",
         expected="0.04–0.12",
     ),
     ExperimentConfig(
@@ -1617,6 +1699,205 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="NeuralODE on Burgers — learns full tendency; compare vs UDE (which uses "
                   "known advection). Ablates the value of the physics prior.",
         expected="0.10–0.20",
+    ),
+
+    # ── Priority-1: VRAM-safe top picks from auto_suggest + diagnostic analysis ──
+
+    ExperimentConfig(
+        name="fno_burgers_h128_l8_m24_h1_sobolev",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128, budget_s=1200,
+        loss_type="h1", h1_alpha=0.1,
+        priority=1,
+        rationale="H1 Sobolev loss on Burgers: spectral bias analysis shows high-freq error "
+                  "dominant across 5+ runs. H1 directly penalises derivative residuals.",
+        expected="0.12–0.14",
+    ),
+    ExperimentConfig(
+        name="fno_burgers_h64_l4_m16_wave_transfer",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        batch_size=128, budget_s=1200,
+        priority=1,
+        rationale="Cross-benchmark transfer: FNO h=64 l=4 m=16 achieved 0.0010 on wave_1d. "
+                  "Smaller model → more training steps in budget — may close the gap on Burgers.",
+        expected="0.12–0.17",
+    ),
+    ExperimentConfig(
+        name="rfno_burgers_h128_l8_m24_h1_sobolev",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128, budget_s=1200,
+        loss_type="h1", h1_alpha=0.1,
+        priority=1,
+        rationale="RFNO + H1 Sobolev loss: RFNO's pre-LN stabilises deep models; "
+                  "H1 targets high-freq spectral bias. Combines both top interventions.",
+        expected="0.11–0.14",
+    ),
+    ExperimentConfig(
+        name="fno_darcy2d_fix_h128_l8_m24",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=32, budget_s=1200,
+        priority=1,
+        rationale="Darcy is 13.6× from SOTA — current best (h=32) is far too small. "
+                  "Scale to h=128 l=8 m=24 (same config that dominates 1D benchmarks).",
+        expected="0.05–0.15",
+    ),
+    ExperimentConfig(
+        name="fno_burgers_h128_l8_m24_lr5e4",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=128, budget_s=1200,
+        lr=5e-4,
+        priority=1,
+        rationale="LR sweep: current best uses lr=1e-3. lr=5e-4 gives slower warmup — "
+                  "may avoid early instability and find a better loss basin.",
+        expected="0.13–0.15",
+    ),
+    ExperimentConfig(
+        name="rfno_burgers_h128_l10_m24",
+        benchmark="burgers_1d", model="RFNO",
+        hidden_dim=128, n_layers=10, n_modes=24,
+        batch_size=128, budget_s=1200,
+        priority=1,
+        rationale="RFNO l=10 on Burgers: pre-LN allows deeper nets. "
+                  "RFNO h=128 l=8 is SOTA on KdV — test if l=10 helps on Burgers shocks.",
+        expected="0.12–0.15",
+    ),
+
+    # ── Euler 1D (compressible, 3-channel) ───────────────────────────────────
+    ExperimentConfig(
+        name="euler1d_fno_mc_h128_l8_m24",
+        benchmark="euler_1d", model="FNO_MC",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=64, budget_s=480,
+        priority=2,
+        rationale="FNO_MC is the recommended model for euler_1d (3-channel: rho, u, p). "
+                  "h=128 l=8 m=24 — same config that dominates 1D benchmarks.",
+        expected="0.02–0.10",
+    ),
+    ExperimentConfig(
+        name="euler1d_rfno_h64_l8_m24",
+        benchmark="euler_1d", model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=24,
+        batch_size=64, budget_s=480,
+        priority=2,
+        rationale="RFNO pre-LN residual for compressible Euler shocks — stable deep training.",
+        expected="0.02–0.10",
+    ),
+
+    # ── Darcy 2D fix (scale-up) ───────────────────────────────────────────────
+    ExperimentConfig(
+        name="rfno_darcy2d_fix_h128_l8_m24",
+        benchmark="darcy_2d_fix", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=32, budget_s=1200,
+        priority=2,
+        rationale="RFNO scale-up on Darcy: current best (FNO h=64) at 0.104. "
+                  "Pre-LN residual + h=128 should close the 10× SOTA gap.",
+        expected="0.04–0.10",
+    ),
+    ExperimentConfig(
+        name="fno_darcy2d_fix_h128_l8_m24_h1",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=32, budget_s=1200,
+        loss_type="h1", h1_alpha=0.1,
+        priority=2,
+        rationale="FNO h=128 + H1 loss on Darcy: H1 penalises gradient errors, "
+                  "useful for Darcy where solution smoothness matters.",
+        expected="0.04–0.10",
+    ),
+
+    # ── NS 2D fix (scale-up from baseline 0.0152) ─────────────────────────────
+    ExperimentConfig(
+        name="fno_ns2d_fix_h128_l8_m12",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=12,
+        batch_size=16, budget_s=1200,
+        priority=2,
+        rationale="Scale FNO to h=128 on NS: baseline (h=64) at 0.0152 ≈ SOTA. "
+                  "Deeper+wider model may push below SOTA 0.0128.",
+        expected="0.010–0.015",
+    ),
+    ExperimentConfig(
+        name="rfno_ns2d_fix_h64_l8_m12",
+        benchmark="ns_2d_fix", model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=12,
+        batch_size=16, budget_s=1200,
+        priority=2,
+        rationale="RFNO on NS 2D: pre-LN stabilises l=8 depth in 2D; "
+                  "test if residual connections help vorticity rollup.",
+        expected="0.010–0.015",
+    ),
+
+    # ── SWE 2D ───────────────────────────────────────────────────────────────
+    ExperimentConfig(
+        name="swe2d_rfno_h64_l8_m12",
+        benchmark="swe_2d", model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=12,
+        batch_size=32, budget_s=480,
+        priority=2,
+        rationale="RFNO on Shallow Water: first run on this benchmark. "
+                  "Pre-LN residual is the go-to for previously unseen PDEs.",
+        expected="0.005–0.05",
+    ),
+    ExperimentConfig(
+        name="swe2d_fno_h128_l4_m12",
+        benchmark="swe_2d", model="FNO",
+        hidden_dim=128, n_layers=4, n_modes=12,
+        batch_size=32, budget_s=480,
+        priority=2,
+        rationale="Wider FNO (h=128) on SWE: test if more capacity helps wave dynamics.",
+        expected="0.002–0.05",
+    ),
+
+    # ── Allen-Cahn 2D ────────────────────────────────────────────────────────
+    ExperimentConfig(
+        name="allen_cahn_rfno_h64_l8_m12",
+        benchmark="allen_cahn_2d", model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=12,
+        batch_size=32, budget_s=480,
+        priority=2,
+        rationale="RFNO on Allen-Cahn phase field: first run. "
+                  "Pre-LN residual for stability on interface dynamics.",
+        expected="0.02–0.10",
+    ),
+    ExperimentConfig(
+        name="allen_cahn_fno_h128_l4_m12",
+        benchmark="allen_cahn_2d", model="FNO",
+        hidden_dim=128, n_layers=4, n_modes=12,
+        batch_size=32, budget_s=480,
+        priority=2,
+        rationale="FNO h=128 on Allen-Cahn: more width for capturing sharp phase interfaces.",
+        expected="0.02–0.10",
+    ),
+
+    # ── Wave 1D (RFNO) ───────────────────────────────────────────────────────
+    ExperimentConfig(
+        name="rfno_wave_h64_l8_m24",
+        benchmark="wave_1d", model="RFNO",
+        hidden_dim=64, n_layers=8, n_modes=24,
+        batch_size=64, budget_s=300,
+        priority=2,
+        rationale="RFNO on Wave: already at 5× better than SOTA with FNO. "
+                  "RFNO's pre-LN may allow deeper training to push further.",
+        expected="0.0005–0.002",
+    ),
+
+    # ── KdV RFNO + aug ───────────────────────────────────────────────────────
+    ExperimentConfig(
+        name="rfno_kdv_h128_l8_m24_aug",
+        benchmark="kdv_1d", model="RFNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        batch_size=64, budget_s=300,
+        augment=True,
+        priority=2,
+        rationale="RFNO + spatial augmentation on KdV: augmentation was the single biggest "
+                  "win on Burgers (+38%). Current SOTA KdV best (0.002) uses no aug.",
+        expected="0.001–0.002",
     ),
 ]
 

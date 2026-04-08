@@ -1,8 +1,9 @@
 """Command Center API — FastAPI backend for the SciML Discovery Engine."""
 
 import json
+import math
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +29,16 @@ if FIGS_DIR.exists():
 if LOGS_DIR.exists():
     app.mount("/logs", StaticFiles(directory=str(LOGS_DIR)), name="logs")
 
+UI_DIR = REPO_ROOT / "ui"
+if UI_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
+
+
+@app.get("/")
+def get_dashboard():
+    from fastapi.responses import FileResponse
+    return FileResponse(UI_DIR / "dashboard.html")
+
 
 def _tracker():
     """Always return a fresh Tracker so new results.json writes are reflected."""
@@ -35,11 +46,24 @@ def _tracker():
     return Tracker()
 
 
+def sanitize(data: Any) -> Any:
+    """Recursively replace NaN/Inf with None for JSON compliance."""
+    if isinstance(data, float):
+        if math.isnan(data) or math.isinf(data):
+            return None
+        return data
+    elif isinstance(data, dict):
+        return {k: sanitize(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize(v) for v in data]
+    return data
+
+
 # ── Experiment data ───────────────────────────────────────────────────────────
 
 @app.get("/api/experiments")
 def get_experiments():
-    return _tracker().get_lineage()
+    return sanitize(_tracker().get_lineage())
 
 
 @app.get("/api/experiment/{exp_id}")
@@ -48,10 +72,14 @@ def get_experiment(exp_id: str):
     exp = t.get_experiment(exp_id)
     if not exp:
         raise HTTPException(status_code=404, detail="Experiment not found")
-    inspect_path = FIGS_DIR / f"inspect_{exp_id}.png"
-    if inspect_path.exists():
-        exp["inspect_url"] = f"/figs/inspect_{exp_id}.png"
-    return exp
+    # inspect PNG is named with the inspect_id logged by train.py (stored in conclusion)
+    inspect_id = (exp.get("conclusion") or "").strip()
+    for candidate in [inspect_id, exp_id]:
+        inspect_path = FIGS_DIR / f"inspect_{candidate}.png"
+        if inspect_path.exists():
+            exp["inspect_url"] = f"/figs/inspect_{candidate}.png"
+            break
+    return sanitize(exp)
 
 
 @app.get("/api/lineage")
@@ -70,13 +98,24 @@ def get_lineage():
     return {"nodes": nodes, "links": links}
 
 
+TELEMETRY_FILE = REPO_ROOT / ".vram_telemetry"
+
 @app.get("/api/status")
 def get_status():
-    import mlx.core as mx
     t = _tracker()
     exps = t.experiments
+    # Read live VRAM from telemetry file written by the training subprocess
+    vram_active_mb = 0.0
+    vram_peak_mb   = 0.0
+    try:
+        data = json.loads(TELEMETRY_FILE.read_text())
+        vram_active_mb = data.get("vram_active_mb", 0.0)
+        vram_peak_mb   = data.get("vram_peak_mb",   0.0)
+    except Exception:
+        pass
     return {
-        "vram_peak_mb": mx.get_peak_memory() / 1024 / 1024,
+        "vram_active_mb": vram_active_mb,
+        "vram_peak_mb":   vram_peak_mb,
         "experiments_count": len(exps),
         "last_updated": exps[-1]["timestamp"] if exps else 0,
         "paused": PAUSE_FILE.exists(),
@@ -156,6 +195,38 @@ def get_queue():
     ]
     pending.sort(key=lambda x: x["priority"])
     return {"pending": len(pending), "experiments": pending}
+
+
+@app.get("/api/active")
+def get_active():
+    """Return names of experiments that are currently running."""
+    import time
+    active = []
+    
+    # Priority 1: Check for explicit signaling file
+    active_file = REPO_ROOT / ".active_experiment"
+    if active_file.exists():
+        try:
+            name = active_file.read_text().strip()
+            if name:
+                active.append(name)
+        except Exception:
+            pass
+
+    # Priority 2: Check for recently modified logs (fallback/backup)
+    if LOGS_DIR.exists():
+        now = time.time()
+        for log_path in LOGS_DIR.glob("*.log"):
+            # Increased threshold to 120s for cases where mtime updates are slow
+            if now - log_path.stat().st_mtime < 120:
+                # Skip the autorun meta-logs
+                if log_path.stem.startswith("autorun"):
+                    continue
+                name = log_path.stem
+                if name not in active:
+                    active.append(name)
+                    
+    return {"active": active}
 
 
 # ── Control endpoints ─────────────────────────────────────────────────────────

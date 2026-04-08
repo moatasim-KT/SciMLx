@@ -185,18 +185,24 @@ class UniversalDE1d(nn.Module):
                                       n_layers=n_layers)
 
     def _spectral_advection(self, u: mx.array) -> mx.array:
-        """Compute -u * ∂u/∂x via spectral differentiation.
+        """Compute -u * ∂u/∂x via spectral differentiation with 2/3 dealiasing.
 
-        ∂u/∂x = IFFT(ik * FFT(u))  on [0, 2π] domain.
+        ∂u/∂x = IFFT(ik * FFT(u)).  The 2/3 rule zeros the top third of modes
+        before the nonlinear multiply to prevent aliasing-driven instability.
         """
         B, N = u.shape
         u_hat = mx.fft.rfft(u, axis=-1)          # [B, N//2+1] complex
-        # wavenumbers: k = 0,1,...,N//2
         n_rfft = N // 2 + 1
         k = mx.arange(n_rfft, dtype=mx.float32)  # [n_rfft]
-        # Multiply by ik (differentiation in Fourier space)
-        ux_hat_r = -u_hat.imag * k[None, :]
-        ux_hat_i =  u_hat.real * k[None, :]
+
+        # 2/3 dealiasing: zero modes above 2/3 * N/2
+        k_max = int(n_rfft * 2 / 3)
+        mask = (k < k_max).astype(mx.float32)
+        u_hat_d = u_hat * mask[None, :]
+
+        # Spectral derivative ∂u/∂x
+        ux_hat_r = -u_hat_d.imag * k[None, :]
+        ux_hat_i =  u_hat_d.real * k[None, :]
         ux_hat   = ux_hat_r + 1j * ux_hat_i
         ux = mx.fft.irfft(ux_hat, n=N, axis=-1)  # [B, N]
         return -u * ux   # nonlinear advection
@@ -217,7 +223,9 @@ class UniversalDE1d(nn.Module):
         """Full tendency: known physics + NN correction."""
         known = self._spectral_advection(u) + self._spectral_diffusion(u)
         nn    = self.correction(u, grid)
-        return known + nn
+        tendency = known + nn
+        # Clip tendency magnitude to prevent RK4 stage blow-up during early training
+        return mx.clip(tendency, -1e4, 1e4)
 
     def __call__(self, u0: mx.array) -> mx.array:
         B, N = u0.shape
