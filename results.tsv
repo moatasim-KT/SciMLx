@@ -155,3 +155,5 @@ a9676d6	darcy_2d_fix	FNO	1.953484	7.37	discard	fno_darcy2d_fix_h128_l8_m24_h1 FN
 a9676d6	darcy_2d_fix	FNO	0.325146	3.37	discard	fno_darcy2d_fix_h64_m12_l4 FNO  h=64  l=4  m=12
 a9676d6	burgers_1d	FNO	0.180345	0.46	discard	fno_h128_m24_l8_aug_ckpt FNO  h=128  l=8  m=24
 a9676d6	ns_2d_fix	FNO	1.000000	0.00	crash	fno_ns2d_fix_h128_l8_m12 FNO  h=128  l=8  m=12
+0fe5f9e	ns_hre_2d	FNO2D	1.000000	0.00	crash	fno2d_nshre2d_h32_l4_m12 FNO2D  h=32  l=4
+0fe5f9e	swe_2d	FNO2D	0.010729	2.50	keep	fno2d_swe2d_h32_l4_m12 FNO2D  h=32  l=4
