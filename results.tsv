@@ -144,3 +144,4 @@ manual	burgers_1d	CPFNO	0.231757	0.20	discard	cpfno_burgers_h128_l8_m24_r8 CPFNO
 manual	burgers_1d	UNO	0.407970	0.10	discard	uno_h64_l2 UNO h=64 l=2 m=16
 manual	burgers_1d	WNO	0.839705	0.04	discard	wno_h64_lvl4_l4 WNO h=64 l=4 lvl=4
 80b6b97	allen_cahn_2d	FNO	0.822097	4.25	keep	allen_cahn_fno_h128_l4_m12 FNO  h=128  l=4  m=12
+041af17	allen_cahn_2d	FNO	0.062801	3.37	keep	allen_cahn_fno_h64_l4_m12 FNO  h=64  l=4  m=12
