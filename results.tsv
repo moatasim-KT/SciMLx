@@ -102,3 +102,45 @@ b8bf426	kdv_1d	FNO	0.002374	0.28	keep	fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24
 3415d16	ns_2d_fix	FNO	0.015166	1.80	keep	fno_ns2d_fix_h32_m8_l4 FNO baseline (corrected ICs)
 3415d16	darcy_2d_fix	FNO	19.106368	7.20	discard	fno_darcy2d_fix_h128 FNO h=128 l=8 m=24 (too large, only 2 steps)
 675957e	darcy_2d_fix	FNO	0.104137	1.70	keep	darcy2d_fno_h64_l6_m16 FNO  h=64  l=6  m=16
+80b6b97	darcy_2d_fix	RFNO	1.000000	0.00	crash	darcy2d_rfno_h64_l8_m12 RFNO  h=64  l=8  m=12
+80b6b97	wave_1d	DualDeepONet	0.082270	0.00	discard	dual_deeponet_wave_h64_l4 DualDeepONet  h=64  l=4
+80b6b97	kdv_1d	EnergyFNO	0.002752	0.26	discard	energy_fno_kdv_h128_l8_m24 EnergyFNO  h=128  l=8
+80b6b97	wave_1d	EnergyFNO	0.001550	0.11	discard	energy_fno_wave_h64_l8_m24 EnergyFNO  h=64  l=8
+80b6b97	burgers_1d	FNO	0.165322	0.23	discard	fno_h128_m24_l6_v2 FNO  h=128  l=6  m=24
+80b6b97	kdv_1d	HNN	nan	0.00	discard	hnn_kdv_h64_l4 HNN  h=64  l=4
+80b6b97	wave_1d	HNN	0.011724	0.01	discard	hnn_wave_h128_l4 HNN  h=128  l=4
+80b6b97	wave_1d	HNN	0.057888	0.00	discard	hnn_wave_h64_l4 HNN  h=64  l=4
+80b6b97	kdv_1d	NeuralODE	0.007657	0.87	discard	neural_ode_kdv_h64_l4_s20 NeuralODE  h=64  l=4
+80b6b97	wave_1d	NeuralODE	0.068564	0.82	discard	neural_ode_wave_h64_l4_s20 NeuralODE  h=64  l=4
+80b6b97	ns_2d_fix	FNO	1.000000	0.00	crash	ns2d_fno_h128_l6_m16 FNO  h=128  l=6  m=16
+80b6b97	burgers_1d	RTFNO	0.236066	0.33	discard	rtfno_burgers_h128_l10_m24 RTFNO  h=128  l=10
+80b6b97	kdv_1d	RTFNO	0.005746	0.33	discard	rtfno_kdv_h128_l10_m24 RTFNO  h=128  l=10
+80b6b97	darcy_2d_fix	TFNO2D	1.076363	3.44	discard	tfno2d_darcy_h128_m24_l4 TFNO2D  h=128  l=4
+80b6b97	darcy_2d_fix	TFNO2D	0.556163	3.07	discard	tfno2d_darcy_h64_m16_l4 TFNO2D  h=64  l=4
+80b6b97	burgers_1d	TFNO	0.162116	0.75	discard	tfno_burgers_h128_l8_m24_r05 TFNO  h=128  l=8
+80b6b97	burgers_1d	TFNO	0.151845	0.75	discard	tfno_burgers_h128_l8_m24_r075 TFNO  h=128  l=8
+80b6b97	kdv_1d	TFNO	0.003360	0.75	discard	tfno_kdv_h128_l8_m24 TFNO  h=128  l=8
+80b6b97	wave_1d	TimeDeepONet	0.002224	0.02	discard	time_deeponet_wave_h128_l4 TimeDeepONet  h=256  l=4
+80b6b97	wave_1d	TimeDeepONet	0.001958	0.01	discard	time_deeponet_wave_h64_l4 TimeDeepONet  h=128  l=4
+80b6b97	darcy_2d_fix	Transolver2D	2.286695	6.41	discard	transolver2d_darcy_h64_l4_s64 Transolver2D  h=64  l=4
+80b6b97	burgers_1d	Transolver	0.775430	1.96	discard	transolver_burgers_h128_l6_s32 Transolver  h=256  l=6
+80b6b97	burgers_1d	Transolver	0.519277	0.88	discard	transolver_burgers_h64_l4_s32 Transolver  h=128  l=4
+80b6b97	kdv_1d	Transolver	0.022289	0.88	discard	transolver_kdv_h64_l4_s32 Transolver  h=128  l=4
+80b6b97	burgers_1d	UDE	nan	2.48	discard	ude_burgers_h32_l3_s20 UDE  h=64  l=3
+80b6b97	burgers_1d	UDE	1.000000	0.00	crash	ude_burgers_h64_l4_s30 UDE  h=128  l=4
+80b6b97	burgers_1d	UDE	1538.099146	14.94	discard	ude_burgers_fixed_h128_l4 UDE  h=128  l=4
+80b6b97	burgers_1d	UDE	1541.686143	5.89	discard	ude_burgers_fixed_h64_l3 UDE  h=64  l=3
+80b6b97	burgers_1d	FNO	0.185340	0.76	discard	fno_burgers_h128_l8_m24_h1_sobolev FNO  h=128  l=8  m=24  loss=h1
+80b6b97	burgers_1d	FNO	0.175756	0.73	discard	fno_burgers_h128_l8_m24_lr5e4 FNO  h=128  l=8  m=24  lr=5e-04
+80b6b97	burgers_1d	FNO	0.266413	0.21	discard	fno_burgers_h64_l4_m16_wave_transfer FNO  h=64  l=4  m=16
+80b6b97	darcy_2d_fix	FNO	1.346649	7.37	discard	fno_darcy2d_fix_h128_l8_m24 FNO  h=128  l=8  m=24
+80b6b97	burgers_1d	RFNO	0.209379	0.96	discard	rfno_burgers_h128_l10_m24 RFNO  h=128  l=10  m=24
+80b6b97	burgers_1d	RFNO	0.202329	0.85	discard	rfno_burgers_h128_l8_m24_h1_sobolev RFNO  h=128  l=8  m=24  loss=h1
+manual	burgers_1d	S4NO	0.731985	0.04	discard	s4no_burgers_h64_l4 S4NO h=64 l=4 m=16
+manual	burgers_1d	GNOT	0.231145	0.05	discard	gnot_burgers_h64_l3 GNOT h=64 l=3 m=16
+manual	burgers_1d	PODDeepONet	0.842813	0.01	discard	pod_deeponet_burgers_h64 PODDeepONet h=64
+manual	burgers_1d	LatentODE	0.804654	0.00	discard	latent_ode_burgers_h64 LatentODE h=64 l=4
+manual	burgers_1d	CPFNO	0.231757	0.20	discard	cpfno_burgers_h128_l8_m24_r8 CPFNO h=128 l=8 m=24
+manual	burgers_1d	UNO	0.407970	0.10	discard	uno_h64_l2 UNO h=64 l=2 m=16
+manual	burgers_1d	WNO	0.839705	0.04	discard	wno_h64_lvl4_l4 WNO h=64 l=4 lvl=4
+80b6b97	allen_cahn_2d	FNO	0.822097	4.25	keep	allen_cahn_fno_h128_l4_m12 FNO  h=128  l=4  m=12
