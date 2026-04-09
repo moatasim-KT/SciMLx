@@ -157,3 +157,15 @@ a9676d6	burgers_1d	FNO	0.180345	0.46	discard	fno_h128_m24_l8_aug_ckpt FNO  h=128
 a9676d6	ns_2d_fix	FNO	1.000000	0.00	crash	fno_ns2d_fix_h128_l8_m12 FNO  h=128  l=8  m=12
 0fe5f9e	ns_hre_2d	FNO2D	1.000000	0.00	crash	fno2d_nshre2d_h32_l4_m12 FNO2D  h=32  l=4
 0fe5f9e	swe_2d	FNO2D	0.010729	2.50	keep	fno2d_swe2d_h32_l4_m12 FNO2D  h=32  l=4
+c025fd6	ns_hre_2d	FNO	1.000000	0.00	crash	fno_nshre2d_h64_l4_m12 FNO  h=64  l=4  m=12
+c025fd6	swe_2d	FNO	1.147308	3.34	discard	fno_swe2d_h64_l4_m12 FNO  h=64  l=4  m=12
+c025fd6	ns_hre_2d	GNOT2D	1.000000	0.00	crash	gnot2d_nshre2d_h32_l4 GNOT2D  h=32  l=4
+c025fd6	swe_2d	GNOT2D	1.000000	0.00	crash	gnot2d_swe2d_h32_l4 GNOT2D  h=32  l=4
+c025fd6	burgers_1d	GNOT	0.747858	0.74	discard	gnot_burgers_h128_l8 GNOT  h=128  l=8
+c025fd6	burgers_1d	LatentODE	0.804800	0.00	discard	latent_ode_burgers_h64_l4 LatentODE  h=64  l=4
+c025fd6	burgers_1d	PODDeepONet	0.816187	0.01	discard	pod_deeponet_burgers_h128_l8 PODDeepONet  h=128  l=8
+c025fd6	swe_2d	RFNO	1.000000	0.00	crash	rfno_swe2d_h64_l4_m12 RFNO  h=64  l=4  m=12
+c025fd6	burgers_1d	S4NO	0.360299	0.35	discard	s4no_burgers_h128_l8 S4NO  h=128  l=8
+c025fd6	ns_hre_2d	Transolver2D	1.000000	0.00	crash	transolver2d_nshre2d_h32_l4 Transolver2D  h=32  l=4
+c025fd6	burgers_1d	UDE	1517.669744	1.50	discard	ude_burgers_h32_l3 UDE  h=32  l=3
+c025fd6	allen_cahn_2d	UNO	1.000000	0.00	crash	uno_allen_cahn_h32_l4_m12 UNO  h=32  l=4  m=12

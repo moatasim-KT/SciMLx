@@ -122,6 +122,13 @@ EXPERIMENTS: List[ExperimentConfig] = [
         budget_s=480, priority=1,
         rationale="Unrun GNOT2D model on untouched swe_2d benchmark.",
     ),
+    ExperimentConfig(
+        name="uno_swe2d_h32_l4_m12",
+        benchmark="swe_2d", model="UNO",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="UNO (multi-scale FNO) on untouched swe_2d benchmark.",
+    ),
 
     # [ns_hre_2d] 2D NS Re=1000 - 480s budget
     ExperimentConfig(
@@ -144,6 +151,80 @@ EXPERIMENTS: List[ExperimentConfig] = [
         hidden_dim=32, n_layers=4, n_modes=12,
         budget_s=480, priority=1,
         rationale="Unrun FNO2D model on untouched ns_hre_2d benchmark.",
+    ),
+    ExperimentConfig(
+        name="transolver2d_nshre2d_h32_l4",
+        benchmark="ns_hre_2d", model="Transolver2D",
+        hidden_dim=32, n_layers=4,
+        budget_s=480, priority=1,
+        rationale="Transolver2D on high-Re Navier-Stokes.",
+    ),
+
+    # [allen_cahn_2d] - 480s budget
+    ExperimentConfig(
+        name="uno_allen_cahn_h32_l4_m12",
+        benchmark="allen_cahn_2d", model="UNO",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480, priority=1,
+        rationale="UNO on allen_cahn_2d (barely touched).",
+    ),
+    ExperimentConfig(
+        name="wno_allen_cahn_h32_l4",
+        benchmark="allen_cahn_2d", model="WNO",
+        hidden_dim=32, n_layers=4,
+        budget_s=480, priority=1,
+        rationale="WNO on allen_cahn_2d (barely touched).",
+    ),
+
+    # [1D Untouched Models on Burgers]
+    ExperimentConfig(
+        name="s4no_burgers_h128_l8",
+        benchmark="burgers_1d", model="S4NO",
+        hidden_dim=128, n_layers=8,
+        budget_s=300, priority=1,
+        rationale="S4NO (state-space) on burgers_1d to explore Burgers gap.",
+    ),
+    ExperimentConfig(
+        name="wno_burgers_h128_l8",
+        benchmark="burgers_1d", model="WNO",
+        hidden_dim=128, n_layers=8, n_levels=3,
+        budget_s=300, priority=1,
+        rationale="WNO (wavelet) on burgers_1d.",
+    ),
+    ExperimentConfig(
+        name="uno_burgers_h128_l8_m24",
+        benchmark="burgers_1d", model="UNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        budget_s=300, priority=1,
+        rationale="UNO (U-Net FNO) on burgers_1d.",
+    ),
+    ExperimentConfig(
+        name="gnot_burgers_h128_l8",
+        benchmark="burgers_1d", model="GNOT",
+        hidden_dim=128, n_layers=8,
+        budget_s=300, priority=1,
+        rationale="GNOT (Transformer) on burgers_1d.",
+    ),
+    ExperimentConfig(
+        name="ude_burgers_h32_l3",
+        benchmark="burgers_1d", model="UDE",
+        hidden_dim=32, n_layers=3,
+        budget_s=300, priority=1,
+        rationale="Universal Differential Equations on burgers_1d.",
+    ),
+    ExperimentConfig(
+        name="latent_ode_burgers_h64_l4",
+        benchmark="burgers_1d", model="LatentODE",
+        hidden_dim=64, n_layers=4,
+        budget_s=300, priority=1,
+        rationale="Latent ODE on burgers_1d.",
+    ),
+    ExperimentConfig(
+        name="pod_deeponet_burgers_h128_l8",
+        benchmark="burgers_1d", model="PODDeepONet",
+        hidden_dim=128, n_layers=8,
+        budget_s=300, priority=1,
+        rationale="POD-DeepONet on burgers_1d.",
     ),
 
     # ── P1 · FNO width sweep ─────────────────────────────────────────────────

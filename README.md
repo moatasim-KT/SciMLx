@@ -8,19 +8,19 @@ Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
 
 ---
 
-## Current Results (102 experiments)
+## Current Results (396 experiments)
 
 | Benchmark | SOTA | Our Best | Gap | Status |
 |---|---|---|---|---|
 | `burgers_1d` | 0.0149 | **0.1468** (FNO+aug) | 9.8× | Priority target |
-| `kdv_1d` | ~0.010 | **0.0020** (RFNO) | 0.2× | **Beat SOTA 5×** ✓ |
-| `wave_1d` | ~0.005 | **0.000992** (FNO) | 0.2× | **Beat SOTA 5×** ✓ |
-| `darcy_2d_fix` | 0.0108 | 0.1469 (FNO) | 13.6× | Scale up needed |
+| `kdv_1d` | 0.0100 | **0.0020** (RFNO) | 0.2× | **Beat SOTA 5×** ✓ |
+| `wave_1d` | 0.0050 | **0.000992** (FNO) | 0.2× | **Beat SOTA 5×** ✓ |
+| `euler_1d` | 0.0150 | **0.0024** (FNO) | 0.16× | **Beat SOTA 6×** ✓ |
 | `ns_2d_fix` | 0.0128 | **0.0152** (FNO) | 1.2× | Near SOTA |
-| `euler_1d` | ~0.015 | — | — | Not yet run |
-| `swe_2d` | ~0.002 | — | — | Not yet run |
-| `allen_cahn_2d` | ~0.020 | — | — | Not yet run |
-| `ns_hre_2d` | ~0.070 | — | — | ~70 min first run |
+| `darcy_2d_fix` | 0.0108 | **0.1041** (FNO) | 9.6× | Improving |
+| `allen_cahn_2d` | 0.0200 | **0.0628** (FNO) | 3.1× | New |
+| `swe_2d` | 0.0020 | **0.0107** (FNO2D) | 5.4× | New |
+| `ns_hre_2d` | 0.0700 | — | — | Crashed |
 
 ---
 
@@ -52,23 +52,16 @@ uv run uvicorn app:app --reload --port 8000
 
 ---
 
-## Model Zoo (14 models, 12 implemented)
+## Model Zoo (30+ models implemented)
 
-| Model | Key Idea | Best Result |
+| Category | Models | Key Idea |
 |---|---|---|
-| `FNO` | Global Fourier spectral conv | 0.1468 (burgers), **0.000992** (wave) |
-| `RFNO` | Pre-LN residual FNO | **0.0020** (kdv — beat SOTA) |
-| `FNO2d` | 2D spectral conv | darcy_2d_fix baseline |
-| `FFNO` | Factorized diagonal spectral conv | 0.2405 (burgers) |
-| `AFNO` | Block-diagonal MLP in Fourier | 0.50–0.72 — skip |
-| `UNO` | U-Net + FNO layers | step-limited |
-| `WNO` | Haar wavelet conv | wrong for periodic BCs |
-| `DeepONet` | Branch + Trunk operator | 0.808 |
-| `PODDeepONet` | DeepONet + POD basis | — |
-| `S4NO` | S4 state-space neural operator | — |
-| `GNOT` | Graph Neural Operator Transformer | — |
-| `PINN` | Physics-informed NN | — |
-| `HNN` / `NeuralODE` | Hamiltonian / latent dynamics | — |
+| **Neural Operators** | `FNO`, `RFNO`, `TFNO`, `FFNO`, `UNO` | Spectral convolutions (Fourier, Tensor-Factorized, U-Net) |
+| **Attention-based** | `Transolver`, `GNOT`, `AFNO` | Physics Attention, Graph-based Transformers |
+| **DeepONet Family** | `DeepONet`, `TimeDeepONet`, `DualDeepONet` | Branch/Trunk inner products, Time-marching variants |
+| **State-Space** | `S4NO` | Structured State-Space Models (S4) |
+| **Physics-Bias** | `HNN`, `EnergyFNO`, `PINN`, `PINO` | Hamiltonian/Symplectic priors, Soft energy conservation |
+| **Differential Eq** | `NeuralODE`, `UDE`, `LatentODE` | Continuous-time integration, Universal Differential Equations |
 
 ---
 
@@ -102,14 +95,14 @@ Mix freely: Mode A for novel ideas, Mode B for overnight saturation.
 |---|---|
 | `prepare.py` | **Sacred** — generates PDE datasets, defines `evaluate_l2_rel`. Never modify. |
 | `train.py` | Training harness — routes benchmarks, enforces 5-min budget, emits metrics |
-| `experiments.py` | Declarative experiment queue (118 `ExperimentConfig` entries) |
-| `results.json` | Source of truth — DAG of all 102 completed experiments |
-| `models/` | 12 model implementations |
+| `experiments.py` | Declarative experiment queue (118+ `ExperimentConfig` entries) |
+| `results.json` | Source of truth — DAG of all 396 completed experiments |
+| `models/` | 30+ model implementations |
 | `autorun.py` | Subprocess runner with auto-retry, crash classification, git commit |
 | `agent_loop.py` | Mode B orchestrator (HypothesisEngine + Bayesian HPO) |
 | `tracker.py` | DAG lineage engine, HP importance analysis |
 | `auto_suggest.py` | Ranked next-step suggestion engine |
-| `paper_registry.py` | 15 papers with SOTA targets and gap tracking |
+| `paper_registry.py` | 15+ papers with SOTA targets and gap tracking |
 | `app.py` | FastAPI dashboard backend |
 | `ui/dashboard.html` | Standalone React dashboard |
 | `program.md` | Agent research protocol |
@@ -119,9 +112,11 @@ Mix freely: Mode A for novel ideas, Mode B for overnight saturation.
 ## Empirical Findings
 
 - **Burgers 1D**: `m=24` is the sweet spot; augmentation is the single biggest win (+38% improvement); RFNO does not beat FNO here; H1 loss barely helps.
-- **KdV 1D**: RFNO with pre-LN residual stabilizes soliton dynamics — 5× better than SOTA in just 8 experiments.
-- **Wave 1D**: Smaller/shallower model wins (`h=64 l=4`) because more training steps fit in the budget.
-- **2D benchmarks**: `darcy_2d` solver is broken — always use `darcy_2d_fix` and `ns_2d_fix`.
+- **KdV 1D**: RFNO with pre-LN residual stabilizes soliton dynamics — 5× better than SOTA.
+- **Wave 1D**: Smaller/shallower models win (`h=64 l=4`) within the fixed time budget.
+- **Euler 1D**: FNO is highly efficient, beating SOTA by 6× (**0.0024** vs 0.0150).
+- **Physics Priors**: `EnergyFNO` and `HNN` provide strong inductive biases for conservative systems (KdV, Wave) but are currently outpaced by pure FNO/RFNO efficiency within the 5-min budget.
+- **2D benchmarks**: `darcy_2d_fix` and `ns_2d_fix` are moving toward SOTA; `ns_hre_2d` remains a challenge due to compute intensity.
 
 ---
 

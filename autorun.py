@@ -20,7 +20,9 @@ import argparse
 import dataclasses
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -31,7 +33,26 @@ from tracker import Tracker
 
 TIMEOUT_S = 1500  # 25 min per experiment (20-min budget + data/compile overhead)
 
+# Memory budget for parallel scheduling (M1 8GB unified memory)
+TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
+# Estimated memory per experiment type (conservative)
+MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
+MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
+
+BENCHMARKS_2D = {"darcy_2d_fix", "ns_2d_fix", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
+
+def estimate_memory_mb(exp: ExperimentConfig) -> int:
+    """Estimate peak memory usage for an experiment."""
+    base = MEMORY_ESTIMATE_2D_MB if exp.benchmark in BENCHMARKS_2D else MEMORY_ESTIMATE_1D_MB
+    # Scale with model size
+    scale = (exp.hidden_dim / 64) * (exp.n_layers / 4)
+    return int(base * min(scale, 2.0))
+
 tracker = Tracker()
+_tracker_lock = threading.Lock()
+_baselines_lock = threading.Lock()
+_active_lock = threading.Lock()
+_active_experiments: set[str] = set()
 
 # ── Results I/O ───────────────────────────────────────────────────────────────
 
@@ -197,7 +218,9 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     active_file = REPO_ROOT / ".active_experiment"
-    active_file.write_text(exp.name)
+    with _active_lock:
+        _active_experiments.add(exp.name)
+        active_file.write_text(", ".join(sorted(_active_experiments)))
     try:
         t0 = time.time()
         try:
@@ -232,7 +255,12 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
 
         return parse_log(log_path)
     finally:
-        active_file.unlink(missing_ok=True)
+        with _active_lock:
+            _active_experiments.discard(exp.name)
+            if _active_experiments:
+                active_file.write_text(", ".join(sorted(_active_experiments)))
+            else:
+                active_file.unlink(missing_ok=True)
 
 
 # ── Git integration ───────────────────────────────────────────────────────────
@@ -273,6 +301,9 @@ def main() -> None:
                         "auto_suggest.py to print next steps and loop indefinitely")
     p.add_argument("--suggest-after", action="store_true",
                    help="Print auto_suggest report after all experiments complete")
+    p.add_argument("--workers",     type=int, default=1,
+                   help="Number of parallel experiments (default 1). "
+                        "Use 2 for 1D-only queues on M1 8GB; keep 1 for 2D experiments.")
     args = p.parse_args()
 
     # Build queue
@@ -307,14 +338,19 @@ def main() -> None:
 
     n_improved = 0
     n_crashed  = 0
+    workers    = args.workers
 
-    for i, exp in enumerate(pending, 1):
-        # Re-read results.tsv before each run — guards against duplicate runs
-        # when multiple sessions overlap or a previous session was interrupted
-        # mid-write.
+    # Warn if workers > 1 with 2D benchmarks
+    has_2d = any(e.benchmark in BENCHMARKS_2D for e in pending)
+    if workers > 1 and has_2d:
+        print(f"  WARNING: --workers {workers} with 2D benchmarks may OOM on 8GB M1.")
+        print(f"           2D experiments will be serialised automatically.")
+
+    def run_one(i: int, exp: ExperimentConfig) -> tuple:
+        """Run one experiment + optional retry. Returns (exp, results, val, mem_gb, status)."""
         if not args.force and exp.name in load_done_names():
-            print(f"\n[{i}/{len(pending)}]  {exp.name}  — already in results.tsv, skipping")
-            continue
+            print(f"\n[{i}/{len(pending)}]  {exp.name}  — already done, skipping")
+            return exp, None, None, 0.0, "skip"
 
         print(f"\n{'─'*70}")
         print(f"[{i}/{len(pending)}]  {exp.name}")
@@ -322,7 +358,8 @@ def main() -> None:
         print(f"  Benchmark: {exp.benchmark}")
         if exp.rationale:
             print(f"  Rationale: {exp.rationale}")
-        baseline_val = baselines.get(exp.benchmark, float("inf"))
+        with _baselines_lock:
+            baseline_val = baselines.get(exp.benchmark, float("inf"))
         print(f"  Current best ({exp.benchmark}): "
               f"{baseline_val:.6f}" if baseline_val < float("inf")
               else f"  No baseline yet for {exp.benchmark}")
@@ -347,9 +384,11 @@ def main() -> None:
                     val = retry_res["val"]
                     mem_gb = retry_res["mem_mb"] / 1024.0
 
+        with _baselines_lock:
+            baseline_val = baselines.get(exp.benchmark, float("inf"))
+
         if val is None:
             status = "crash"
-            n_crashed += 1
             crash_type = results.get("crash_type", "Unknown")
             print(f"  RESULT: CRASH  [{crash_type}]")
         else:
@@ -358,31 +397,73 @@ def main() -> None:
             delta    = (baseline_val - val) / baseline_val * 100 if baseline_val < float("inf") else 0
             marker   = f"↑ NEW BEST  (+{delta:.1f}%)" if improved else f"↓ no improvement"
             print(f"  RESULT: val_l2_rel = {val:.6f}   {marker}")
-
             if improved:
-                baselines[exp.benchmark] = val
-                n_improved += 1
+                with _baselines_lock:
+                    baselines[exp.benchmark] = val
 
         commit = current_commit()
         parent_name = getattr(exp, "parent_name", "") or ""
-        tracker.log_experiment(
-            benchmark=exp.benchmark,
-            model=exp.model,
-            val_l2_rel=val if val is not None else 1.0,
-            memory_gb=mem_gb,
-            status=status,
-            description=f"{exp.name} {exp.short()}",
-            commit=commit,
-            parent_name=parent_name or None,
-            config=vars(exp),
-            rationale=exp.rationale,
-            conclusion=(f"crash:{results['crash_type']} " if results.get("crash_type") else "") + (results.get("inspect_id") or ""),
-            diag=results.get("diag", {}),
-        )
+        with _tracker_lock:
+            tracker.log_experiment(
+                benchmark=exp.benchmark,
+                model=exp.model,
+                val_l2_rel=val if val is not None else 1.0,
+                memory_gb=mem_gb,
+                status=status,
+                description=f"{exp.name} {exp.short()}",
+                commit=commit,
+                parent_name=parent_name or None,
+                config=vars(exp),
+                rationale=exp.rationale,
+                conclusion=(f"crash:{results['crash_type']} " if results.get("crash_type") else "") + (results.get("inspect_id") or ""),
+                diag=results.get("diag", {}),
+            )
         print(f"  Logged to results.json and results.tsv  [status={status}]")
 
         if args.commit and status == "keep":
             git_commit_result(exp, val)
+
+        return exp, results, val, mem_gb, status
+
+    # ── Memory-aware parallel scheduler ──────────────────────────────────────
+    # 2D experiments are serialised (they use too much memory to overlap safely)
+    # 1D experiments can run up to `workers` at a time
+    mem_budget  = TOTAL_MEMORY_MB
+    mem_in_use  = 0
+    mem_sem     = threading.Semaphore(workers)
+
+    def mem_aware_run(i: int, exp: ExperimentConfig):
+        est = estimate_memory_mb(exp)
+        # For 2D: always serialise by acquiring all slots
+        slots = workers if exp.benchmark in BENCHMARKS_2D else 1
+        for _ in range(slots):
+            mem_sem.acquire()
+        try:
+            return run_one(i, exp)
+        finally:
+            for _ in range(slots):
+                mem_sem.release()
+
+    if workers == 1:
+        # Simple sequential path — no thread overhead
+        for i, exp in enumerate(pending, 1):
+            _, results, val, mem_gb, status = run_one(i, exp)
+            if status == "crash":
+                n_crashed += 1
+            elif status == "keep":
+                n_improved += 1
+    else:
+        print(f"\n  Parallel mode: up to {workers} workers  "
+              f"(2D experiments serialised for memory safety)")
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(mem_aware_run, i, exp): exp
+                       for i, exp in enumerate(pending, 1)}
+            for fut in as_completed(futures):
+                _, results, val, mem_gb, status = fut.result()
+                if status == "crash":
+                    n_crashed += 1
+                elif status == "keep":
+                    n_improved += 1
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print(f"\n{'━'*70}")
