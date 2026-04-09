@@ -7,8 +7,10 @@ Guidance for Claude Code and any external AI agent working in this repository.
 ## Quick Start
 
 ```bash
-uv sync                    # install dependencies
-uv run prepare.py          # one-time: generate + cache PDE datasets
+uv sync                       # install dependencies
+uv run prefetch_data.py       # one-time: pre-generate + cache ALL PDE datasets
+                              # (~20 min total; use --skip-slow to skip ns_hre_2d)
+                              # cached to: ~/.cache/sciml_autoresearch/
 
 # Run a single experiment (~6-8 min on Apple Silicon)
 uv run train.py --model FNO --hidden 128 --layers 8 --modes 24
@@ -285,6 +287,37 @@ uv run simulations             # smoke test all 4 simulation modules
 - `darcy_2d` is broken (wrong solver) — always use `darcy_2d_fix`
 - darcy_2d_fix: FNO h=32 too small; scale to h=128 m=24
 - ns_2d_fix FNO baseline 0.0152 ≈ SOTA 0.0128 — promising, needs tuning
+
+---
+
+## Data Cache
+
+All PDE datasets are pre-generated and disk-cached at:
+```
+~/.cache/sciml_autoresearch/
+```
+
+**Run before any experiment session** (safe to re-run; skips already-cached files):
+```bash
+uv run prefetch_data.py              # all benchmarks (~20 min, dominated by ns_hre_2d)
+uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min for everything else)
+```
+
+Without this, `train.py` regenerates training data per subprocess. For 2D benchmarks
+(especially `ns_2d_fix` with 4096 × 2D NS samples), this exceeds the 1500s hard timeout
+in `autorun.py` and causes every experiment to crash before training begins.
+
+| Benchmark | Train cache | Val cache |
+|---|---|---|
+| `burgers_1d` | `burgers_1d_train_N64.npz` | `burgers_1d_val_N64.npz` |
+| `kdv_1d` | `kdv_1d_train_N4096_ext.npz` | `kdv_1d_val_N64_ext.npz` |
+| `wave_1d` | `wave_1d_train_N4096_ext.npz` | `wave_1d_val_N64_ext.npz` |
+| `darcy_2d_fix` | `darcy_2d_fix_train_N4096_ext.npz` | `darcy_2d_fix_val_N64_ext.npz` |
+| `ns_2d_fix` | `ns_2d_fix_train_N4096_ext.npz` | `ns_2d_fix_val_N64_ext.npz` |
+| `euler_1d` | `euler_1d_train_N64_s300_seed7.npz` | `euler_1d_val_N64_s300_seed42.npz` |
+| `swe_2d` | `swe_2d_train_N64_s1_seed7.npz` | `swe_2d_val_N64_s1_seed42.npz` |
+| `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz` | `allen_cahn_2d_val_N64_s200_seed42.npz` |
+| `ns_hre_2d` | `ns_hre_2d_train_N64_s*_seed7.npz` | `ns_hre_2d_val_N64_s*_seed42.npz` (**~20 min**) |
 
 ---
 

@@ -290,6 +290,43 @@ uv run train.py --benchmark burgers_1d   --model S4NO --hidden 64 --layers 4 --m
 
 ---
 
+## Data Cache
+
+All PDE training and validation datasets are pre-generated and disk-cached at:
+
+```
+~/.cache/sciml_autoresearch/
+```
+
+**Always run this before starting any experiment session:**
+
+```bash
+uv run prefetch_data.py              # pre-cache all benchmarks (~20 min total)
+uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min, everything else)
+```
+
+Without this, train.py regenerates training data from scratch on every subprocess
+call — causing ns_2d_fix to always timeout (4096 × 2D NS solver steps takes longer
+than the 1500s hard kill limit in autorun.py).
+
+| Benchmark | Train cache file | Val cache file |
+|---|---|---|
+| `burgers_1d` | `burgers_1d_train_N64.npz` | `burgers_1d_val_N64.npz` |
+| `kdv_1d` | `kdv_1d_train_N4096_ext.npz` | `kdv_1d_val_N64_ext.npz` |
+| `wave_1d` | `wave_1d_train_N4096_ext.npz` | `wave_1d_val_N64_ext.npz` |
+| `darcy_2d_fix` | `darcy_2d_fix_train_N4096_ext.npz` | `darcy_2d_fix_val_N64_ext.npz` |
+| `ns_2d_fix` | `ns_2d_fix_train_N4096_ext.npz` | `ns_2d_fix_val_N64_ext.npz` |
+| `euler_1d` | `euler_1d_train_N64_s300_seed7.npz` | `euler_1d_val_N64_s300_seed42.npz` |
+| `swe_2d` | `swe_2d_train_N64_s1_seed7.npz` | `swe_2d_val_N64_s1_seed42.npz` |
+| `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz` | `allen_cahn_2d_val_N64_s200_seed42.npz` |
+| `ns_hre_2d` | `ns_hre_2d_train_N64_s*_seed7.npz` | `ns_hre_2d_val_N64_s*_seed42.npz` |
+
+If a benchmark's train cache is missing, the first experiment on that benchmark will
+regenerate it automatically (and save it), but this eats into the training budget.
+`prefetch_data.py` avoids this by generating everything upfront.
+
+---
+
 ## Invariants the agent must respect
 
 | Rule | Why |

@@ -41,9 +41,12 @@ Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
 # Install uv if needed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies + generate PDE datasets (one-time, ~5 min)
+# Install dependencies
 uv sync
-uv run prepare.py
+
+# Pre-generate and disk-cache ALL PDE datasets (one-time, ~20 min — dominated by ns_hre_2d)
+# Skips anything already cached. Safe to re-run.
+uv run prefetch_data.py
 
 # Run a single 5-minute experiment
 uv run train.py --model FNO --hidden 128 --layers 8 --modes 24
@@ -219,6 +222,39 @@ uv run uvicorn app:app --reload --port 8000
 Features: SOTA sidebar with progress bars, sortable/searchable results table, pending queue view, right inspector with config grid + training loss curve + log viewer + spectral diagnostics.
 
 API endpoints: `/api/experiments`, `/api/sota`, `/api/queue`, `/api/logs/{name}`, `/api/status`, `/api/pause`, `/api/resume`, `/api/inject`, `/api/priority`, `/api/lineage`
+
+---
+
+## Data Cache
+
+All PDE datasets are pre-generated and disk-cached under:
+
+```
+~/.cache/sciml_autoresearch/
+```
+
+Run once before starting experiments:
+
+```bash
+uv run prefetch_data.py            # all benchmarks (~20 min, dominated by ns_hre_2d)
+uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min for everything else)
+```
+
+After this, every `train.py` subprocess loads data from disk in under 5 seconds instead of regenerating from scratch each run.
+
+| Benchmark | Cache files | Source | Size |
+|---|---|---|---|
+| `burgers_1d` | `burgers_1d_train_N64.npz`, `burgers_1d_val_N64.npz` | `prepare.py` + `prefetch_data.py` | ~4MB |
+| `kdv_1d` | `kdv_1d_train_N4096_ext.npz`, `kdv_1d_val_N64_ext.npz` | `benchmarks_ext.py` | ~2MB |
+| `wave_1d` | `wave_1d_train_N4096_ext.npz`, `wave_1d_val_N64_ext.npz` | `benchmarks_ext.py` | ~2MB |
+| `darcy_2d_fix` | `darcy_2d_fix_train_N4096_ext.npz`, `darcy_2d_fix_val_N64_ext.npz` | `benchmarks_ext.py` | ~136MB |
+| `ns_2d_fix` | `ns_2d_fix_train_N4096_ext.npz`, `ns_2d_fix_val_N64_ext.npz` | `benchmarks_ext.py` | ~136MB |
+| `euler_1d` | `euler_1d_train_N64_s300_seed7.npz`, `euler_1d_val_N64_s300_seed42.npz` | `simulations/` | ~6MB |
+| `swe_2d` | `swe_2d_train_N64_s1_seed7.npz`, `swe_2d_val_N64_s1_seed42.npz` | `simulations/` | ~136MB |
+| `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz`, `allen_cahn_2d_val_N64_s200_seed42.npz` | `simulations/` | ~136MB |
+| `ns_hre_2d` | `ns_hre_2d_train_N64_s*.npz`, `ns_hre_2d_val_N64_s*.npz` | `simulations/` | ~136MB, **~20 min first run** |
+
+> `burgers_1d` training data is only cached in-memory by `prepare.py`. `prefetch_data.py` adds the missing disk cache. Without it, each train.py subprocess regenerates burgers training data from scratch (~4s overhead per run).
 
 ---
 
