@@ -173,3 +173,35 @@ df5ab22	burgers_1d	UNO	1.000000	1.71	discard	uno_burgers_h128_l8_m24 UNO  h=128 
 df5ab22	swe_2d	UNO	1.000000	0.00	crash	uno_swe2d_h32_l4_m12 UNO  h=32  l=4  m=12
 df5ab22	allen_cahn_2d	WNO	1.000000	0.00	crash	wno_allen_cahn_h32_l4 WNO  h=32  l=4  lvl=3
 df5ab22	burgers_1d	WNO	0.841519	0.27	discard	wno_burgers_h128_l8 WNO  h=128  l=8  lvl=3
+3e75214	ns_2d_fix	FNO	1.000000	0.00	crash	fno_ns2d_fix_h64_m12_l4 FNO  h=64  l=4  m=12
+3e75214	wave_1d	LatentODE	0.012523	0.00	discard	latent_ode_wave_h64_l4_s20 LatentODE  h=64  l=4
+3e75214	wave_1d	FNO	0.005291	0.48	discard	fno_wave_h128_m24_l8_v2 FNO  h=128  l=8  m=24
+3e75214	burgers_1d	LatentODE	0.801626	0.00	discard	latent_ode_burgers_h64_l4_s20 LatentODE  h=64  l=4
+3e75214	burgers_1d	NeuralODE	0.620615	1.62	discard	neural_ode_burgers_h64_l4_s20 NeuralODE  h=64  l=4
+3e75214	wave_1d	NeuralODE	0.071439	1.62	discard	neural_ode_wave_h64_l4_s40 NeuralODE  h=64  l=4
+3e75214	ns_2d_fix	FNO	1.000000	0.00	crash	ns2d_fno_h64_l4_m12 FNO  h=64  l=4  m=12
+3e75214	kdv_1d	RFNO	0.005051	0.47	discard	rfno_kdv_h128_l8_m24_aug RFNO  h=128  l=8  m=24
+3e75214	kdv_1d	RFNO	0.004106	0.48	discard	rfno_kdv_h128_m24_l8_aug RFNO  h=128  l=8  m=24
+daa9e49	burgers_1d	FNO	0.219867	0.48	discard	fno_burgers_h128_l8_m24_curriculum_smooth FNO  h=128  l=8  m=24
+daa9e49	burgers_1d	S4NO	0.472903	0.16	discard	s4d_burgers_h64_l6_p1 S4NO  h=64  l=6
+daa9e49	burgers_1d	FNO	0.240408	0.48	discard	fno_burgers_h128_l8_m24_curriculum_v2 FNO  h=128  l=8  m=24  curric
+daa9e49	kdv_1d	S4NO	0.027352	0.28	discard	s4d_kdv_h128_l6_p1 S4NO  h=128  l=6
+daa9e49	darcy_2d_fix	Transolver2D	1.661633	9.81	discard	transolver2d_darcy_h128_l4_s64 Transolver2D  h=128  l=4  m=12  h=4  s=64
+daa9e49	burgers_1d	Transolver	0.672791	0.57	discard	transolver_burgers_h128_l6_s32_h4 Transolver  h=128  l=6  m=16  h=4  s=32
+daa9e49	ns_2d_fix	RFNO	1.000000	0.00	crash	ns2d_rfno_h128_l8_m24 RFNO  h=128  l=8  m=24
+daa9e49	darcy_2d_fix	RFNO	1.000000	0.00	crash	rfno_darcy2d_fix_h128_l8_m24 RFNO  h=128  l=8  m=24
+daa9e49	ns_2d_fix	RFNO	1.000000	0.00	crash	rfno_ns2d_fix_h64_l8_m12 RFNO  h=64  l=8  m=12
+daa9e49	wave_1d	RFNO	0.004839	0.21	discard	rfno_wave_h64_l8_m24 RFNO  h=64  l=8  m=24
+daa9e49	burgers_1d	S4NO	0.237585	0.09	discard	s4no_h64_l4_burgers S4NO  h=64  l=4
+daa9e49	swe_2d	FNO	0.062297	4.25	discard	swe2d_fno_h128_l4_m12 FNO  h=128  l=4  m=12
+daa9e49	swe_2d	FNO	0.011259	3.37	discard	swe2d_fno_h64_l4_m12 FNO  h=64  l=4  m=12
+daa9e49	swe_2d	RFNO	1.000000	0.00	crash	swe2d_rfno_h64_l8_m12 RFNO  h=64  l=8  m=12
+daa9e49	ns_2d_fix	TFNO2D	0.028963	3.28	discard	tfno2d_ns_h64_m12_l4 TFNO2D  h=64  l=4
+daa9e49	burgers_1d	TimeDeepONet	0.802358	0.00	discard	time_deeponet_burgers_h64_l4 TimeDeepONet  h=64  l=4
+daa9e49	kdv_1d	TimeDeepONet	0.008612	0.00	discard	time_deeponet_kdv_h64_l4 TimeDeepONet  h=64  l=4
+daa9e49	ns_2d_fix	Transolver2D	0.999887	5.12	discard	transolver2d_ns_h64_l4_s64 Transolver2D  h=64  l=4  m=12  h=4  s=32
+daa9e49	wave_1d	Transolver	0.054694	0.25	discard	transolver_wave_h64_l4_s32 Transolver  h=64  l=4  m=16  h=4  s=32
+daa9e49	darcy_2d_fix	FNO	0.168671	2.53	discard	fno_darcy2d_h32_m12_l4_480s FNO  h=32  l=4  m=12
+daa9e49	darcy_2d_fix	FNO	0.457216	3.20	discard	fno_darcy2d_h64_m8_l4_480s FNO  h=64  l=4  m=8
+daa9e49	ns_2d_fix	FNO	0.015289	2.53	discard	fno_ns2d_h32_m12_l4_480s FNO  h=32  l=4  m=12
+daa9e49	ns_2d_fix	FNO	0.014284	2.42	keep	fno_ns2d_h32_m8_l4_600s FNO  h=32  l=4  m=8
