@@ -169,3 +169,7 @@ c025fd6	burgers_1d	S4NO	0.360299	0.35	discard	s4no_burgers_h128_l8 S4NO  h=128  
 c025fd6	ns_hre_2d	Transolver2D	1.000000	0.00	crash	transolver2d_nshre2d_h32_l4 Transolver2D  h=32  l=4
 c025fd6	burgers_1d	UDE	1517.669744	1.50	discard	ude_burgers_h32_l3 UDE  h=32  l=3
 c025fd6	allen_cahn_2d	UNO	1.000000	0.00	crash	uno_allen_cahn_h32_l4_m12 UNO  h=32  l=4  m=12
+df5ab22	burgers_1d	UNO	1.000000	1.71	discard	uno_burgers_h128_l8_m24 UNO  h=128  l=8  m=24
+df5ab22	swe_2d	UNO	1.000000	0.00	crash	uno_swe2d_h32_l4_m12 UNO  h=32  l=4  m=12
+df5ab22	allen_cahn_2d	WNO	1.000000	0.00	crash	wno_allen_cahn_h32_l4 WNO  h=32  l=4  lvl=3
+df5ab22	burgers_1d	WNO	0.841519	0.27	discard	wno_burgers_h128_l8 WNO  h=128  l=8  lvl=3
