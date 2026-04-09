@@ -52,7 +52,19 @@ tracker = Tracker()
 _tracker_lock = threading.Lock()
 _baselines_lock = threading.Lock()
 _active_lock = threading.Lock()
+_print_lock = threading.Lock()
 _active_experiments: set[str] = set()
+
+_worker_prefix: threading.local = threading.local()
+
+def wprint(*args, **kwargs):
+    """Thread-safe print that prefixes output with the current worker's experiment name."""
+    prefix = getattr(_worker_prefix, "name", None)
+    with _print_lock:
+        if prefix:
+            print(f"[{prefix}]", *args, **kwargs)
+        else:
+            print(*args, **kwargs)
 
 # ── Results I/O ───────────────────────────────────────────────────────────────
 
@@ -144,7 +156,7 @@ def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[
 
     # ── 1. 1D model receiving 2D input ───────────────────────────────────────
     if "too many values to unpack" in lower:
-        print("  DIAGNOSIS: 1D model given 2D input — incompatible pairing, skipping.")
+        wprint("  DIAGNOSIS: 1D model given 2D input — incompatible pairing, skipping.")
         return None
 
     # ── 2. Fourier modes too wide for grid ───────────────────────────────────
@@ -153,7 +165,7 @@ def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[
     ):
         new_modes = max(4, exp.n_modes // 2)
         desc = f"modes {exp.n_modes}→{new_modes} (broadcast shape error)"
-        print(f"  DIAGNOSIS: modes too large for grid. Fix: {desc}")
+        wprint(f"  DIAGNOSIS: modes too large for grid. Fix: {desc}")
         return desc, _replace(n_modes=new_modes)
 
     # ── 3a. VRAM soft limit exceeded (our own guard) ─────────────────────────
@@ -163,21 +175,21 @@ def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[
         new_batch  = max(8, exp.batch_size // 2)
         desc = (f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers}, "
                 f"batch {exp.batch_size}→{new_batch} (VRAM limit)")
-        print(f"  DIAGNOSIS: VRAM limit exceeded. Fix: {desc}")
+        wprint(f"  DIAGNOSIS: VRAM limit exceeded. Fix: {desc}")
         return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers, batch_size=new_batch)
 
     # ── 3b. Out of memory (Metal OOM) ────────────────────────────────────────
     if "out of memory" in lower or ("memory" in lower and "alloc" in lower):
         new_batch = max(8, exp.batch_size // 2)
         desc = f"batch_size {exp.batch_size}→{new_batch} (OOM — preserve hidden_dim)"
-        print(f"  DIAGNOSIS: OOM. Fix: {desc}")
+        wprint(f"  DIAGNOSIS: OOM. Fix: {desc}")
         return desc, _replace(batch_size=new_batch)
 
     # ── 4. NaN / Inf divergence ──────────────────────────────────────────────
     if "nan" in lower or ("inf" in lower and "loss" in lower):
         new_lr = round(exp.lr / 10, 8)
         desc = f"lr {exp.lr:.1e}→{new_lr:.1e}, grad_clip 1.0→5.0 (NaN/Inf)"
-        print(f"  DIAGNOSIS: numerical instability. Fix: {desc}")
+        wprint(f"  DIAGNOSIS: numerical instability. Fix: {desc}")
         return desc, _replace(lr=new_lr, grad_clip=5.0)
 
     # ── 5. Timeout (ran too long, no result) ─────────────────────────────────
@@ -185,26 +197,25 @@ def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[
         new_hidden = max(32, exp.hidden_dim // 2)
         new_layers = max(2, exp.n_layers // 2)
         desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (timeout — smaller model)"
-        print(f"  DIAGNOSIS: timeout. Fix: {desc}")
+        wprint(f"  DIAGNOSIS: timeout. Fix: {desc}")
         return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
 
     # ── 6. ValueError / RuntimeError — try modes first ───────────────────────
     if "valueerror" in lower or "runtimeerror" in lower or "assertionerror" in lower:
-        # Extract the actual error line for better diagnosis
         for line in reversed(content.splitlines()):
             if "error:" in line.lower() or "Error" in line:
-                print(f"  DIAGNOSIS: {line.strip()}")
+                wprint(f"  DIAGNOSIS: {line.strip()}")
                 break
         new_modes = max(4, exp.n_modes // 2)
         desc = f"modes {exp.n_modes}→{new_modes} (ValueError — reduce spectral width)"
-        print(f"  Fix: {desc}")
+        wprint(f"  Fix: {desc}")
         return desc, _replace(n_modes=new_modes)
 
     # ── 7. Unknown — generic size reduction ──────────────────────────────────
     new_hidden = max(32, exp.hidden_dim // 2)
     new_layers = max(2, exp.n_layers // 2)
     desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (unknown error)"
-    print(f"  DIAGNOSIS: unknown crash. Fix: {desc}")
+    wprint(f"  DIAGNOSIS: unknown crash. Fix: {desc}")
     return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
 
 
@@ -212,8 +223,8 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
     """Run one experiment. Returns dict of results."""
     cmd = ["uv", "run", "train.py"] + exp.to_cli_args()
 
-    print(f"  CMD: {' '.join(cmd)}")
-    print(f"  LOG: {log_path}")
+    wprint(f"  CMD: {' '.join(cmd)}")
+    wprint(f"  LOG: {log_path}")
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -236,21 +247,22 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
-                print(f"  TIMEOUT after {TIMEOUT_S}s — process killed")
+                wprint(f"  TIMEOUT after {TIMEOUT_S}s — process killed")
                 return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
             elapsed = time.time() - t0
-            print(f"  Finished in {elapsed:.0f}s  (exit code {proc.returncode})")
+            wprint(f"  Finished in {elapsed:.0f}s  (exit code {proc.returncode})")
 
             if proc.returncode != 0:
-                print(f"  Non-zero exit — checking log for details...")
+                wprint(f"  Non-zero exit — checking log for details...")
                 with open(log_path) as f:
                     tail = f.readlines()[-10:]
-                for line in tail:
-                    print(f"    {line}", end="")
+                with _print_lock:
+                    for line in tail:
+                        print(f"    {line}", end="")
                 return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
 
         except Exception as e:
-            print(f"  ERROR: {e}")
+            wprint(f"  ERROR: {e}")
             return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
 
         return parse_log(log_path)
@@ -348,21 +360,24 @@ def main() -> None:
 
     def run_one(i: int, exp: ExperimentConfig) -> tuple:
         """Run one experiment + optional retry. Returns (exp, results, val, mem_gb, status)."""
+        _worker_prefix.name = exp.name  # prefix all wprint() calls with experiment name
+
         if not args.force and exp.name in load_done_names():
-            print(f"\n[{i}/{len(pending)}]  {exp.name}  — already done, skipping")
+            wprint(f"\n[{i}/{len(pending)}]  already done, skipping")
             return exp, None, None, 0.0, "skip"
 
-        print(f"\n{'─'*70}")
-        print(f"[{i}/{len(pending)}]  {exp.name}")
-        print(f"  Config   : {exp.short()}")
-        print(f"  Benchmark: {exp.benchmark}")
-        if exp.rationale:
-            print(f"  Rationale: {exp.rationale}")
-        with _baselines_lock:
-            baseline_val = baselines.get(exp.benchmark, float("inf"))
-        print(f"  Current best ({exp.benchmark}): "
-              f"{baseline_val:.6f}" if baseline_val < float("inf")
-              else f"  No baseline yet for {exp.benchmark}")
+        with _print_lock:
+            print(f"\n{'─'*70}")
+            print(f"[{i}/{len(pending)}]  {exp.name}")
+            print(f"  Config   : {exp.short()}")
+            print(f"  Benchmark: {exp.benchmark}")
+            if exp.rationale:
+                print(f"  Rationale: {exp.rationale}")
+            with _baselines_lock:
+                baseline_val = baselines.get(exp.benchmark, float("inf"))
+            print(f"  Current best ({exp.benchmark}): "
+                  f"{baseline_val:.6f}" if baseline_val < float("inf")
+                  else f"  No baseline yet for {exp.benchmark}")
 
         log_path = LOGS_DIR / f"{exp.name}.log"
         results  = run_experiment(exp, log_path)
@@ -372,14 +387,14 @@ def main() -> None:
         if val is None and results.get("crash_type") not in ("ImportError", "NoOutput"):
             fix = smart_fix(exp, log_path, results)
             if fix is None:
-                print("  No auto-fix available — skipping retry.")
+                wprint("  No auto-fix available — skipping retry.")
             else:
                 fix_desc, retry_exp = fix
-                print(f"  Retrying with targeted fix: {fix_desc}")
+                wprint(f"  Retrying with targeted fix: {fix_desc}")
                 retry_log = LOGS_DIR / f"{retry_exp.name}.log"
                 retry_res = run_experiment(retry_exp, retry_log)
                 if retry_res["val"] is not None:
-                    print(f"  Retry succeeded: val_l2_rel={retry_res['val']:.6f}")
+                    wprint(f"  Retry succeeded: val_l2_rel={retry_res['val']:.6f}")
                     results = retry_res
                     val = retry_res["val"]
                     mem_gb = retry_res["mem_mb"] / 1024.0
@@ -390,13 +405,13 @@ def main() -> None:
         if val is None:
             status = "crash"
             crash_type = results.get("crash_type", "Unknown")
-            print(f"  RESULT: CRASH  [{crash_type}]")
+            wprint(f"  RESULT: CRASH  [{crash_type}]")
         else:
             improved = val < baseline_val
             status   = "keep" if improved else "discard"
             delta    = (baseline_val - val) / baseline_val * 100 if baseline_val < float("inf") else 0
             marker   = f"↑ NEW BEST  (+{delta:.1f}%)" if improved else f"↓ no improvement"
-            print(f"  RESULT: val_l2_rel = {val:.6f}   {marker}")
+            wprint(f"  RESULT: val_l2_rel = {val:.6f}   {marker}")
             if improved:
                 with _baselines_lock:
                     baselines[exp.benchmark] = val
@@ -418,7 +433,7 @@ def main() -> None:
                 conclusion=(f"crash:{results['crash_type']} " if results.get("crash_type") else "") + (results.get("inspect_id") or ""),
                 diag=results.get("diag", {}),
             )
-        print(f"  Logged to results.json and results.tsv  [status={status}]")
+        wprint(f"  Logged to results.json and results.tsv  [status={status}]")
 
         if args.commit and status == "keep":
             git_commit_result(exp, val)
