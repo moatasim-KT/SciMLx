@@ -18,6 +18,7 @@ results.tsv is updated after every experiment.
 
 import argparse
 import dataclasses
+import json
 import subprocess
 import sys
 import threading
@@ -52,6 +53,9 @@ MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
 MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 
 BENCHMARKS_2D = {"darcy_2d_fix", "ns_2d_fix", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
+
+# File written by POST /api/inject — autorun polls this between experiments
+INJECTIONS_FILE = REPO_ROOT / ".injected_experiments.json"
 
 def estimate_memory_mb(exp: ExperimentConfig) -> int:
     """Estimate peak memory usage for an experiment."""
@@ -315,6 +319,65 @@ def _build_adapt(exp: ExperimentConfig, suggestion: dict) -> ExperimentConfig:
         loss_type=suggestion.get("loss_type", exp.loss_type),
         rationale=suggestion.get("rationale", "HypothesisEngine adaptive retry"),
     )
+
+
+def poll_injections(pending: list, done_names_set: set) -> list:
+    """Read .injected_experiments.json, prepend new experiments to pending, clear the file.
+
+    Called between experiments in the run loop so injected configs are picked up
+    without restarting autorun. Returns a (possibly extended) pending list.
+    Returns the original list unchanged if the file is absent or malformed.
+    """
+    if not INJECTIONS_FILE.exists():
+        return pending
+    try:
+        raw = json.loads(INJECTIONS_FILE.read_text())
+    except Exception:
+        return pending
+
+    if not isinstance(raw, list) or not raw:
+        INJECTIONS_FILE.unlink(missing_ok=True)
+        return pending
+
+    import dataclasses as _dc
+    new_exps = []
+    skipped  = []
+    for item in raw:
+        name = item.get("name", "")
+        if not name or name in done_names_set:
+            skipped.append(name or "<unnamed>")
+            continue
+        if any(e.name == name for e in pending):
+            skipped.append(name)  # already queued
+            continue
+        # Build ExperimentConfig from the injected dict
+        # Use defaults for fields not supplied by the inject payload
+        try:
+            exp = ExperimentConfig(
+                name=name,
+                benchmark=item["benchmark"],
+                model=item["model"],
+                hidden_dim=int(item.get("hidden_dim", 64)),
+                n_layers=int(item.get("n_layers", 4)),
+                n_modes=int(item.get("n_modes", 16)),
+                budget_s=int(item.get("budget_s", 300)),
+                priority=int(item.get("priority", 1)),
+                rationale=item.get("rationale", "injected via /api/inject"),
+            )
+            new_exps.append(exp)
+        except Exception as e:
+            print(f"  [inject] Skipping malformed entry {name!r}: {e}")
+
+    INJECTIONS_FILE.unlink(missing_ok=True)
+
+    if new_exps:
+        names = ", ".join(e.name for e in new_exps)
+        print(f"\n  [inject] +{len(new_exps)} experiment(s) from /api/inject: {names}")
+        # Prepend so injected experiments run before the rest of the queue
+        return new_exps + pending
+    if skipped:
+        print(f"  [inject] {len(skipped)} injected experiment(s) already done/queued — skipping")
+    return pending
 
 
 def run_experiment(exp: ExperimentConfig, log_path: Path,
@@ -710,12 +773,18 @@ def main() -> None:
 
     if workers == 1:
         # Simple sequential path — no thread overhead
-        for i, exp in enumerate(pending, 1):
+        # Poll for injected experiments between each run
+        i = 1
+        while i <= len(pending):
+            exp = pending[i - 1]
             _, results, val, mem_gb, status = run_one(i, exp)
             if status == "crash":
                 n_crashed += 1
             elif status == "keep":
                 n_improved += 1
+            # Check for newly injected experiments before moving on
+            pending = poll_injections(pending, load_done_names())
+            i += 1
     else:
         print(f"\n  Parallel mode: up to {workers} workers  "
               f"(2D experiments serialised for memory safety)")
@@ -728,6 +797,11 @@ def main() -> None:
                     n_crashed += 1
                 elif status == "keep":
                     n_improved += 1
+                # Pick up injected experiments and submit them to the pool
+                injected = poll_injections([], load_done_names())
+                for new_exp in injected:
+                    idx = len(futures) + 1
+                    futures[pool.submit(mem_aware_run, idx, new_exp)] = new_exp
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print(f"\n{'━'*70}")
