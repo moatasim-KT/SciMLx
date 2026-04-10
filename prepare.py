@@ -33,9 +33,6 @@ CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "sciml_autoresearch"
 VAL_CACHE_1D = os.path.join(
     CACHE_DIR, f"burgers_val_N{GRID_SIZE}_nu{NU:.6f}_T{T_FINAL}.npz"
 )
-VAL_CACHE_DARCY = os.path.join(
-    CACHE_DIR, f"darcy_val_N{GRID_SIZE}.npz"
-)
 
 # ── 1D Solvers ────────────────────────────────────────────────────────────────
 
@@ -94,33 +91,6 @@ def solve_burgers_batch(
 
 # ── 2D Solvers ────────────────────────────────────────────────────────────────
 
-def solve_darcy_2d_batch(
-    a: np.ndarray,
-    N: int = GRID_SIZE,
-) -> np.ndarray:
-    """
-    Spectral solver for 2D Darcy Flow: -∇·(a∇u) = f, with f=1.
-    """
-    B, N1, _ = a.shape
-    # Random source term f
-    rng = np.random.RandomState(42)
-    f = _random_ic_2d(B, N1, rng, scale=1.0, offset=0.0)
-    
-    # Grid setup
-    k = np.fft.fftfreq(N1, d=1.0/N1).reshape(N1, 1)
-    k1, k2 = np.meshgrid(k, k)
-    laplacian = -(k1**2 + k2**2)
-    
-    # To solve -∇·(a∇u) = f, we use a simple iterative approach or 
-    # assume a is constant for a first-order approximation.
-    a_avg = a.mean(axis=(1, 2))[:, None, None]
-    denom = a_avg * (-laplacian)
-    denom[denom == 0] = 1.0 # Handle DC mode
-    u_hat = np.fft.fft2(f, axes=(1, 2)) / (denom + 1e-8)
-    u_hat[:, 0, 0] = 0.0
-    
-    u = np.fft.ifft2(u_hat, axes=(1, 2)).real
-    return u.astype(np.float32)
 
 
 def solve_navier_stokes_2d_batch(
@@ -283,9 +253,6 @@ def _generate_dataset(benchmark: str, n: int, seed: int) -> tuple:
     if benchmark == "burgers_1d":
         inputs = _random_ic(n, GRID_SIZE, rng)
         targets = solve_burgers_batch(inputs)
-    elif benchmark == "darcy_2d":
-        inputs = _random_ic_2d(n, GRID_SIZE, rng, scale=0.1, offset=1.0)
-        targets = solve_darcy_2d_batch(inputs)
     elif benchmark == "navier_stokes_2d":
         inputs = _random_ic_2d(n, GRID_SIZE, rng, scale=1.0, offset=0.0)
         targets = solve_navier_stokes_2d_batch(inputs)
@@ -387,11 +354,11 @@ def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> floa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare SciML evaluation harness")
-    parser.add_argument("--benchmark", type=str, choices=["burgers_1d", "darcy_2d", "navier_stokes_2d", "all"],
+    parser.add_argument("--benchmark", type=str, choices=["burgers_1d", "navier_stokes_2d", "all"],
                         default="burgers_1d", help="Run solver timing benchmarks")
     args = parser.parse_args()
 
-    benchmarks = ["burgers_1d", "darcy_2d", "navier_stokes_2d"] if args.benchmark == "all" else [args.benchmark]
+    benchmarks = ["burgers_1d", "navier_stokes_2d"] if args.benchmark == "all" else [args.benchmark]
 
     print(f"Cache dir  : {CACHE_DIR}")
     print()
@@ -410,10 +377,6 @@ if __name__ == "__main__":
                     u0 = _random_ic(batch_size, GRID_SIZE, rng)
                     t0 = time.time()
                     solve_burgers_batch(u0)
-                elif b == "darcy_2d":
-                    a = _random_ic_2d(batch_size, GRID_SIZE, rng)
-                    t0 = time.time()
-                    solve_darcy_2d_batch(a)
                 elif b == "navier_stokes_2d":
                     w0 = _random_ic_2d(batch_size, GRID_SIZE, rng)
                     t0 = time.time()

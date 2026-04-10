@@ -56,7 +56,7 @@ uv run train.py --model RFNO --hidden 128 --layers 8  --modes 24
 uv run train.py --benchmark kdv_1d  --model RFNO --hidden 128 --layers 8 --modes 24
 uv run train.py --benchmark wave_1d --model FNO  --hidden 64  --layers 4 --modes 16
 # 2D benchmarks — use small models + extended budget
-uv run train.py --benchmark darcy_2d_fix --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
+uv run train.py --benchmark darcy_2d --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
 uv run train.py --benchmark ns_2d_fix    --model FNO  --hidden 32 --layers 4 --modes 8  --budget 600
 
 # Run the pending queue
@@ -153,12 +153,12 @@ uv run viz.py --mode leaderboard
 | `kdv_1d` | KdV soliton | 0.010 | **0.0020** ✓ | 5× better than SOTA |
 | `wave_1d` | 1D wave | 0.005 | **0.000992** ✓ | 5× better than SOTA |
 | `euler_1d` | Compressible Euler | ~0.015 | **0.002413** ✓ | 6.2× better than SOTA |
-| `darcy_2d_fix` | 2D Darcy | 0.0108 | 0.1041 | HIGH — need h≤32 l≤4 |
+| `darcy_2d` | 2D Darcy | 0.0108 | 0.1041 | HIGH — need h≤32 l≤4 |
 | `ns_2d_fix` | 2D NS vorticity | 0.0128 | 0.01428 | MEDIUM — 1.12× gap, budget=600 |
 | `swe_2d` | 2D Shallow Water | ~0.002 | 0.0107 | 5.4× gap |
 | `allen_cahn_2d` | Allen-Cahn | ~0.020 | 0.0628 | 3.1× gap |
 | `ns_hre_2d` | NS Re=1000 | ~0.070 | not run | ~70 min first gen |
-| `darcy_2d` | 2D Darcy (broken) | — | 0.9986 | **DO NOT USE** |
+| `darcy_2d` | 2D Darcy (legacy) | — | 0.9986 | **REMOVED** |
 
 ---
 
@@ -205,7 +205,7 @@ H1 loss (α=0.01) marginally helps on Burgers; default l2_rel is fine for KdV an
 2. **No new packages** — only what's in `pyproject.toml`.
 3. **`ExperimentConfig.name` must be unique** — it's the dedup key.
 4. **Never hand-edit `results.json`** — use `tracker.py` API.
-5. **`darcy_2d` is broken** — always use `darcy_2d_fix`.
+5. **darcy_2d is now consolidated**: Legacy flawed version removed; corrected Richardson solver promoted to primary name.
 6. **PINO is broken** — endpoint-only formulation always fails; never add PINO entries.
 7. **2D model size**: h≤32, l≤4, m≤8, budget_s=480 (ns_2d_fix: 600) — larger configs crash.
 8. **RFNO is 1D-only** — crashes on all 2D benchmarks; never add RFNO to 2D experiments.
@@ -216,7 +216,7 @@ H1 loss (α=0.01) marginally helps on Burgers; default l2_rel is fine for KdV an
 ## Current research priorities
 
 1. **Close the Burgers gap** — best is 0.1468, SOTA is 0.0149 (9.8× gap). SSNO claims 0.007 in the paper.
-2. **Scale up darcy_2d_fix** — current best 0.1041 from FNO; try h=32 l=4 m=12 480s (small models only).
+2. **Scale up darcy_2d** — current best 0.1041 from FNO; try h=32 l=4 m=12 480s (small models only).
 3. **Push ns_2d_fix below SOTA** — 0.0152 vs 0.0128; try RFNO h=32 m=8 or H1 loss.
 4. **Benchmark unrun models** — SSNO on burgers_1d (paper target: 0.007).
 5. **Run simulation benchmarks** — swe_2d, allen_cahn_2d need more experiments.

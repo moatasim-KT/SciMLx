@@ -109,18 +109,18 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # ── P25 · Untouched Benchmarks & Models ──────────────────────────────────
     # [swe_2d] 2D Shallow Water - 480s budget
     ExperimentConfig(
-        name="fno_swe2d_h64_l4_m12",
+        name="fno_swe2d_h32_l4_m8",
         benchmark="swe_2d", model="FNO",
-        hidden_dim=64, n_layers=4, n_modes=12,
+        hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480, priority=1,
-        rationale="Baseline FNO for untouched swe_2d benchmark.",
+        rationale="Baseline FNO for swe_2d; downscaled to safe 2D config.",
     ),
     ExperimentConfig(
-        name="rfno_swe2d_h64_l4_m12",
-        benchmark="swe_2d", model="RFNO",
-        hidden_dim=64, n_layers=4, n_modes=12,
+        name="rfno2d_swe2d_h32_l4_m8",
+        benchmark="swe_2d", model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480, priority=1,
-        rationale="RFNO for untouched swe_2d benchmark; pre-LN residual stability.",
+        rationale="RFNO2D for swe_2d; pre-LN residual stability on safe 2D config.",
     ),
     ExperimentConfig(
         name="fno2d_swe2d_h32_l4_m12",
@@ -505,7 +505,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # ── P7 · Darcy 2D sweep ──────────────────────────────────────────────────
     ExperimentConfig(
         name="darcy_fno_h64_m12_l4",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=5,
@@ -514,7 +514,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="darcy_fno_h128_m12_l4",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=6,
@@ -1236,7 +1236,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # data level (read-only file).  These use the fixed solvers in benchmarks_ext.py.
     ExperimentConfig(
         name="fno_darcy2d_fix_h32_m8_l4",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=1200,
         priority=1,
@@ -1247,7 +1247,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_darcy2d_fix_h64_m12_l4",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=2,
@@ -1343,13 +1343,13 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.010–0.013",
     ),
     ExperimentConfig(
-        name="ns2d_rfno_h128_l8_m24",
+        name="ns2d_rfno2d_h32_l4_m8",
         benchmark="ns_2d_fix",
-        model="RFNO",
-        hidden_dim=128, n_layers=8, n_modes=24,
-        budget_s=1200,
-        priority=2,  # deprioritized: ns_2d_fix train data takes ~96min to generate
-        rationale="RFNO pre-LN stability; KdV best config transferred to 2D NS",
+        model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=600,
+        priority=2,
+        rationale="RFNO2D pre-LN stability; safe 2D config transferred to NS.",
         expected="0.010–0.014",
     ),
     ExperimentConfig(
@@ -1365,23 +1365,23 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # darcy_2d_fix — currently 13.6x SOTA; h=32 too small, h=128 ran out of time
     ExperimentConfig(
-        name="darcy2d_rfno_h64_l8_m12",
-        benchmark="darcy_2d_fix",
-        model="RFNO",
-        hidden_dim=64, n_layers=8, n_modes=12,
-        budget_s=1200,
+        name="darcy2d_rfno2d_h32_l4_m8",
+        benchmark="darcy_2d",
+        model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=1,
-        rationale="RFNO h=64 fits 2D budget; pre-LN stability for deeper Darcy net",
+        rationale="RFNO2D safe 2D config; pre-LN stability for Darcy net",
         expected="0.05–0.10",
     ),
     ExperimentConfig(
-        name="darcy2d_fno_h64_l6_m16",
-        benchmark="darcy_2d_fix",
+        name="darcy2d_fno_h32_l4_m8",
+        benchmark="darcy_2d",
         model="FNO",
-        hidden_dim=64, n_layers=6, n_modes=16,
-        budget_s=1200,
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=1,
-        rationale="FNO h=64 — goldilocks size for 2D budget constraint",
+        rationale="FNO h=32 — goldilocks safe size for 2D budget",
         expected="0.05–0.12",
     ),
 
@@ -1496,7 +1496,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="tfno2d_darcy_h128_m24_l4",
-        benchmark="darcy_2d_fix", model="TFNO2D",
+        benchmark="darcy_2d", model="TFNO2D",
         hidden_dim=128, n_layers=4, n_modes=24,
         budget_s=1200,
         priority=1,
@@ -1506,7 +1506,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="tfno2d_darcy_h64_m16_l4",
-        benchmark="darcy_2d_fix", model="TFNO2D",
+        benchmark="darcy_2d", model="TFNO2D",
         hidden_dim=64, n_layers=4, n_modes=16,
         budget_s=1200,
         priority=1,
@@ -1565,7 +1565,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="transolver2d_darcy_h64_l4_s64",
-        benchmark="darcy_2d_fix", model="Transolver2D",
+        benchmark="darcy_2d", model="Transolver2D",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=1,
@@ -1574,7 +1574,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="transolver2d_darcy_h128_l4_s64",
-        benchmark="darcy_2d_fix", model="Transolver2D",
+        benchmark="darcy_2d", model="Transolver2D",
         hidden_dim=128, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=2,
@@ -1831,13 +1831,12 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.11–0.14",
     ),
     ExperimentConfig(
-        name="fno_darcy2d_fix_h128_l8_m24",
-        benchmark="darcy_2d_fix", model="FNO",
-        hidden_dim=128, n_layers=8, n_modes=24,
-        batch_size=32, budget_s=1200,
+        name="fno_darcy2d_fix_h32_l4_m8",
+        benchmark="darcy_2d", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        batch_size=32, budget_s=480,
         priority=1,
-        rationale="Darcy is 13.6× from SOTA — current best (h=32) is far too small. "
-                  "Scale to h=128 l=8 m=24 (same config that dominates 1D benchmarks).",
+        rationale="Darcy fix on safe 2D config (h=32 l=4 m=8).",
         expected="0.05–0.15",
     ),
     ExperimentConfig(
@@ -1885,58 +1884,54 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # ── Darcy 2D fix (scale-up) ───────────────────────────────────────────────
     ExperimentConfig(
-        name="rfno_darcy2d_fix_h128_l8_m24",
-        benchmark="darcy_2d_fix", model="RFNO",
-        hidden_dim=128, n_layers=8, n_modes=24,
-        batch_size=32, budget_s=1200,
+        name="rfno2d_darcy2d_fix_h32_l4_m8",
+        benchmark="darcy_2d", model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        batch_size=32, budget_s=480,
         priority=2,
-        rationale="RFNO scale-up on Darcy: current best (FNO h=64) at 0.104. "
-                  "Pre-LN residual + h=128 should close the 10× SOTA gap.",
+        rationale="RFNO2D scale-up on Darcy fix (safe config). "
+                  "Pre-LN residual should help close the gap.",
         expected="0.04–0.10",
     ),
     ExperimentConfig(
-        name="fno_darcy2d_fix_h128_l8_m24_h1",
-        benchmark="darcy_2d_fix", model="FNO",
-        hidden_dim=128, n_layers=8, n_modes=24,
-        batch_size=32, budget_s=1200,
+        name="fno_darcy2d_fix_h32_l4_m8_h1",
+        benchmark="darcy_2d", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        batch_size=32, budget_s=480,
         loss_type="h1", h1_alpha=0.1,
         priority=2,
-        rationale="FNO h=128 + H1 loss on Darcy: H1 penalises gradient errors, "
-                  "useful for Darcy where solution smoothness matters.",
+        rationale="FNO h=32 + H1 loss on Darcy: safe 2D config.",
         expected="0.04–0.10",
     ),
 
     # ── NS 2D fix (scale-up from baseline 0.0152) ─────────────────────────────
     ExperimentConfig(
-        name="fno_ns2d_fix_h128_l8_m12",
+        name="fno_ns2d_fix_h32_l4_m8",
         benchmark="ns_2d_fix", model="FNO",
-        hidden_dim=128, n_layers=8, n_modes=12,
-        batch_size=16, budget_s=1200,
+        hidden_dim=32, n_layers=4, n_modes=8,
+        batch_size=16, budget_s=600,
         priority=2,
-        rationale="Scale FNO to h=128 on NS: baseline (h=64) at 0.0152 ≈ SOTA. "
-                  "Deeper+wider model may push below SOTA 0.0128.",
+        rationale="Scale FNO on NS: safe 2D config.",
         expected="0.010–0.015",
     ),
     ExperimentConfig(
-        name="rfno_ns2d_fix_h64_l8_m12",
-        benchmark="ns_2d_fix", model="RFNO",
-        hidden_dim=64, n_layers=8, n_modes=12,
-        batch_size=16, budget_s=1200,
+        name="rfno2d_ns2d_fix_h32_l4_m8",
+        benchmark="ns_2d_fix", model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        batch_size=16, budget_s=600,
         priority=2,
-        rationale="RFNO on NS 2D: pre-LN stabilises l=8 depth in 2D; "
-                  "test if residual connections help vorticity rollup.",
+        rationale="RFNO2D on NS 2D: safe config.",
         expected="0.010–0.015",
     ),
 
     # ── SWE 2D ───────────────────────────────────────────────────────────────
     ExperimentConfig(
-        name="swe2d_rfno_h64_l8_m12",
-        benchmark="swe_2d", model="RFNO",
-        hidden_dim=64, n_layers=8, n_modes=12,
+        name="swe2d_rfno2d_h32_l4_m8",
+        benchmark="swe_2d", model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=32, budget_s=480,
         priority=2,
-        rationale="RFNO on Shallow Water: first run on this benchmark. "
-                  "Pre-LN residual is the go-to for previously unseen PDEs.",
+        rationale="RFNO2D on Shallow Water: safe config.",
         expected="0.005–0.05",
     ),
     ExperimentConfig(
@@ -1951,13 +1946,12 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # ── Allen-Cahn 2D ────────────────────────────────────────────────────────
     ExperimentConfig(
-        name="allen_cahn_rfno_h64_l8_m12",
-        benchmark="allen_cahn_2d", model="RFNO",
-        hidden_dim=64, n_layers=8, n_modes=12,
+        name="allen_cahn_rfno2d_h32_l4_m8",
+        benchmark="allen_cahn_2d", model="RFNO2D",
+        hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=32, budget_s=480,
         priority=2,
-        rationale="RFNO on Allen-Cahn phase field: first run. "
-                  "Pre-LN residual for stability on interface dynamics.",
+        rationale="RFNO2D on Allen-Cahn: safe config.",
         expected="0.02–0.10",
     ),
     ExperimentConfig(
@@ -2036,7 +2030,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # Transolver 2D (SOTA on Darcy 2D)
     ExperimentConfig(
         name="transolver2d_darcy_h64_l4_s64",
-        benchmark="darcy_2d_fix", model="Transolver2D",
+        benchmark="darcy_2d", model="Transolver2D",
         hidden_dim=64, n_layers=4, n_modes=12,
         n_head=4, slice_num=64,
         budget_s=480,
@@ -2047,7 +2041,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="transolver2d_darcy_h128_l4_s64",
-        benchmark="darcy_2d_fix", model="Transolver2D",
+        benchmark="darcy_2d", model="Transolver2D",
         hidden_dim=128, n_layers=4, n_modes=12,
         n_head=4, slice_num=64,
         budget_s=480,
@@ -2073,7 +2067,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # Apply same principle to Darcy and NS 2D with 480s budget
     ExperimentConfig(
         name="fno_darcy2d_h32_m12_l4_480s",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=12,
         budget_s=480,
         priority=1,
@@ -2081,13 +2075,13 @@ EXPERIMENTS: List[ExperimentConfig] = [
                   "beats larger+fewer. m=12 > m=8 baseline.",
     ),
     ExperimentConfig(
-        name="rfno_darcy2d_h32_m12_l4_480s",
-        benchmark="darcy_2d_fix", model="RFNO",
+        name="rfno2d_darcy2d_h32_m12_l4_480s",
+        benchmark="darcy_2d", model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=12,
         budget_s=480,
         priority=1,
-        rationale="RFNO on Darcy 2D with 480s budget. Pre-LN residual stability matters "
-                  "for 2D spectral conv. RFNO won KdV — test on Darcy.",
+        rationale="RFNO2D on Darcy 2D with 480s budget. Pre-LN residual stability matters "
+                  "for 2D spectral conv. RFNO2D won KdV — test on Darcy.",
     ),
     ExperimentConfig(
         name="fno_ns2d_h32_m12_l4_480s",
@@ -2100,7 +2094,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_darcy2d_h64_m8_l4_480s",
-        benchmark="darcy_2d_fix", model="FNO",
+        benchmark="darcy_2d", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=8,
         budget_s=480,
         priority=1,
@@ -2167,14 +2161,46 @@ EXPERIMENTS: List[ExperimentConfig] = [
                   "should help the 0.003 gap to SOTA on vorticity field.",
     ),
     ExperimentConfig(
-        name="rfno_ns2d_h32_m8_l4_480s",
-        benchmark="ns_2d_fix", model="RFNO",
+        name="rfno2d_ns2d_h32_m8_l4_480s",
+        benchmark="ns_2d_fix", model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=1,
-        rationale="RFNO on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. "
-                  "RFNO won KdV (solitons) — worth testing on vorticity.",
+        rationale="RFNO2D on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. "
+                  "RFNO2D won KdV (solitons) — worth testing on vorticity.",
     ),
+    # ── Agent-generated experiments (Corrected) ──────────────────────────────
+    ExperimentConfig(
+        name='agent_rfno2d_nshre_h32_l4_m8',
+        benchmark='ns_hre_2d',
+        model='RFNO2D',
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale='Exploring Pre-LN residuals (RFNO2D) on high-Re NS on safe config.',
+        paper_ref='rfno-2024',
+    ),
+    ExperimentConfig(
+        name='agent_rfno2d_nsfix_h32_l4_m8',
+        benchmark='ns_2d_fix',
+        model='RFNO2D',
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale='Trying RFNO2D to close NS 2D gap on safe config.',
+        paper_ref='rfno-2024',
+    ),
+    ExperimentConfig(
+        name='agent_rfno2d_darcy_h32_l4_m8',
+        benchmark='darcy_2d_fix',
+        model='RFNO2D',
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale='Exploring RFNO2D stability on Darcy 2D (fixed).',
+        paper_ref='rfno-2024',
+    ),
+
 ]
 
 

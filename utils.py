@@ -27,7 +27,6 @@ SOTA: dict[str, float] = {
     # benchmarks_ext.py
     "kdv_1d":           0.010,
     "wave_1d":          0.005,
-    "darcy_2d_fix":     0.0108,
     "ns_2d_fix":        0.0128,
     # simulations/ (high-fidelity)
     "euler_1d":         0.015,   # smooth subsonic Euler (multi-channel)

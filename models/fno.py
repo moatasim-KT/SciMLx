@@ -226,6 +226,42 @@ class FNO2d(nn.Module):
         return self.proj2(x)[:, :, :, 0]
 
 
+class FNOBlockResidual2d(nn.Module):
+    """Pre-LN residual FNO block for 2-D."""
+    def __init__(self, channels: int, n_modes1: int, n_modes2: int):
+        super().__init__()
+        self.norm = nn.LayerNorm(channels)
+        self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
+        self.w    = nn.Linear(channels, channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        h = self.norm(x)
+        return x + nn.gelu(self.spec(h) + self.w(h))
+
+
+class RFNO2d(nn.Module):
+    """Residual Fourier Neural Operator for 2-D operator learning."""
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_ch: int = 3):
+        super().__init__()
+        self.lift   = nn.Linear(in_ch, hidden_dim)
+        self.blocks = [FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
+        self.norm   = nn.LayerNorm(hidden_dim)
+        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+
+    def __call__(self, u0: mx.array) -> mx.array:
+        # u0 : [B, N1, N2]
+        B, N1, N2 = u0.shape
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1), (B, N1, N2))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2), (B, N1, N2))
+        x     = mx.stack([u0, grid1, grid2], axis=-1)  # [B, N1, N2, 3]
+        x     = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x     = nn.gelu(self.proj1(self.norm(x)))
+        return self.proj2(x)[:, :, :, 0]
+
+
 # ── U-shaped Neural Operator (UNO) ────────────────────────────────────────────
 
 class UNO1d(nn.Module):

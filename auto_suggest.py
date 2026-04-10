@@ -37,10 +37,10 @@ BENCHMARK_RELATIVES = {
     "burgers_1d":   ["kdv_1d", "wave_1d"],
     "kdv_1d":       ["burgers_1d", "wave_1d"],
     "wave_1d":      ["burgers_1d", "kdv_1d"],
-    "darcy_2d_fix": ["ns_2d_fix", "swe_2d", "allen_cahn_2d"],
-    "ns_2d_fix":    ["darcy_2d_fix", "swe_2d"],
-    "swe_2d":       ["darcy_2d_fix", "ns_2d_fix"],
-    "allen_cahn_2d":["darcy_2d_fix"],
+    "darcy_2d": ["ns_2d_fix", "swe_2d", "allen_cahn_2d"],
+    "ns_2d_fix":    ["darcy_2d", "swe_2d"],
+    "swe_2d":       ["darcy_2d", "ns_2d_fix"],
+    "allen_cahn_2d":["darcy_2d"],
     "euler_1d":     ["burgers_1d", "kdv_1d"],
 }
 
@@ -55,7 +55,7 @@ BLACKLIST = {
     "h=256_fno",         # Width doesn't help — step-time-limited
     "afno_burgers",      # AFNO consistently 0.50-0.72 on Burgers — wrong inductive bias
     "h=128_2d_budget",   # 2D models with h=128 only get 2 steps in 5-min budget
-    "darcy_2d",          # Original darcy_2d has broken solver — use darcy_2d_fix
+    # "darcy_2d" is now consolidated
     "navier_stokes_2d",  # Original NS-2D has broken ICs — use ns_2d_fix
 }
 
@@ -112,7 +112,7 @@ _KNOWN_WINS_HARDCODED = {
             "h=128 l=8: 0.002098 (RFNO) — still very good but not best",
         ],
     },
-    "darcy_2d_fix": {
+    "darcy_2d": {
         "best_modes":  8,
         "best_hidden": 32,
         "best_layers": 4,
@@ -123,7 +123,7 @@ _KNOWN_WINS_HARDCODED = {
             "h=32 too small (0.1469) — needs more capacity",
             "h=128 l=8 m=24 ran out of time (only 2 steps in 5-min budget for 2D)",
             "2D models need extended budget (~480s) to train meaningfully",
-            "Use darcy_2d_fix only — original darcy_2d solver is broken in prepare.py",
+            "Consolidated Darcy benchmark with corrected Richardson solver",
             "FNO2D auto-routed from FNO for 2D benchmarks",
         ],
     },

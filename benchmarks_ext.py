@@ -5,10 +5,10 @@ Adds KdV, Wave, and corrected 2D benchmarks on top of prepare.py.
 Supported benchmarks:
     "kdv_1d"       – Korteweg–de Vries soliton dynamics   (ETDRK4 solver)
     "wave_1d"      – 1D wave equation  u_tt = c² u_xx      (Störmer-Verlet)
-    "darcy_2d_fix" – 2D Darcy with proper variable-coeff solver (Richardson iter)
+    "darcy_2d" – 2D Darcy with proper variable-coeff solver (Richardson iter)
     "ns_2d_fix"    – 2D Navier-Stokes with stable IC amplitude (CFL < 1)
 
-Why darcy_2d_fix and ns_2d_fix?
+Why darcy_2d and ns_2d_fix?
     prepare.py's darcy_2d solver uses only mean(a) → loses all spatial info;
     source term f uses a FIXED seed independent of a → u is uncorrelated with a.
     prepare.py's ns_2d solver uses IC scale=1.0 → CFL≈61 → immediate NaN.
@@ -41,7 +41,7 @@ from prepare import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d_fix", "ns_2d_fix"}
+EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d_fix"}
 
 # KdV parameters
 KDV_T       = 1.0    # final time
@@ -64,7 +64,7 @@ NS_FIX_T      = 1.0     # final time
 
 # ── 2D Solvers (corrected) ────────────────────────────────────────────────────
 
-def solve_darcy_2d_fix_batch(
+def solve_darcy_2d_batch(
     a: np.ndarray,
     f: np.ndarray,
     n_iter: int = DARCY_FIX_N_ITER,
@@ -259,10 +259,10 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
         u0, ut0 = _wave_ic(n, GRID_SIZE, rng)
         inputs  = u0
         targets = solve_wave_batch(u0, ut0, c=WAVE_C, T=WAVE_T, n_steps=WAVE_NSTEPS)
-    elif benchmark == "darcy_2d_fix":
+    elif benchmark == "darcy_2d":
         a, f    = _darcy_fix_ic(n, GRID_SIZE, rng)
         inputs  = a
-        targets = solve_darcy_2d_fix_batch(a, f)
+        targets = solve_darcy_2d_batch(a, f)
     elif benchmark == "ns_2d_fix":
         w0      = _ns_fix_ic(n, GRID_SIZE, rng)
         inputs  = w0
@@ -368,7 +368,7 @@ def evaluate_l2_rel_ext(benchmark: str, model, batch_size: int = 64) -> float:
 EXT_SOTA = {
     "kdv_1d":       0.010,   # FNO on KdV, Tran et al. 2023
     "wave_1d":      0.005,   # Wave equation: easier than Burgers, FNO near-exact
-    "darcy_2d_fix": 0.0108,  # Li et al. 2020 FNO on Darcy (proper solver)
+    "darcy_2d": 0.0108,  # Li et al. 2020 FNO on Darcy (proper solver)
     "ns_2d_fix":    0.0128,  # Li et al. 2020 FNO on NS (T=1, ν=1e-2)
 }
 
@@ -396,7 +396,7 @@ EXT_BENCHMARK_INFO = {
         "sota_model": "FNO",
         "notes":      "Linear PDE; FNO can achieve near-zero error easily",
     },
-    "darcy_2d_fix": {
+    "darcy_2d": {
         "pde":        "-∇·(a(x,y)∇u) = f  (2D Darcy flow)",
         "domain":     "[0, 1]², periodic",
         "ic_type":    "GRF permeability a ∈ [0.6, 1.4]; zero-mean GRF source f",
@@ -441,7 +441,7 @@ if __name__ == "__main__":
         print(f"  Shape : in={inp.shape} → out={tgt.shape}")
         print(f"  Gen   : {elapsed:.2f}s for 4 samples")
         print(f"  NaN?  : in={np.isnan(inp).any()}  out={np.isnan(tgt).any()}")
-        if bm in ("darcy_2d_fix",):
+        if bm in ("darcy_2d",):
             from scipy.stats import pearsonr
             import warnings
             with warnings.catch_warnings():

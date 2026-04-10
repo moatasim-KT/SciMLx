@@ -144,7 +144,7 @@ BENCHMARK_REGISTRY = BenchmarkRegistry()
 def _register_defaults():
     """Register all built-in models and benchmarks."""
     from models import (
-        FNO1d, FNO2d, FNO1dMC, UNO1d, RFNO1d,
+        FNO1d, FNO2d, FNO1dMC, UNO1d, RFNO1d, RFNO2d,
         AFNO1d, FFNO1d,
         WNO1d, DeepONet, PODDeepONet,
         S4NO1d, GNOT1d, GNOT2d,
@@ -227,6 +227,11 @@ def _register_defaults():
     def _make_fno2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
         return FNO2d(n_modes1=n_modes, n_modes2=n_modes,
                      hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("RFNO2D")
+    def _make_rfno2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
+        return RFNO2d(n_modes1=n_modes, n_modes2=n_modes,
+                      hidden_dim=hidden_dim, n_layers=n_layers)
 
     @MODEL_REGISTRY.register("FNO_MC")
     def _make_fno_mc(n_modes=16, hidden_dim=64, n_layers=4,
@@ -319,15 +324,14 @@ def _register_defaults():
                            n_layers=n_layers, n_steps=n_steps)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────
-    _std = {"burgers_1d", "darcy_2d"}
+    _std = {"burgers_1d"}
     for bm in _std:
         BENCHMARK_REGISTRY.register(
             bm,
             make_loader=make_dataloader,
             evaluate=lambda name, fn: evaluate_l2_rel(name, fn),
-            sota={"burgers_1d": 0.0149, "darcy_2d": 0.0108}.get(bm),
-            description={"burgers_1d": "1D viscous Burgers",
-                         "darcy_2d": "2D steady Darcy"}.get(bm, ""),
+            sota={"burgers_1d": 0.0149}.get(bm),
+            description={"burgers_1d": "1D viscous Burgers"}.get(bm, ""),
         )
     for bm in EXT_BENCHMARKS:
         BENCHMARK_REGISTRY.register(
@@ -338,7 +342,7 @@ def _register_defaults():
             description={
                 "kdv_1d":       "KdV soliton (ETDRK4)",
                 "wave_1d":      "1D wave u_tt=c²u_xx",
-                "darcy_2d_fix": "2D Darcy -∇·(a∇u)=f (corrected solver)",
+                "darcy_2d":     "2D Darcy -∇·(a∇u)=f (corrected solver)",
                 "ns_2d_fix":    "2D NS vorticity (CFL-stable ICs)",
             }.get(bm, ""),
         )

@@ -33,7 +33,7 @@ def log(bm: str, msg: str):
 # ── Per-source prefetch functions ─────────────────────────────────────────────
 
 def prefetch_ext(benchmark: str) -> str:
-    """Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy_fix, ns_2d_fix)."""
+    """Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy, ns_2d_fix)."""
     from benchmarks_ext import (
         _get_ext_train, _load_or_gen_ext_val,
         _get_ext_val_cache, _get_ext_train_cache_path, N_TRAIN,
@@ -112,13 +112,6 @@ def prefetch_burgers() -> str:
     return "burgers_1d: val, train ✓"
 
 
-def prefetch_darcy_fix_prepare() -> str:
-    """Cache darcy_2d_fix val via prepare.py (the original broken darcy_2d)."""
-    from prepare import _load_or_gen_val
-    log("darcy_2d", "warming val cache…")
-    _load_or_gen_val("darcy_2d")
-    log("darcy_2d", "val ready")
-    return "darcy_2d: val ✓"
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -128,7 +121,7 @@ TASKS = [
     ("burgers_1d",    prefetch_burgers,        ()),
     ("kdv_1d",        prefetch_ext,            ("kdv_1d",)),
     ("wave_1d",       prefetch_ext,            ("wave_1d",)),
-    ("darcy_2d_fix",  prefetch_ext,            ("darcy_2d_fix",)),
+    ("darcy_2d",  prefetch_ext,            ("darcy_2d",)),
     ("ns_2d_fix",     prefetch_ext,            ("ns_2d_fix",)),
     ("euler_1d",      prefetch_sim,            ("euler_1d",)),
     ("swe_2d",        prefetch_sim,            ("swe_2d",)),
