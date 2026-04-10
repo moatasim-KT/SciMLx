@@ -41,6 +41,10 @@ EARLY_STOP_MULTIPLIER: float = 50.0
 # Strategy r1 = smart crash fix, r2 = halve model, r3 = minimal viable config.
 MAX_RETRY_STRATEGIES: int = 3
 
+# Adaptive retry: if a completed run has val > baseline × this, the config is
+# clearly not working — query HypothesisEngine for a smarter config and retry once.
+POOR_RESULT_MULTIPLIER: float = 3.0
+
 # Memory budget for parallel scheduling (M1 8GB unified memory)
 TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
 # Estimated memory per experiment type (conservative)
@@ -295,6 +299,24 @@ def _build_r3(exp: ExperimentConfig) -> ExperimentConfig:
     )
 
 
+def _build_adapt(exp: ExperimentConfig, suggestion: dict) -> ExperimentConfig:
+    """Build an adaptive retry config from a HypothesisEngine suggestion dict.
+
+    Applies model/arch fields from the suggestion while preserving benchmark,
+    budget_s, and other non-arch fields from the original experiment.
+    """
+    return dataclasses.replace(
+        exp,
+        name=f"{exp.name}_adapt",
+        model=suggestion.get("model", exp.model),
+        hidden_dim=suggestion.get("hidden_dim", exp.hidden_dim),
+        n_layers=suggestion.get("n_layers", exp.n_layers),
+        n_modes=suggestion.get("n_modes", exp.n_modes),
+        loss_type=suggestion.get("loss_type", exp.loss_type),
+        rationale=suggestion.get("rationale", "HypothesisEngine adaptive retry"),
+    )
+
+
 def run_experiment(exp: ExperimentConfig, log_path: Path,
                    baseline: float = float("inf")) -> dict:
     """Run one experiment. Returns dict of results.
@@ -473,13 +495,18 @@ def main() -> None:
         print(f"           2D experiments will be serialised automatically.")
 
     def run_one(i: int, exp: ExperimentConfig) -> tuple:
-        """Run one experiment + up to 3 retries.  Returns (exp, results, val, mem_gb, status).
+        """Run one experiment + retries.  Returns (exp, results, val, mem_gb, status).
 
-        Retry chain (only triggered on crash/early-stop, not on ImportError/Killed):
+        Crash/early-stop retry chain (skipped for ImportError/Killed/incompatible):
           r1  smart_fix()  — context-aware from crash log (lr, batch, modes)
           r2  _build_r2()  — halve hidden_dim/n_layers/n_modes + lr×0.1
           r3  _build_r3()  — minimal viable: h=32 l=2 m≤8 lr=1e-4
         Discards only after all three fail.
+
+        Poor-result adaptive retry (triggered when completed val > baseline × POOR_RESULT_MULTIPLIER):
+          _adapt  _build_adapt()  — HypothesisEngine.suggest_intervention() picks a
+                                    better model/arch for the benchmark based on history.
+          Skipped for experiments that are themselves retries (_r1/_r2/_r3/_adapt).
         """
         _worker_prefix.name = exp.name  # prefix all wprint() calls with experiment name
 
@@ -567,6 +594,60 @@ def main() -> None:
 
         with _baselines_lock:
             baseline_val = baselines.get(exp.benchmark, float("inf"))
+
+        # ── Adaptive retry on poor-but-completed result ───────────────────────
+        # If the run finished (no crash) but val >> baseline, the config is not
+        # working for this benchmark. Query HypothesisEngine for a smarter config
+        # and run one adaptive retry before giving up.
+        # Guard: skip if this experiment is itself already a retry/adapt variant.
+        _retry_suffixes = ("_r1", "_r2", "_r3", "_adapt", "_retry")
+        _is_retry = any(exp.name.endswith(s) for s in _retry_suffixes)
+        _is_poor = (
+            val is not None
+            and baseline_val < float("inf")
+            and val > baseline_val * POOR_RESULT_MULTIPLIER
+            and not _is_retry
+        )
+        if _is_poor:
+            wprint(
+                f"  POOR RESULT: val={val:.4f} > {baseline_val:.4f}×{POOR_RESULT_MULTIPLIER:.0f} "
+                f"— querying HypothesisEngine for adaptive config..."
+            )
+            try:
+                from hypothesis import HypothesisEngine
+                _engine = HypothesisEngine()
+                _diag = results.get("diag") or {}
+                _suggestion = _engine.suggest_intervention(exp.benchmark, val, _diag)
+                _adapt_exp = _build_adapt(exp, _suggestion)
+                _done_set = load_done_names()
+                if _adapt_exp.name in _done_set:
+                    wprint(f"  [adapt] {_adapt_exp.name} already in results — skipping")
+                else:
+                    wprint(
+                        f"  ── Adaptive retry [{_adapt_exp.name}]: "
+                        f"{_adapt_exp.model} h={_adapt_exp.hidden_dim} "
+                        f"l={_adapt_exp.n_layers} m={_adapt_exp.n_modes}"
+                    )
+                    wprint(f"     {_suggestion.get('rationale', '')[:140]}")
+                    _adapt_log = LOGS_DIR / f"{_adapt_exp.name}.log"
+                    with _baselines_lock:
+                        _bl_now = baselines.get(exp.benchmark, float("inf"))
+                    _adapt_res = run_experiment(_adapt_exp, _adapt_log, baseline=_bl_now)
+                    _adapt_val = _adapt_res.get("val")
+                    if _adapt_val is not None:
+                        wprint(f"  Adaptive retry: val={_adapt_val:.6f}  "
+                               f"({'improved' if _adapt_val < val else 'no improvement vs original'})")
+                        if _adapt_val < val:
+                            results = _adapt_res
+                            val     = _adapt_val
+                            mem_gb  = _adapt_res["mem_mb"] / 1024.0
+                    else:
+                        wprint(f"  Adaptive retry crashed [{_adapt_res.get('crash_type', '?')}]")
+            except Exception as _adapt_err:
+                wprint(f"  [adapt] HypothesisEngine error: {_adapt_err}")
+            # Re-read baseline after adaptive retry (may have been updated by parallel workers)
+            with _baselines_lock:
+                baseline_val = baselines.get(exp.benchmark, float("inf"))
 
         if val is None:
             status = "crash"

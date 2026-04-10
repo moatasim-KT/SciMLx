@@ -504,20 +504,20 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # ── P7 · Darcy 2D sweep ──────────────────────────────────────────────────
     ExperimentConfig(
         name="darcy_fno_h64_m12_l4",
-        benchmark="darcy_2d", model="FNO",
-        hidden_dim=64, n_layers=4, n_modes=12,
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=5,
-        rationale="FNO on Darcy; current baseline is 0.9986 (near random). "
-                  "This tests if the solver produces learnable data.",
-        expected="If >0.9, solver data is likely not meaningful.",
+        rationale="FNO on darcy_2d_fix; safe 2D config (h≤32, m≤8). "
+                  "Current best is 0.1041 — testing if more budget + correct solver helps.",
     ),
     ExperimentConfig(
         name="darcy_fno_h128_m12_l4",
-        benchmark="darcy_2d", model="FNO",
-        hidden_dim=128, n_layers=4, n_modes=12,
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
         priority=6,
-        rationale="Wider FNO for Darcy; baseline check.",
-        expected="Similar to above.",
+        rationale="Second darcy_2d_fix sweep with same safe 2D config for reproducibility.",
     ),
 
     # ── P8 · Batch size sensitivity ──────────────────────────────────────────
