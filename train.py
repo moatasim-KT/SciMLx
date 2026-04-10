@@ -74,6 +74,8 @@ def _parse_args():
     p.add_argument("--pino_lambda", type=float, default=PINO_LAMBDA)
     p.add_argument("--sparsity",    type=float, default=SPARSITY)
     p.add_argument("--budget",      type=int,   default=TIME_BUDGET)
+    p.add_argument("--name",        default="",
+                   help="Experiment name written to telemetry file for dashboard tracking.")
     p.add_argument("--augment",     action="store_true", default=AUGMENT)
     p.add_argument("--curriculum",  action="store_true", default=CURRICULUM)
     p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT)
@@ -102,6 +104,7 @@ AUGMENT      = args.augment
 CURRICULUM   = args.curriculum
 SAVE_CKPT    = args.save_ckpt
 MAX_VRAM_GB  = args.max_vram_gb
+EXP_NAME     = args.name or f"{MODEL_TYPE}_{BENCHMARK}"
 
 # Apply hard memory limit at startup (Metal will raise OOM before swapping)
 if MAX_VRAM_GB > 0:
@@ -213,6 +216,7 @@ trainer = Trainer(
     lr_schedule_fn=lr_sch,
     max_vram_gb=MAX_VRAM_GB,
     curriculum=CURRICULUM,
+    exp_name=EXP_NAME,
 )
 
 print(f"Starting training (budget {TIME_BUDGET}s)...")

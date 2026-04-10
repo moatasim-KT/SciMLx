@@ -100,45 +100,70 @@ def get_lineage():
 
 TELEMETRY_FILE = REPO_ROOT / ".vram_telemetry"
 
+def _read_telemetry_files() -> list[dict]:
+    """Read all .vram_telemetry* files and return a list of live experiment dicts.
+
+    Each dict has: experiment, vram_active_mb, vram_peak_mb, progress,
+    remaining_s, step, loss, loss_history.  Stale files (>60s old) are skipped.
+    Falls back to the legacy .vram_telemetry file for backwards compatibility.
+    """
+    import time as _time
+    now = _time.time()
+    results = []
+    seen_experiments = set()
+
+    # Collect all telemetry files (named + legacy)
+    telemetry_files = sorted(REPO_ROOT.glob(".vram_telemetry*"))
+
+    for path in telemetry_files:
+        try:
+            age_s = now - path.stat().st_mtime
+            if age_s > 60:
+                continue
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+        exp_name = data.get("experiment", "")
+        if exp_name in seen_experiments:
+            continue
+        seen_experiments.add(exp_name)
+        results.append({
+            "experiment":     exp_name,
+            "vram_active_mb": data.get("vram_active_mb", 0.0),
+            "vram_peak_mb":   data.get("vram_peak_mb",   0.0),
+            "progress":       data.get("progress"),
+            "remaining_s":    data.get("remaining_s"),
+            "step":           data.get("step"),
+            "loss":           data.get("loss"),
+            "loss_history":   data.get("loss_history"),
+        })
+    return results
+
+
 @app.get("/api/status")
 def get_status():
     t = _tracker()
     exps = t.experiments
-    # Read live VRAM from telemetry file written by the training subprocess
-    vram_active_mb = 0.0
-    vram_peak_mb   = 0.0
-    progress       = None
-    remaining_s    = None
-    step           = None
-    loss           = None
-    loss_history   = None
-    try:
-        data = json.loads(TELEMETRY_FILE.read_text())
-        vram_active_mb = data.get("vram_active_mb", 0.0)
-        vram_peak_mb   = data.get("vram_peak_mb",   0.0)
-        progress       = data.get("progress")
-        remaining_s    = data.get("remaining_s")
-        step           = data.get("step")
-        loss           = data.get("loss")
-        loss_history   = data.get("loss_history")
-    except Exception:
-        pass
-    # Clear live metrics if telemetry is stale (file older than 60s = no active training)
-    import time as _time
-    try:
-        age_s = _time.time() - TELEMETRY_FILE.stat().st_mtime
-        if age_s > 60:
-            progress = remaining_s = step = loss = loss_history = None
-    except Exception:
-        progress = remaining_s = step = loss = loss_history = None
+    active_runs = _read_telemetry_files()
+
+    # Aggregate totals across all active experiments
+    vram_active_mb = sum(r["vram_active_mb"] for r in active_runs)
+    vram_peak_mb   = max((r["vram_peak_mb"] for r in active_runs), default=0.0)
+
+    # For backwards-compat single-experiment fields: use the most-progressed run
+    primary = max(active_runs, key=lambda r: r.get("progress") or 0) if active_runs else {}
+
     return {
+        # Single-experiment backwards-compat fields (most-progressed run)
         "vram_active_mb":    vram_active_mb,
         "vram_peak_mb":      vram_peak_mb,
-        "progress":          progress,
-        "remaining_s":       remaining_s,
-        "step":              step,
-        "loss":              loss,
-        "loss_history":      loss_history,
+        "progress":          primary.get("progress"),
+        "remaining_s":       primary.get("remaining_s"),
+        "step":              primary.get("step"),
+        "loss":              primary.get("loss"),
+        "loss_history":      primary.get("loss_history"),
+        # Per-experiment breakdown (new field — dashboard uses this for multi-run display)
+        "active_runs":       active_runs,
         "experiments_count": len(exps),
         "last_updated":      exps[-1]["timestamp"] if exps else 0,
         "paused":            PAUSE_FILE.exists(),

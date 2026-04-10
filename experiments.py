@@ -54,6 +54,7 @@ class ExperimentConfig:
         args = [
             "--benchmark",   self.benchmark,
             "--model",       self.model,
+            "--name",        self.name,
             "--hidden",      str(self.hidden_dim),
             "--layers",      str(self.n_layers),
             "--modes",       str(self.n_modes),

@@ -97,6 +97,7 @@ class Trainer:
         lr_schedule_fn: Optional[Callable[[float], float]] = None,
         max_vram_gb: float = 0.0,
         curriculum: bool = False,
+        exp_name: str = "",
     ):
         self.model = model
         self.optimizer = optimizer
@@ -109,7 +110,14 @@ class Trainer:
         self.lr_schedule_fn = lr_schedule_fn
         self.max_vram_gb = max_vram_gb
         self.curriculum = curriculum
+        self.exp_name = exp_name
         self._loss_history: list = []   # rolling (step, loss) pairs for live telemetry
+        # Per-experiment telemetry file: .vram_telemetry_<name> so parallel runs don't clobber each other
+        from pathlib import Path as _Path
+        _slug = exp_name.replace("/", "_").replace(" ", "_") if exp_name else ""
+        self._telemetry_path = _Path(__file__).resolve().parent / (
+            f".vram_telemetry_{_slug}" if _slug else ".vram_telemetry"
+        )
 
         # JIT compilation
         self.loss_and_grad_fn = nn.value_and_grad(self.model, self.loss_fn)
@@ -200,12 +208,11 @@ class Trainer:
                 # Write live stats so the dashboard server (different process) can read them
                 try:
                     import json as _json
-                    from pathlib import Path as _Path
-                    _telemetry = _Path(__file__).resolve().parent / ".vram_telemetry"
                     self._loss_history.append([total_steps, loss_val])
                     if len(self._loss_history) > 100:
                         self._loss_history = self._loss_history[-100:]
-                    _telemetry.write_text(_json.dumps({
+                    self._telemetry_path.write_text(_json.dumps({
+                        "experiment":     self.exp_name,
                         "vram_active_mb": active_mb,
                         "vram_peak_mb":   peak_mb,
                         "progress":       progress,
@@ -240,6 +247,11 @@ class Trainer:
             self.model.update(best_params)
             mx.eval(self.model.parameters())
             print(f"Restored best checkpoint (val={best_val:.6f})", flush=True)
+        # Clean up per-experiment telemetry file so dashboard stops showing stale data
+        try:
+            self._telemetry_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         return total_steps, max_grad_norm, total_train_time
 
     def evaluate(self):

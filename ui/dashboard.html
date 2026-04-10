@@ -911,12 +911,20 @@ function App() {
             </div>
           </div>
 
-          {/* Active experiment strip — always visible */}
+          {/* Active experiment strip — one row per running experiment */}
           {active.filter(n => n !== "dashboard_server").map(name => {
             const qExp = queue.find(e => e.name === name);
-            const pct = status.progress != null ? (status.progress * 100).toFixed(1) : null;
-            const remS = status.remaining_s;
-            const remStr = remS != null
+            // Look up per-experiment telemetry from active_runs; fall back to global status
+            // for backwards-compat with old trainers that don't write named files.
+            const runData = (status.active_runs || []).find(r => r.experiment === name) || {};
+            const hasOwn  = Object.keys(runData).length > 0;
+            const prog    = hasOwn ? runData.progress    : status.progress;
+            const remS    = hasOwn ? runData.remaining_s : status.remaining_s;
+            const step    = hasOwn ? runData.step        : status.step;
+            const loss    = hasOwn ? runData.loss        : status.loss;
+            const hist    = hasOwn ? runData.loss_history: status.loss_history;
+            const pct     = prog != null ? (prog * 100).toFixed(1) : null;
+            const remStr  = remS != null
               ? remS >= 60 ? `${Math.floor(remS/60)}m ${Math.round(remS%60)}s` : `${Math.round(remS)}s`
               : null;
             return (
@@ -931,10 +939,10 @@ function App() {
                   <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{name}</span>
                   {qExp && <span style={{fontSize:11,color:"var(--txt2)"}}>· {qExp.benchmark} · {qExp.model} h={qExp.hidden_dim} l={qExp.n_layers} m={qExp.n_modes}</span>}
                   <span style={{display:"flex",alignItems:"center",gap:14,marginLeft:"auto"}}>
-                    {status.step != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--txt2)"}}>step {status.step}</span>}
-                    {status.loss != null && <span style={{display:"flex",alignItems:"center",gap:4}}>
-                      <SparkLine points={status.loss_history}/>
-                      <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--amber)"}}>loss {status.loss.toExponential(4)}</span>
+                    {step != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--txt2)"}}>step {step}</span>}
+                    {loss != null && <span style={{display:"flex",alignItems:"center",gap:4}}>
+                      <SparkLine points={hist}/>
+                      <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--amber)"}}>loss {loss.toExponential(4)}</span>
                     </span>}
                     {pct != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{pct}%</span>}
                     {remStr != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:parseFloat(remStr) < 30 ? "var(--red)" : "var(--txt2)"}}>⏱ {remStr}</span>}
@@ -951,10 +959,10 @@ function App() {
                   </span>
                 </div>
                 {/* Progress bar */}
-                {status.progress != null && (
+                {prog != null && (
                   <div style={{height:3,background:"var(--border)",width:"100%"}}>
-                    <div style={{height:"100%",width:`${(status.progress*100).toFixed(1)}%`,
-                                 background:`hsl(${Math.round(status.progress*120)},70%,50%)`,
+                    <div style={{height:"100%",width:`${(prog*100).toFixed(1)}%`,
+                                 background:`hsl(${Math.round(prog*120)},70%,50%)`,
                                  transition:"width 1s linear"}}/>
                   </div>
                 )}
