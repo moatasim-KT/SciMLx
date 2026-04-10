@@ -11,6 +11,7 @@ from .transolver   import Transolver1d, Transolver2d
 from .time_deeponet import TimeDeepONet1d, DualBranchDeepONet1d
 from .hnn          import HamiltonianNO1d, HamiltonianNet1d, EnergyConservingFNO1d
 from .neural_ode   import NeuralODE1d, UniversalDE1d, LatentODE1d
+from .ssno         import SSNO1d
 
 __all__ = [
     # FNO family
@@ -42,4 +43,6 @@ __all__ = [
     "HamiltonianNO1d", "HamiltonianNet1d", "EnergyConservingFNO1d",
     # Neural ODEs & Universal Differential Equations — from Chen et al. / Rackauckas et al.
     "NeuralODE1d", "UniversalDE1d", "LatentODE1d",
+    # State-Space Neural Operator (SS-NO) — adaptive S4D + spectral conv dual-branch
+    "SSNO1d",
 ]

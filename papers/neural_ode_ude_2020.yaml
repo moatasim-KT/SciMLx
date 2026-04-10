@@ -88,8 +88,7 @@ suggested_experiments:
     n_layers: 3
     n_modes: 16
     n_steps: 20
-    rationale: "UDE on Burgers — known advection + NN diffusion correction. "
-               "Physical prior should dramatically reduce the parameter count needed."
+    rationale: "UDE on Burgers — known advection + NN diffusion correction. Physical prior should dramatically reduce the parameter count needed."
 
   - name: "ude_burgers_h64_l4_s30"
     benchmark: "burgers_1d"

@@ -159,6 +159,8 @@ def _register_defaults():
         HamiltonianNO1d, EnergyConservingFNO1d,
         # Neural ODEs + Universal Differential Equations (Chen et al. / Rackauckas et al.)
         NeuralODE1d, UniversalDE1d, LatentODE1d,
+        # State-Space Neural Operator (adaptive S4D + spectral conv)
+        SSNO1d,
     )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
@@ -204,6 +206,10 @@ def _register_defaults():
     @MODEL_REGISTRY.register("S4NO")
     def _make_s4no(n_modes=16, hidden_dim=64, n_layers=4, **kw):
         return S4NO1d(hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("SSNO")
+    def _make_ssno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        return SSNO1d(hidden_dim=hidden_dim, n_layers=n_layers, n_modes=n_modes)
 
     @MODEL_REGISTRY.register("GNOT")
     def _make_gnot(n_modes=16, hidden_dim=64, n_layers=4, **kw):

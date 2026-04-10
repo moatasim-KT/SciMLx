@@ -140,7 +140,7 @@ def _name_from_config(benchmark: str, model: str, cfg: dict) -> str:
     return f"agent_{model.lower()}_{benchmark[:5]}_h{h}_l{l}_m{m}"
 
 
-def generate_new_configs(state: dict, top_n: int = 5) -> list[dict]:
+def generate_new_configs(state: dict, top_n: int = 5, no_hpo: bool = False) -> list[dict]:
     """Use Bayesian HPO + hypothesis interventions to propose new ExperimentConfigs."""
     from utils import done_names
     done = done_names()
@@ -176,7 +176,9 @@ def generate_new_configs(state: dict, top_n: int = 5) -> list[dict]:
         })
 
     # Source 2: Bayesian HPO suggestions for top-priority benchmarks
-    for bm, gap, runs in state["priority_order"][:3]:
+    if no_hpo:
+        pass  # skipped via --no-hpo flag
+    for bm, gap, runs in ([] if no_hpo else state["priority_order"][:3]):
         if gap < 1.0:
             continue  # already beating SOTA, deprioritise
         try:
@@ -362,7 +364,7 @@ def main() -> None:
     print_state_report(state)
 
     print("Generating new experiment proposals...")
-    configs = generate_new_configs(state, top_n=args.top)
+    configs = generate_new_configs(state, top_n=args.top, no_hpo=args.no_hpo)
     print_config_proposals(configs)
 
     if args.dry_run:

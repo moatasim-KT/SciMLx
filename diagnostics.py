@@ -13,6 +13,12 @@ from utils import FIGS_DIR
 
 def calculate_spectral_bias(pred: np.ndarray, truth: np.ndarray) -> Dict[str, float]:
     """Calculate error magnitude across Fourier modes."""
+    # Handle optional channel dimension [B, N, 1]
+    if pred.ndim == 3 and pred.shape[-1] == 1:
+        pred = pred.squeeze(-1)
+    if truth.ndim == 3 and truth.shape[-1] == 1:
+        truth = truth.squeeze(-1)
+        
     if pred.ndim == 1:
         pred = pred[None, :]
         truth = truth[None, :]

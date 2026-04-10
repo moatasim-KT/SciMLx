@@ -32,6 +32,8 @@ class ExperimentConfig:
     n_layers:    int              # depth (FNO blocks per level for UNO)
     n_modes:     int  = 16        # Fourier modes (FNO / UNO / RFNO / AFNO)
     n_levels:    int  = 3         # Haar levels (WNO)
+    n_head:      int  = 4         # Attention heads (Transolver / GNOT / Transformer)
+    slice_num:   int  = 32        # Physics slices (Transolver)
     lr:          float = 1e-3     # learning rate
     batch_size:  int  = 64         # training batch size (increased for better GPU utilization)
     grad_clip:   float = 1.0      # gradient clipping (0 = disabled)
@@ -39,6 +41,7 @@ class ExperimentConfig:
     loss_type:   str  = "l2_rel"  # loss function: "l2_rel" | "h1" | "h1_strong" | "spectral"
     h1_alpha:    float = 0.1      # H1 loss derivative weight (used when loss_type="h1")
     augment:     bool  = False    # spatial-shift augmentation (periodic BCs only)
+    curriculum:  bool  = False    # training curriculum (e.g. increase difficulty)
     save_ckpt:   bool  = False    # save model checkpoint after training
     budget_s:    int  = 1200      # training time budget in seconds (default 20 min)
     parent_name: str  = ""        # name of parent experiment this branches from (for DAG lineage)
@@ -65,6 +68,11 @@ class ExperimentConfig:
             args += ["--h1_alpha", str(self.h1_alpha)]
         if self.augment:
             args += ["--augment"]
+        if self.curriculum:
+            args += ["--curriculum"]
+        if self.model in ("Transolver", "Transolver2D", "GNOT"):
+            args += ["--n_head", str(self.n_head)]
+            args += ["--slice_num", str(self.slice_num)]
         if self.save_ckpt:
             args += ["--save_ckpt"]
         args += ["--budget", str(self.budget_s)]
@@ -73,8 +81,11 @@ class ExperimentConfig:
     def short(self) -> str:
         """One-line summary for logging."""
         parts = [f"{self.model}", f"h={self.hidden_dim}", f"l={self.n_layers}"]
-        if self.model in ("FNO", "RFNO", "AFNO", "FFNO", "UNO"):
+        if self.model in ("FNO", "RFNO", "AFNO", "FFNO", "UNO", "Transolver", "Transolver2D"):
             parts.append(f"m={self.n_modes}")
+        if self.model in ("Transolver", "Transolver2D", "GNOT"):
+            parts.append(f"h={self.n_head}")
+            parts.append(f"s={self.slice_num}")
         if self.model == "WNO":
             parts.append(f"lvl={self.n_levels}")
         if self.pino_lambda > 0:
@@ -85,6 +96,8 @@ class ExperimentConfig:
             parts.append(f"clip={self.grad_clip}")
         if self.loss_type != "l2_rel":
             parts.append(f"loss={self.loss_type}")
+        if self.curriculum:
+            parts.append("curric")
         return "  ".join(parts)
 
 
@@ -1968,7 +1981,6 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.0005–0.002",
     ),
 
-    # ── KdV RFNO + aug ───────────────────────────────────────────────────────
     ExperimentConfig(
         name="rfno_kdv_h128_l8_m24_aug",
         benchmark="kdv_1d", model="RFNO",
@@ -1979,6 +1991,188 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale="RFNO + spatial augmentation on KdV: augmentation was the single biggest "
                   "win on Burgers (+38%). Current SOTA KdV best (0.002) uses no aug.",
         expected="0.001–0.002",
+    ),
+
+    # ── PENDING PAPER IDEAS (Added via /jules-like paper_registry task) ───────
+    # Curriculum Learning (Bengio 2009 / SciML custom)
+    ExperimentConfig(
+        name="fno_burgers_h128_l8_m24_curriculum_v2",
+        benchmark="burgers_1d", model="FNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        budget_s=300,
+        curriculum=True,
+        priority=1,
+        rationale="Curriculum Learning for Burgers (v2): start with smooth low-frequency ICs "
+                  "and increase difficulty. (Fix: enabled curriculum flag).",
+        expected="~0.13–0.14",
+    ),
+
+    # S4 / SSM (Structured State Spaces - ICLR 2022)
+    ExperimentConfig(
+        name="s4d_burgers_h64_l6_p1",
+        benchmark="burgers_1d", model="S4NO",
+        hidden_dim=64, n_layers=6, n_modes=16,
+        budget_s=300,
+        priority=1,
+        rationale="S4D (Diagonal SSM) on Burgers. SSMs capture long-range dependencies "
+                  "via state-space modeling. Novel bias for Burgers shock dynamics.",
+        expected="~0.10–0.15",
+    ),
+
+    # Transolver (Physics Attention - NeurIPS 2024 / PhysicsNeMo)
+    ExperimentConfig(
+        name="transolver_burgers_h128_l6_s32_h4",
+        benchmark="burgers_1d", model="Transolver",
+        hidden_dim=128, n_layers=6, n_modes=16,
+        n_head=4, slice_num=32,
+        budget_s=300,
+        priority=1,
+        rationale="Transolver baseline on Burgers: physics slices may separate shock "
+                  "from smooth regions better than global spectral convolution.",
+        expected="~0.08–0.12",
+    ),
+
+    # Transolver 2D (SOTA on Darcy 2D)
+    ExperimentConfig(
+        name="transolver2d_darcy_h64_l4_s64",
+        benchmark="darcy_2d_fix", model="Transolver2D",
+        hidden_dim=64, n_layers=4, n_modes=12,
+        n_head=4, slice_num=64,
+        budget_s=480,
+        priority=1,
+        rationale="Transolver2D on Darcy fix. Reported SOTA on Darcy/NS. "
+                  "Testing if Physics Attention beats FNO2D h=32/64.",
+        expected="~0.10–0.14",
+    ),
+    ExperimentConfig(
+        name="transolver2d_darcy_h128_l4_s64",
+        benchmark="darcy_2d_fix", model="Transolver2D",
+        hidden_dim=128, n_layers=4, n_modes=12,
+        n_head=4, slice_num=64,
+        budget_s=480,
+        priority=1,
+        rationale="Wider Transolver2D: approaching paper's default capacity.",
+        expected="~0.05–0.09",
+    ),
+
+    # S4D on KdV
+    ExperimentConfig(
+        name="s4d_kdv_h128_l6_p1",
+        benchmark="kdv_1d", model="S4NO",
+        hidden_dim=128, n_layers=6, n_modes=24,
+        budget_s=300,
+        priority=1,
+        rationale="S4D on KdV: Oscillatory HIPPO basis should match soliton dynamics "
+                  "efficiently. Testing if SSM can beat RFNO on KdV.",
+        expected="~0.002–0.005",
+    ),
+
+    # ── 2D Benchmark Rebalancing — wave_1d insight applied to 2D ────────────
+    # wave_1d: FNO h=64 l=4 (small+steps) beats h=128 l=8 (large+fewer steps)
+    # Apply same principle to Darcy and NS 2D with 480s budget
+    ExperimentConfig(
+        name="fno_darcy2d_h32_m12_l4_480s",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="2D rebalancing: small model + 480s budget. wave_1d shows smaller+steps "
+                  "beats larger+fewer. m=12 > m=8 baseline.",
+    ),
+    ExperimentConfig(
+        name="rfno_darcy2d_h32_m12_l4_480s",
+        benchmark="darcy_2d_fix", model="RFNO",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="RFNO on Darcy 2D with 480s budget. Pre-LN residual stability matters "
+                  "for 2D spectral conv. RFNO won KdV — test on Darcy.",
+    ),
+    ExperimentConfig(
+        name="fno_ns2d_h32_m12_l4_480s",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=12,
+        budget_s=480,
+        priority=1,
+        rationale="NS 2D near SOTA (0.0152 vs 0.0128). m=12 vs m=8 baseline + 480s budget "
+                  "may push past SOTA.",
+    ),
+    ExperimentConfig(
+        name="fno_darcy2d_h64_m8_l4_480s",
+        benchmark="darcy_2d_fix", model="FNO",
+        hidden_dim=64, n_layers=4, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Capacity vs steps tradeoff: h=64 vs h=32 at 480s on Darcy 2D. "
+                  "Tests if higher capacity compensates for fewer steps.",
+    ),
+
+    # ── SSNO (State-Space Neural Operator) — adaptive S4D + spectral conv ─────
+    # Paper claims 0.0070 on Burgers (vs SOTA 0.0149) — would close the 10× gap
+    ExperimentConfig(
+        name="ssno_burgers_h128_l8_m24",
+        benchmark="burgers_1d", model="SSNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        budget_s=300,
+        priority=1,
+        rationale="SSNO on Burgers: adaptive S4D damping + spectral conv dual-branch. "
+                  "Paper claims 0.0070 — would be first result beating SOTA on Burgers.",
+    ),
+    ExperimentConfig(
+        name="ssno_burgers_h64_l6_m16",
+        benchmark="burgers_1d", model="SSNO",
+        hidden_dim=64, n_layers=6, n_modes=16,
+        budget_s=300,
+        priority=2,
+        rationale="Smaller SSNO on Burgers — more steps in budget, tests if SSNO "
+                  "follows wave_1d pattern where smaller = more training iterations.",
+    ),
+    ExperimentConfig(
+        name="ssno_kdv_h128_l8_m24",
+        benchmark="kdv_1d", model="SSNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        budget_s=300,
+        priority=2,
+        rationale="SSNO on KdV: SSM long-range memory should match soliton propagation. "
+                  "Baseline is RFNO 0.0020.",
+    ),
+    ExperimentConfig(
+        name="ssno_wave_h64_l4_m16",
+        benchmark="wave_1d", model="SSNO",
+        hidden_dim=64, n_layers=4, n_modes=16,
+        budget_s=300,
+        priority=2,
+        rationale="SSNO on Wave: baseline FNO is 0.000992. Testing SSM on oscillatory PDE.",
+    ),
+
+    # ── NS 2D fix — close the 1.2× SOTA gap (0.0152 → 0.0128) ───────────────
+    # m=12 was worse than m=8; try: more steps via smaller model, H1 loss for vorticity shocks
+    ExperimentConfig(
+        name="fno_ns2d_h32_m8_l4_600s",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=600,
+        priority=1,
+        rationale="NS 2D: same winning config (h=32 m=8 l=4) but 600s budget = 25% more steps. "
+                  "wave_1d showed more steps > bigger model. Gap is only 1.2× — extra steps may close it.",
+    ),
+    ExperimentConfig(
+        name="fno_ns2d_h32_m8_l4_h1loss",
+        benchmark="ns_2d_fix", model="FNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480, loss_type="h1",
+        priority=1,
+        rationale="NS 2D with H1 loss: vorticity has sharp gradients. H1 penalises ∂u/∂x errors — "
+                  "should help the 0.003 gap to SOTA on vorticity field.",
+    ),
+    ExperimentConfig(
+        name="rfno_ns2d_h32_m8_l4_480s",
+        benchmark="ns_2d_fix", model="RFNO",
+        hidden_dim=32, n_layers=4, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="RFNO on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. "
+                  "RFNO won KdV (solitons) — worth testing on vorticity.",
     ),
 ]
 

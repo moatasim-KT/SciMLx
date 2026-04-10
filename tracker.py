@@ -115,12 +115,19 @@ class Tracker:
                        conclusion: str = "",
                        diag: Optional[Dict] = None):
         """Log a new experiment node to the discovery tree."""
-        exp_id = f"{benchmark}_{model}_{int(time.time())}"
+        import uuid as _uuid
+        exp_id = f"{benchmark}_{model}_{int(time.time())}_{_uuid.uuid4().hex[:6]}"
 
         # Resolve parent_id: explicit > by parent_name > last keep for benchmark
         if not parent_id:
             if parent_name:
                 for e in reversed(self.experiments):
+                    # Prefer exact config.name match (reliable)
+                    cfg_name = (e.get("config") or {}).get("name", "")
+                    if cfg_name == parent_name:
+                        parent_id = e["id"]
+                        break
+                    # Fallback: description prefix match (legacy)
                     if e.get("description", "").startswith(parent_name):
                         parent_id = e["id"]
                         break

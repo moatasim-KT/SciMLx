@@ -94,6 +94,9 @@ tail -n 50 logs/<name>.log   # if grep is empty (crash)
 uv run autorun.py --priority 1 --commit        # run priority-1 pending experiments
 uv run autorun.py --priority 2 --commit        # run priority-1 + 2
 uv run autorun.py --auto --commit              # run + re-suggest until queue empty
+uv run autorun.py --auto --commit \
+  --max-auto-experiments 20 \
+  --max-auto-time 10800                        # guarded overnight run
 uv run autorun.py --dry-run                    # preview without running
 
 # ── In-process agent loop (Mode B) ───────────────────────────────────────────
@@ -101,6 +104,7 @@ uv run agent_loop.py --dry-run                 # plan without writing
 uv run agent_loop.py --top 5                   # append top-5 new configs
 uv run agent_loop.py --run                     # append + run top-3
 uv run agent_loop.py --benchmark burgers_1d    # focus on one benchmark
+uv run agent_loop.py --no-hpo                  # skip Bayesian HPO, use heuristics only
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 uv run analyze.py                              # full results report
@@ -133,6 +137,7 @@ uv run uvicorn app:app --reload --port 8000
 # Endpoints: /api/experiments  /api/experiment/{id}  /api/sota  /api/queue
 #            /api/logs/{name}  /api/status  /api/pause  /api/resume
 #            /api/priority  /api/inject  /api/lineage
+#            /api/kill/{name}  (POST — terminate running experiment within 2s)
 
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 uv run benchmarks_ext.py       # verify KdV/Wave/Darcy-fix/NS-fix work
@@ -170,11 +175,11 @@ uv run simulations             # smoke test all 4 simulation modules
 - `results.tsv` — append-only legacy log, synced from results.json.
 
 ### Automation infrastructure
-- `autorun.py` — subprocess runner. Deduplicates against `done_names()`, writes log to `logs/<name>.log`, classifies crashes (OOM / NaN-Inf / ImportError / ValueError / Timeout / UnknownError / NoOutput), auto-retries once with halved hidden_dim+n_layers on non-fatal crashes, optionally commits with `--commit`.
-- `agent_loop.py` — Mode B orchestrator. Calls `tracker.analyze_lineage()` → `HypothesisEngine` → `BayesianHPO` → appends new `ExperimentConfig` entries to `experiments.py`. Respects `.autorun_pause` sentinel.
+- `autorun.py` — subprocess runner. Deduplicates, classifies crashes, **early divergence detection** (kills run if mid-run val > baseline×50 at ≥30% progress), **3-strategy retry chain** (r1=smart-fix, r2=half-model, r3=minimal), sentinel kill, `--max-auto-experiments`/`--max-auto-time` guards, git commit on keep. When `--auto` exhausts queue, invokes `agent_loop.py --top 5` and recurses.
+- `agent_loop.py` — Mode B orchestrator. Calls `tracker.analyze_lineage()` → `HypothesisEngine` → `BayesianHPO` → appends new `ExperimentConfig` entries to `experiments.py`. Supports `--no-hpo` flag to skip HPO. Respects `.autorun_pause` sentinel.
 - `bayesian_hpo.py` — Gaussian Process surrogate with RBF kernel + Expected Improvement. `BayesianHPO(benchmark, model, objectives=[...])`. Single-obj: `tell(cfg, val)` + `ask()`. Multi-obj: `tell_multi(cfg, {metric: val})` + `pareto_front()`. Seeded from `results.json` via `load_history()`.
 - `model_scaffold.py` — gated code generation. `generate_stub(name, base, notes, two_d)` → `.py` template. `ModelGate.validate(name, path)` runs 3 gates: syntax → import → smoke test. `register_and_queue()` copies to `models/`, updates `__init__.py`, adds to `MODEL_REGISTRY`, appends `ExperimentConfig` entries.
-- `auto_suggest.py` — suggestion engine. Combines empirical wins, paper ideas, spectral diagnostic feedback, and cross-benchmark transfer (e.g. kdv_1d winner → suggested on wave_1d). Run `uv run auto_suggest.py` for ranked CLI commands.
+- `auto_suggest.py` — suggestion engine. Dynamic `KNOWN_WINS` loaded from `results.json` at import (reflects current best per benchmark). Combines empirical wins, paper ideas, spectral diagnostic feedback, and cross-benchmark transfer. Run `uv run auto_suggest.py` for ranked CLI commands.
 - `paper_registry.py` — loads `papers/*.yaml` (15 papers), reports SOTA gaps, lists pending implementations.
 - `research_plugins.py` — `ModelRegistry` (14 models) + `BenchmarkRegistry` (10 benchmarks). Add new models/benchmarks here; `train.py` routing is automatic.
 - `utils.py` — shared constants: `REPO_ROOT`, `LOGS_DIR`, `FIGS_DIR`, `SOTA`, `load_results()`, `best_per_benchmark()`, `done_names()`. Always import from here.
@@ -198,11 +203,12 @@ uv run simulations             # smoke test all 4 simulation modules
   - `GET /api/sota` — SOTA targets + our best + ratio per benchmark
   - `GET /api/queue` — pending experiments with full config
   - `GET /api/logs/{name}?tail=N` — last N lines of a log file
-  - `GET /api/status` — VRAM, count, paused flag
+  - `GET /api/status` — VRAM, `progress`, `remaining_s`, `step`, `loss`, `loss_history`, paused flag
   - `POST /api/pause` / `POST /api/resume` — control autorun
   - `POST /api/inject` — inject an experiment into the queue
   - `POST /api/priority` — override priority for a named experiment
-- `ui/dashboard.html` — standalone React app. Features: SOTA sidebar with progress bars, Results tab (sortable/searchable/filterable table), Queue tab (all 38 pending), right inspector panel with config grid + training loss curve + log viewer + spectral diagnostics.
+  - `POST /api/kill/{name}` — write `.kill_{name}` sentinel; process terminates within 2s
+- `ui/dashboard.html` — standalone React app (3s poll interval). Features: SOTA sidebar with progress bars + model comparison chart, Results tab (sortable/searchable/filterable), Queue tab, **Lineage DAG tab** (SVG parent→child graph), right inspector with config grid + **parent comparison** (delta% + config diff) + training loss sparkline + log viewer + spectral diagnostics. Active strip includes **SparkLine** and **Kill button**.
 
 ### Knowledge base
 - `papers/*.yaml` — 15 papers. Each: title, key idea, reported results, our results, suggested experiments, status (pending/implemented), verdict.
@@ -228,6 +234,7 @@ uv run simulations             # smoke test all 4 simulation modules
 | `DeepONet`    | Branch + Trunk inner product                  | ✓           | 0.808                         |
 | `PODDeepONet` | DeepONet with POD low-rank basis              | ✓           | not benchmarked               |
 | `S4NO`        | S4 state-space model for operators            | ✓           | not benchmarked               |
+| `SSNO`        | Adaptive S4D damping + spectral conv dual-branch | ✓        | not benchmarked yet           |
 | `GNOT`        | Graph Neural Operator Transformer             | ✓           | not benchmarked               |
 | `PINO`        | Physics residual (PDE constraint)             | ✗ broken    | never retry — endpoint-only   |
 | `PINN`        | Standard physics-informed NN                  | ✓           | not benchmarked               |
@@ -238,14 +245,14 @@ uv run simulations             # smoke test all 4 simulation modules
 
 | Benchmark         | PDE                     | SOTA     | Our best                        | Note                        |
 |-------------------|-------------------------|----------|---------------------------------|-----------------------------|
-| `burgers_1d`      | 1D viscous Burgers      | 0.0149   | 0.1468 (FNO+aug)                | 10× gap — priority target   |
+| `burgers_1d`      | 1D viscous Burgers      | 0.0149   | 0.1468 (FNO+aug)                | 9.8× gap — priority target  |
 | `kdv_1d`          | KdV soliton             | ~0.010   | **0.0020** (RFNO)               | 5× better than SOTA ✓       |
 | `wave_1d`         | 1D wave u_tt=c²u_xx     | ~0.005   | **0.000992** (FNO h=64 l=4)     | 5× better than SOTA ✓       |
-| `darcy_2d_fix`    | 2D Darcy (corrected)    | 0.0108   | 0.1469 (FNO h=32)               | too small — scale up        |
-| `ns_2d_fix`       | 2D NS vorticity         | 0.0128   | 0.0152 (FNO)                    | near SOTA — push further    |
-| `euler_1d`        | Compressible Euler 1D   | ~0.015   | not run                         | use FNO_MC (3-channel)      |
-| `swe_2d`          | 2D Shallow Water        | ~0.002   | not run                         | —                           |
-| `allen_cahn_2d`   | Allen-Cahn phase field  | ~0.020   | not run                         | —                           |
+| `euler_1d`        | Compressible Euler 1D   | ~0.015   | **0.002413** (FNO h=64 l=4)     | 6.2× better than SOTA ✓     |
+| `darcy_2d_fix`    | 2D Darcy (corrected)    | 0.0108   | 0.1041 (FNO h=32)               | h≤32 l≤4 only — OOM above   |
+| `ns_2d_fix`       | 2D NS vorticity         | 0.0128   | 0.01428 (FNO 600s)              | 1.12× gap — budget=600 key  |
+| `swe_2d`          | 2D Shallow Water        | ~0.002   | 0.0107 (FNO2D)                  | 5.4× gap                    |
+| `allen_cahn_2d`   | Allen-Cahn phase field  | ~0.020   | 0.0628 (FNO)                    | 3.1× gap                    |
 | `ns_hre_2d`       | NS 2D Re=1000           | ~0.070   | not run                         | first run ~70 min           |
 | `darcy_2d`        | 2D Darcy (broken)       | —        | 0.9986                          | broken solver — never use   |
 
@@ -265,9 +272,9 @@ uv run simulations             # smoke test all 4 simulation modules
 
 ---
 
-## Empirical Findings (from 102 completed experiments)
+## Empirical Findings (from 184 completed experiments)
 
-**Burgers 1D (best: 0.1468 — still 10× from SOTA):**
+**Burgers 1D (best: 0.1468 — still 9.8× from SOTA):**
 - m=24 is the sweet spot (m=32 hurts: 0.631; m=16: 0.185)
 - h=128 wins over h=64 and h=256 (h=256 is step-time limited)
 - l=8 is the depth limit for FNO (l=10: 0.169, l=12: 0.217)
@@ -283,10 +290,17 @@ uv run simulations             # smoke test all 4 simulation modules
 - Smaller/shallower model wins: FNO h=64 l=4 m=16 → more steps in budget
 - "Easy" for Fourier methods — the training-step budget dominates
 
-**Darcy 2D / NS 2D:**
+**Euler 1D (best: 0.002413 — 6.2× better than SOTA):**
+- FNO h=64 l=4 highly efficient; FNO_MC (multi-channel) didn't outperform standard FNO
+
+**2D Benchmarks (critical constraint):**
+- **h≥64 or l≥8 crashes on ALL 2D benchmarks** (OOM/broadcast errors on Apple Silicon)
+- Safe config: `h≤32, l≤4, m≤8, budget_s=480` (m=12 confirmed worse than m=8 on ns_2d_fix)
+- **RFNO is 1D-only** — crashes on ALL 2D benchmarks with `ValueError: too many values to unpack`; never add RFNO to 2D benchmarks
 - `darcy_2d` is broken (wrong solver) — always use `darcy_2d_fix`
-- darcy_2d_fix: FNO h=32 too small; scale to h=128 m=24
-- ns_2d_fix FNO baseline 0.0152 ≈ SOTA 0.0128 — promising, needs tuning
+- ns_2d_fix new best 0.014284 with 600s budget (vs SOTA 0.0128 = 1.12×); H1 loss hurts (0.025)
+- `WARMDOWN_RATIO=0.2` in `train.py` — cosine decay starts at 80% of budget (was 0.4), giving ~40 more flat-LR steps
+- **SSNO is unstable** on Burgers with h=128 l=8 (val=80.5) — needs smaller config or lr tuning before use
 
 ---
 
@@ -329,6 +343,8 @@ in `autorun.py` and causes every experiment to crash before training begins.
 - **`results.json` is SSoT** — never hand-edit; all writes go through `tracker.py`.
 - **`darcy_2d` is broken** — only use `darcy_2d_fix` and `ns_2d_fix`.
 - **PINO is broken** for endpoint-only formulation — never add PINO experiments.
+- **RFNO is 1D-only** — crashes with `ValueError: too many values to unpack` on 2D input; never use RFNO on 2D benchmarks.
+- **2D model size**: h≤32, l≤4, m≤8, budget_s≥480 — larger configs OOM/crash on Apple Silicon.
 - **Git hygiene** — stage only `train.py`, `models/`, `experiments.py`, `results.tsv`. Never `git add -A`.
 - **MLX unified memory** — large models share CPU/GPU memory; watch `peak_vram_mb`.
 

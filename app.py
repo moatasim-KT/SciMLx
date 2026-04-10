@@ -107,18 +107,41 @@ def get_status():
     # Read live VRAM from telemetry file written by the training subprocess
     vram_active_mb = 0.0
     vram_peak_mb   = 0.0
+    progress       = None
+    remaining_s    = None
+    step           = None
+    loss           = None
+    loss_history   = None
     try:
         data = json.loads(TELEMETRY_FILE.read_text())
         vram_active_mb = data.get("vram_active_mb", 0.0)
         vram_peak_mb   = data.get("vram_peak_mb",   0.0)
+        progress       = data.get("progress")
+        remaining_s    = data.get("remaining_s")
+        step           = data.get("step")
+        loss           = data.get("loss")
+        loss_history   = data.get("loss_history")
     except Exception:
         pass
+    # Clear live metrics if telemetry is stale (file older than 60s = no active training)
+    import time as _time
+    try:
+        age_s = _time.time() - TELEMETRY_FILE.stat().st_mtime
+        if age_s > 60:
+            progress = remaining_s = step = loss = loss_history = None
+    except Exception:
+        progress = remaining_s = step = loss = loss_history = None
     return {
-        "vram_active_mb": vram_active_mb,
-        "vram_peak_mb":   vram_peak_mb,
+        "vram_active_mb":    vram_active_mb,
+        "vram_peak_mb":      vram_peak_mb,
+        "progress":          progress,
+        "remaining_s":       remaining_s,
+        "step":              step,
+        "loss":              loss,
+        "loss_history":      loss_history,
         "experiments_count": len(exps),
-        "last_updated": exps[-1]["timestamp"] if exps else 0,
-        "paused": PAUSE_FILE.exists(),
+        "last_updated":      exps[-1]["timestamp"] if exps else 0,
+        "paused":            PAUSE_FILE.exists(),
     }
 
 
@@ -227,6 +250,16 @@ def get_active():
                     active.append(name)
                     
     return {"active": active}
+
+
+@app.post("/api/kill/{name}")
+def kill_experiment(name: str):
+    """Request termination of a running experiment by writing a sentinel file.
+    autorun.py polls for this file every 2s and calls proc.terminate() when found."""
+    kill_file = REPO_ROOT / f".kill_{name}"
+    kill_file.touch()
+    return {"status": "kill_requested", "name": name,
+            "message": "Sentinel written — experiment will stop within ~2s."}
 
 
 # ── Control endpoints ─────────────────────────────────────────────────────────

@@ -35,6 +35,8 @@ LOSS_TYPE    = "l2_rel"
 H1_ALPHA     = 0.1
 N_MODES      = 16
 N_LEVELS     = 3
+N_HEAD       = 4
+SLICE_NUM    = 32
 HIDDEN_DIM   = 64
 N_LAYERS     = 4
 BATCH_SIZE   = 32
@@ -44,12 +46,13 @@ GRAD_CLIP    = 1.0
 PINO_LAMBDA  = 0.0
 SPARSITY     = 0.01
 AUGMENT      = False
+CURRICULUM   = False
 SAVE_CKPT    = False
 
 # Scheduler
 ADAM_BETAS     = (0.9, 0.999)
 WARMUP_RATIO   = 0.05
-WARMDOWN_RATIO = 0.4
+WARMDOWN_RATIO = 0.2
 FINAL_LR_FRAC  = 0.01
 
 def _parse_args():
@@ -61,6 +64,8 @@ def _parse_args():
     p.add_argument("--h1_alpha",    type=float, default=H1_ALPHA)
     p.add_argument("--modes",       type=int,   default=N_MODES)
     p.add_argument("--levels",      type=int,   default=N_LEVELS)
+    p.add_argument("--n_head",      type=int,   default=N_HEAD)
+    p.add_argument("--slice_num",   type=int,   default=SLICE_NUM)
     p.add_argument("--hidden",      type=int,   default=HIDDEN_DIM)
     p.add_argument("--layers",      type=int,   default=N_LAYERS)
     p.add_argument("--batch_size",  type=int,   default=BATCH_SIZE)
@@ -70,6 +75,7 @@ def _parse_args():
     p.add_argument("--sparsity",    type=float, default=SPARSITY)
     p.add_argument("--budget",      type=int,   default=TIME_BUDGET)
     p.add_argument("--augment",     action="store_true", default=AUGMENT)
+    p.add_argument("--curriculum",  action="store_true", default=CURRICULUM)
     p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT)
     p.add_argument("--max_vram_gb", type=float, default=5.0,
                    help="Abort training if peak VRAM exceeds this (GB). 0=disabled.")
@@ -82,6 +88,8 @@ LOSS_TYPE   = args.loss
 H1_ALPHA    = args.h1_alpha
 N_MODES     = args.modes
 N_LEVELS    = args.levels
+N_HEAD      = args.n_head
+SLICE_NUM   = args.slice_num
 HIDDEN_DIM  = args.hidden
 N_LAYERS    = args.layers
 BATCH_SIZE  = args.batch_size
@@ -91,6 +99,7 @@ PINO_LAMBDA = args.pino_lambda
 SPARSITY    = args.sparsity
 TIME_BUDGET  = args.budget
 AUGMENT      = args.augment
+CURRICULUM   = args.curriculum
 SAVE_CKPT    = args.save_ckpt
 MAX_VRAM_GB  = args.max_vram_gb
 
@@ -141,6 +150,7 @@ else:
 model = MODEL_REGISTRY.build(
     _model_key,
     n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS, n_levels=N_LEVELS,
+    n_head=N_HEAD, slice_num=SLICE_NUM,
     sparsity=SPARSITY,
     in_channels=n_ch, out_channels=n_ch,   # absorbed by **kw for non-MC models
 )
@@ -202,6 +212,7 @@ trainer = Trainer(
     lr_base=LR,
     lr_schedule_fn=lr_sch,
     max_vram_gb=MAX_VRAM_GB,
+    curriculum=CURRICULUM,
 )
 
 print(f"Starting training (budget {TIME_BUDGET}s)...")

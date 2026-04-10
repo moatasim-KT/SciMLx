@@ -33,6 +33,14 @@ from tracker import Tracker
 
 TIMEOUT_S = 1500  # 25 min per experiment (20-min budget + data/compile overhead)
 
+# Early-stop: kill if any mid-run val (logged by trainer every 10%) exceeds
+# baseline × this multiplier at ≥30% progress — catches disasters early.
+EARLY_STOP_MULTIPLIER: float = 50.0
+
+# Max number of retry strategies to attempt before discarding an experiment.
+# Strategy r1 = smart crash fix, r2 = halve model, r3 = minimal viable config.
+MAX_RETRY_STRATEGIES: int = 3
+
 # Memory budget for parallel scheduling (M1 8GB unified memory)
 TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
 # Estimated memory per experiment type (conservative)
@@ -56,6 +64,10 @@ _print_lock = threading.Lock()
 _active_experiments: set[str] = set()
 
 _worker_prefix: threading.local = threading.local()
+
+# ── Auto-loop state (persist across recursive main() calls) ──────────────────
+_AUTO_START_TIME: float = 0.0
+_AUTO_EXP_COUNT:  int   = 0
 
 def wprint(*args, **kwargs):
     """Thread-safe print that prefixes output with the current worker's experiment name."""
@@ -133,17 +145,41 @@ def parse_log(log_path: Path) -> dict:
     return results
 
 
-def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[tuple]:
-    """Analyse crash log and return (fix_description, fixed_ExperimentConfig) or None.
+def check_early_stop(log_path: Path, baseline: float) -> Optional[float]:
+    """Scan log tail for trainer mid-run val lines (e.g. 'val@30%: 12.34').
 
-    Priority order of diagnoses:
-      1. 1D model on 2D data (shape unpack)  → unfixable, skip
-      2. Modes broadcast mismatch            → halve n_modes
-      3. OOM                                 → halve batch_size
-      4. NaN / Inf                           → lr÷10, grad_clip→5
-      5. Timeout                             → halve hidden_dim + n_layers
-      6. Generic ValueError / RuntimeError   → halve n_modes first
-      7. Unknown                             → halve hidden_dim + n_layers
+    Returns the offending val if it exceeds baseline × EARLY_STOP_MULTIPLIER at
+    ≥ 30% progress, else None. Called every 2 s from the experiment poll loop.
+    """
+    if baseline >= float("inf") or baseline <= 0:
+        return None
+    threshold = baseline * EARLY_STOP_MULTIPLIER
+    try:
+        content = log_path.read_text()
+    except Exception:
+        return None
+    for line in reversed(content.splitlines()):
+        if not line.startswith("val@"):
+            continue
+        # Format: "val@30%: 0.123456" or "val@30%: 0.123456 ✓ best"
+        try:
+            pct_part, val_part = line.split(":", 1)
+            pct = int(pct_part[4:].rstrip("%"))
+            mid_val = float(val_part.split()[0])
+        except (ValueError, IndexError):
+            continue
+        if pct >= 30 and mid_val > threshold:
+            return mid_val
+        break  # only check the most recent val line
+    return None
+
+
+def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[tuple]:
+    """Analyse crash log and compose ALL applicable fixes into a single retry config.
+
+    Collects every matching fix pattern, merges field overrides (last-writer wins),
+    and returns a single retry ExperimentConfig. Multiple concurrent failure modes
+    (e.g. OOM + NaN/Inf) are handled in one retry instead of requiring two retries.
     """
     try:
         content = log_path.read_text()
@@ -151,76 +187,122 @@ def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[
         content = ""
     lower = content.lower()
 
-    def _replace(**kw):
-        return dataclasses.replace(exp, name=f"{exp.name}_retry", **kw)
-
-    # ── 1. 1D model receiving 2D input ───────────────────────────────────────
+    # ── Unfixable: 1D model on 2D input ──────────────────────────────────────
     if "too many values to unpack" in lower:
         wprint("  DIAGNOSIS: 1D model given 2D input — incompatible pairing, skipping.")
         return None
 
-    # ── 2. Fourier modes too wide for grid ───────────────────────────────────
+    # ── Collect all applicable fixes ─────────────────────────────────────────
+    fixes: list[tuple[str, dict]] = []   # (description, {field: new_value})
+
+    # Fix A: Modes too wide for grid (broadcast error)
     if "broadcast_shapes" in lower or (
         "cannot be broadcast" in lower and ("modes" in lower or "shapes" in lower)
     ):
         new_modes = max(4, exp.n_modes // 2)
-        desc = f"modes {exp.n_modes}→{new_modes} (broadcast shape error)"
-        wprint(f"  DIAGNOSIS: modes too large for grid. Fix: {desc}")
-        return desc, _replace(n_modes=new_modes)
+        fixes.append((f"modes {exp.n_modes}→{new_modes} (broadcast)", {"n_modes": new_modes}))
 
-    # ── 3a. VRAM soft limit exceeded (our own guard) ─────────────────────────
+    # Fix B: VRAM soft limit (our own guard) — more aggressive than OOM
     if "vram limit exceeded" in lower:
-        new_hidden = max(32, exp.hidden_dim // 2)
-        new_layers = max(2, exp.n_layers // 2)
-        new_batch  = max(8, exp.batch_size // 2)
-        desc = (f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers}, "
-                f"batch {exp.batch_size}→{new_batch} (VRAM limit)")
-        wprint(f"  DIAGNOSIS: VRAM limit exceeded. Fix: {desc}")
-        return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers, batch_size=new_batch)
-
-    # ── 3b. Out of memory (Metal OOM) ────────────────────────────────────────
-    if "out of memory" in lower or ("memory" in lower and "alloc" in lower):
+        fixes.append((
+            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
+            f"l {exp.n_layers}→{max(2, exp.n_layers//2)}, "
+            f"batch {exp.batch_size}→{max(8, exp.batch_size//2)} (VRAM limit)",
+            {
+                "hidden_dim": max(32, exp.hidden_dim // 2),
+                "n_layers":   max(2,  exp.n_layers   // 2),
+                "batch_size": max(8,  exp.batch_size // 2),
+            }
+        ))
+    # Fix C: Metal OOM (halve batch only, keep model size)
+    elif "out of memory" in lower or ("memory" in lower and "alloc" in lower):
         new_batch = max(8, exp.batch_size // 2)
-        desc = f"batch_size {exp.batch_size}→{new_batch} (OOM — preserve hidden_dim)"
-        wprint(f"  DIAGNOSIS: OOM. Fix: {desc}")
-        return desc, _replace(batch_size=new_batch)
+        fixes.append((f"batch {exp.batch_size}→{new_batch} (OOM)", {"batch_size": new_batch}))
 
-    # ── 4. NaN / Inf divergence ──────────────────────────────────────────────
+    # Fix D: NaN / Inf divergence
     if "nan" in lower or ("inf" in lower and "loss" in lower):
         new_lr = round(exp.lr / 10, 8)
-        desc = f"lr {exp.lr:.1e}→{new_lr:.1e}, grad_clip 1.0→5.0 (NaN/Inf)"
-        wprint(f"  DIAGNOSIS: numerical instability. Fix: {desc}")
-        return desc, _replace(lr=new_lr, grad_clip=5.0)
+        fixes.append((
+            f"lr {exp.lr:.1e}→{new_lr:.1e}, grad_clip→5.0 (NaN/Inf)",
+            {"lr": new_lr, "grad_clip": 5.0}
+        ))
 
-    # ── 5. Timeout (ran too long, no result) ─────────────────────────────────
+    # Fix E: Timeout — shrink model
     if results.get("crash_type") == "Timeout":
-        new_hidden = max(32, exp.hidden_dim // 2)
-        new_layers = max(2, exp.n_layers // 2)
-        desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (timeout — smaller model)"
-        wprint(f"  DIAGNOSIS: timeout. Fix: {desc}")
-        return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
+        fixes.append((
+            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
+            f"l {exp.n_layers}→{max(2, exp.n_layers//2)} (timeout)",
+            {
+                "hidden_dim": max(32, exp.hidden_dim // 2),
+                "n_layers":   max(2,  exp.n_layers   // 2),
+            }
+        ))
 
-    # ── 6. ValueError / RuntimeError — try modes first ───────────────────────
-    if "valueerror" in lower or "runtimeerror" in lower or "assertionerror" in lower:
+    # Fix F: ValueError / RuntimeError — try halving modes first
+    if not fixes and ("valueerror" in lower or "runtimeerror" in lower or "assertionerror" in lower):
         for line in reversed(content.splitlines()):
             if "error:" in line.lower() or "Error" in line:
                 wprint(f"  DIAGNOSIS: {line.strip()}")
                 break
         new_modes = max(4, exp.n_modes // 2)
-        desc = f"modes {exp.n_modes}→{new_modes} (ValueError — reduce spectral width)"
-        wprint(f"  Fix: {desc}")
-        return desc, _replace(n_modes=new_modes)
+        fixes.append((f"modes {exp.n_modes}→{new_modes} (ValueError)", {"n_modes": new_modes}))
 
-    # ── 7. Unknown — generic size reduction ──────────────────────────────────
-    new_hidden = max(32, exp.hidden_dim // 2)
-    new_layers = max(2, exp.n_layers // 2)
-    desc = f"h {exp.hidden_dim}→{new_hidden}, l {exp.n_layers}→{new_layers} (unknown error)"
-    wprint(f"  DIAGNOSIS: unknown crash. Fix: {desc}")
-    return desc, _replace(hidden_dim=new_hidden, n_layers=new_layers)
+    # Fix G: Unknown — generic size reduction (only if nothing else matched)
+    if not fixes:
+        fixes.append((
+            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
+            f"l {exp.n_layers}→{max(2, exp.n_layers//2)} (unknown)",
+            {
+                "hidden_dim": max(32, exp.hidden_dim // 2),
+                "n_layers":   max(2,  exp.n_layers   // 2),
+            }
+        ))
+
+    # ── Merge all fixes into one retry config ────────────────────────────────
+    merged_kwargs: dict = {}
+    for _, kwargs in fixes:
+        merged_kwargs.update(kwargs)   # later fixes override earlier for same field
+
+    desc = " + ".join(d for d, _ in fixes)
+    wprint(f"  DIAGNOSIS: {len(fixes)} fix(es) composed: {desc}")
+    return desc, dataclasses.replace(exp, name=f"{exp.name}_r1", **merged_kwargs)
 
 
-def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
-    """Run one experiment. Returns dict of results."""
+def _build_r2(exp: ExperimentConfig) -> ExperimentConfig:
+    """Strategy r2: halve model capacity + lr/10 + tighter clip."""
+    return dataclasses.replace(
+        exp,
+        name=f"{exp.name}_r2",
+        hidden_dim=max(16, exp.hidden_dim // 2),
+        n_layers=max(1, exp.n_layers // 2),
+        n_modes=max(4, exp.n_modes // 2),
+        lr=round(exp.lr / 10, 8),
+        grad_clip=3.0,
+    )
+
+
+def _build_r3(exp: ExperimentConfig) -> ExperimentConfig:
+    """Strategy r3: minimal viable config — last resort before discarding."""
+    return dataclasses.replace(
+        exp,
+        name=f"{exp.name}_r3",
+        hidden_dim=32,
+        n_layers=2,
+        n_modes=min(8, exp.n_modes),
+        lr=1e-4,
+        grad_clip=1.0,
+        batch_size=max(16, min(32, exp.batch_size)),
+    )
+
+
+def run_experiment(exp: ExperimentConfig, log_path: Path,
+                   baseline: float = float("inf")) -> dict:
+    """Run one experiment. Returns dict of results.
+
+    baseline: current best val_l2_rel for the benchmark.  If a mid-run
+    validation line in the log exceeds baseline × EARLY_STOP_MULTIPLIER at
+    ≥30% progress, the process is terminated early (crash_type='EarlyStop').
+    """
     cmd = ["uv", "run", "train.py"] + exp.to_cli_args()
 
     wprint(f"  CMD: {' '.join(cmd)}")
@@ -243,7 +325,35 @@ def run_experiment(exp: ExperimentConfig, log_path: Path) -> dict:
                     cwd=REPO_ROOT,
                 )
             try:
-                proc.wait(timeout=TIMEOUT_S)
+                kill_file = REPO_ROOT / f".kill_{exp.name}"
+                deadline = time.time() + TIMEOUT_S
+                while time.time() < deadline:
+                    if kill_file.exists():
+                        proc.terminate()
+                        proc.wait()
+                        kill_file.unlink(missing_ok=True)
+                        wprint(f"  KILLED by dashboard request")
+                        return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None,
+                                "crash_type": "Killed"}
+                    # Early-stop: check mid-run val from trainer log
+                    bad_val = check_early_stop(log_path, baseline)
+                    if bad_val is not None:
+                        proc.terminate()
+                        proc.wait()
+                        thresh = baseline * EARLY_STOP_MULTIPLIER
+                        wprint(f"  EARLY STOP: mid-run val={bad_val:.4f} "
+                               f"> {thresh:.4f} ({baseline:.4f}×{EARLY_STOP_MULTIPLIER})")
+                        wprint(f"  Saving compute — will retry with adjusted config.")
+                        return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None,
+                                "crash_type": "EarlyStop"}
+                    if proc.poll() is not None:
+                        break
+                    time.sleep(2)
+                else:
+                    proc.kill()
+                    proc.wait()
+                    wprint(f"  TIMEOUT after {TIMEOUT_S}s — process killed")
+                    return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
@@ -309,8 +419,12 @@ def main() -> None:
     p.add_argument("--force",       action="store_true",
                    help="Re-run experiments already in results.tsv")
     p.add_argument("--auto",        action="store_true",
-                   help="Fully autonomous mode: run all pending, then call "
-                        "auto_suggest.py to print next steps and loop indefinitely")
+                   help="Fully autonomous mode: run all pending, then invoke "
+                        "agent_loop to generate next experiments and loop")
+    p.add_argument("--max-auto-experiments", type=int, default=None,
+                   help="In --auto mode, stop after N total experiments across all iterations")
+    p.add_argument("--max-auto-time",        type=int, default=None,
+                   help="In --auto mode, stop after N total wall-clock seconds")
     p.add_argument("--suggest-after", action="store_true",
                    help="Print auto_suggest report after all experiments complete")
     p.add_argument("--workers",     type=int, default=1,
@@ -359,7 +473,14 @@ def main() -> None:
         print(f"           2D experiments will be serialised automatically.")
 
     def run_one(i: int, exp: ExperimentConfig) -> tuple:
-        """Run one experiment + optional retry. Returns (exp, results, val, mem_gb, status)."""
+        """Run one experiment + up to 3 retries.  Returns (exp, results, val, mem_gb, status).
+
+        Retry chain (only triggered on crash/early-stop, not on ImportError/Killed):
+          r1  smart_fix()  — context-aware from crash log (lr, batch, modes)
+          r2  _build_r2()  — halve hidden_dim/n_layers/n_modes + lr×0.1
+          r3  _build_r3()  — minimal viable: h=32 l=2 m≤8 lr=1e-4
+        Discards only after all three fail.
+        """
         _worker_prefix.name = exp.name  # prefix all wprint() calls with experiment name
 
         if not args.force and exp.name in load_done_names():
@@ -380,24 +501,69 @@ def main() -> None:
                   else f"  No baseline yet for {exp.benchmark}")
 
         log_path = LOGS_DIR / f"{exp.name}.log"
-        results  = run_experiment(exp, log_path)
+        results  = run_experiment(exp, log_path, baseline=baseline_val)
         val, mem_gb = results["val"], results["mem_mb"] / 1024.0
 
-        # ── Smart crash recovery ──────────────────────────────────────────────
-        if val is None and results.get("crash_type") not in ("ImportError", "NoOutput"):
-            fix = smart_fix(exp, log_path, results)
-            if fix is None:
-                wprint("  No auto-fix available — skipping retry.")
+        # ── Multi-strategy retry loop ─────────────────────────────────────────
+        # Skip retries for unfixable failure modes
+        _SKIP_RETRY_TYPES = {"ImportError", "NoOutput", "Killed"}
+        try:
+            _log_lower = log_path.read_text().lower()
+        except Exception:
+            _log_lower = ""
+        _incompatible = "too many values to unpack" in _log_lower
+
+        if val is None and results.get("crash_type") not in _SKIP_RETRY_TYPES and not _incompatible:
+            # Build strategy chain: r1 = smart crash fix, r2 = halve model, r3 = minimal
+            _strategies: list[tuple[str, ExperimentConfig]] = []
+
+            _fix = smart_fix(exp, log_path, results)
+            if _fix is not None:
+                _fix_desc, _r1_exp = _fix
+                _strategies.append((_fix_desc, _r1_exp))  # already named _r1 by smart_fix
+
+            _strategies.append((
+                f"half-model: h{exp.hidden_dim}→{max(16, exp.hidden_dim//2)} "
+                f"l{exp.n_layers}→{max(1, exp.n_layers//2)} lr×0.1",
+                _build_r2(exp),
+            ))
+            _strategies.append((
+                "minimal: hidden=32 layers=2 modes≤8 lr=1e-4",
+                _build_r3(exp),
+            ))
+
+            wprint(f"  {len(_strategies)} retry strategies queued "
+                   f"(r1=smart-fix, r2=half-model, r3=minimal)")
+
+            _done_set = load_done_names()
+            _retry_tag = ""   # tracks which strategy succeeded (for conclusion field)
+            for _attempt_n, (_strat_desc, _retry_exp) in enumerate(_strategies, 1):
+                if _retry_exp.name in _done_set:
+                    wprint(f"  [r{_attempt_n}] {_retry_exp.name} already in results — skipping")
+                    continue
+
+                wprint(f"\n  ── Retry {_attempt_n}/{len(_strategies)} [{_retry_exp.name}]: {_strat_desc}")
+                _retry_log = LOGS_DIR / f"{_retry_exp.name}.log"
+                with _baselines_lock:
+                    _bl_now = baselines.get(exp.benchmark, float("inf"))
+                _retry_res = run_experiment(_retry_exp, _retry_log, baseline=_bl_now)
+
+                if _retry_res["val"] is not None:
+                    wprint(f"  Retry r{_attempt_n} succeeded: val={_retry_res['val']:.6f}")
+                    results   = _retry_res
+                    val       = _retry_res["val"]
+                    mem_gb    = _retry_res["mem_mb"] / 1024.0
+                    _retry_tag = f"[succeeded via r{_attempt_n}: {_strat_desc}]"
+                    break
+                else:
+                    wprint(f"  Retry r{_attempt_n} also failed "
+                           f"[{_retry_res.get('crash_type', '?')}]")
             else:
-                fix_desc, retry_exp = fix
-                wprint(f"  Retrying with targeted fix: {fix_desc}")
-                retry_log = LOGS_DIR / f"{retry_exp.name}.log"
-                retry_res = run_experiment(retry_exp, retry_log)
-                if retry_res["val"] is not None:
-                    wprint(f"  Retry succeeded: val_l2_rel={retry_res['val']:.6f}")
-                    results = retry_res
-                    val = retry_res["val"]
-                    mem_gb = retry_res["mem_mb"] / 1024.0
+                wprint(f"  All {len(_strategies)} retry strategies exhausted — discarding.")
+
+            # Append retry outcome to results conclusion for DAG inspector
+            if _retry_tag:
+                results["_retry_tag"] = _retry_tag
 
         with _baselines_lock:
             baseline_val = baselines.get(exp.benchmark, float("inf"))
@@ -430,7 +596,11 @@ def main() -> None:
                 parent_name=parent_name or None,
                 config=vars(exp),
                 rationale=exp.rationale,
-                conclusion=(f"crash:{results['crash_type']} " if results.get("crash_type") else "") + (results.get("inspect_id") or ""),
+                conclusion=(
+                    (f"crash:{results['crash_type']} " if results.get("crash_type") else "")
+                    + (results.get("inspect_id") or "")
+                    + (" " + results.get("_retry_tag", "") if results.get("_retry_tag") else "")
+                ),
                 diag=results.get("diag", {}),
             )
         wprint(f"  Logged to results.json and results.tsv  [status={status}]")
@@ -443,8 +613,6 @@ def main() -> None:
     # ── Memory-aware parallel scheduler ──────────────────────────────────────
     # 2D experiments are serialised (they use too much memory to overlap safely)
     # 1D experiments can run up to `workers` at a time
-    mem_budget  = TOTAL_MEMORY_MB
-    mem_in_use  = 0
     mem_sem     = threading.Semaphore(workers)
 
     def mem_aware_run(i: int, exp: ExperimentConfig):
@@ -507,21 +675,57 @@ def main() -> None:
 
     # ── Autonomous loop ───────────────────────────────────────────────────────
     if args.auto:
-        # Check if there are still pending experiments in the queue
+        global _AUTO_START_TIME, _AUTO_EXP_COUNT
+        import sys, time as _time
+
+        # Initialise on first entry
+        if _AUTO_START_TIME == 0.0:
+            _AUTO_START_TIME = _time.time()
+
+        _AUTO_EXP_COUNT += len(pending)
+
+        # ── Guard: wall-clock time limit ─────────────────────────────────────
+        if args.max_auto_time:
+            elapsed = _time.time() - _AUTO_START_TIME
+            if elapsed >= args.max_auto_time:
+                print(f"\n  --max-auto-time {args.max_auto_time}s reached ({elapsed:.0f}s elapsed). Stopping.")
+                return
+
+        # ── Guard: experiment count limit ────────────────────────────────────
+        if args.max_auto_experiments and _AUTO_EXP_COUNT >= args.max_auto_experiments:
+            print(f"\n  --max-auto-experiments {args.max_auto_experiments} reached "
+                  f"({_AUTO_EXP_COUNT} run). Stopping.")
+            return
+
+        # ── Check for more pending experiments ───────────────────────────────
         remaining = [e for e in get_experiments(args.benchmark, args.model, args.priority)
                      if e.name not in load_done_names()]
         if remaining:
             print(f"\n  {len(remaining)} experiments still in queue — continuing…")
-            # Recurse by re-entering main (restart the loop)
-            import sys
-            # Pass same flags but without --auto to avoid infinite recursion on crash
             new_argv = [a for a in sys.argv[1:] if a != "--auto"] + ["--auto"]
             sys.argv[1:] = new_argv
             main()
         else:
-            print("\n  Queue exhausted. Autonomous loop complete.")
-            print("  → Add new experiments via 'uv run auto_suggest.py --generate'")
-            print("  → Or manually edit experiments.py and re-run autorun.py --auto")
+            # ── Queue exhausted: invoke agent_loop to generate new experiments ─
+            print("\n  Queue exhausted — invoking agent_loop to generate next experiments…")
+            try:
+                result = subprocess.run(
+                    ["uv", "run", "agent_loop.py", "--top", "5"],
+                    cwd=REPO_ROOT, timeout=180
+                )
+                # Re-check for newly added experiments
+                new_remaining = [e for e in get_experiments(args.benchmark, args.model, args.priority)
+                                 if e.name not in load_done_names()]
+                if new_remaining:
+                    print(f"  {len(new_remaining)} new experiments generated — continuing loop…")
+                    new_argv = [a for a in sys.argv[1:] if a != "--auto"] + ["--auto"]
+                    sys.argv[1:] = new_argv
+                    main()
+                    return
+            except Exception as e:
+                print(f"  agent_loop failed: {e}")
+            print("\n  Autonomous loop complete. No further experiments generated.")
+            print("  → Run manually: uv run auto_suggest.py --generate")
 
 
 if __name__ == "__main__":

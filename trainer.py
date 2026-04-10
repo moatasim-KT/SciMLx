@@ -96,6 +96,7 @@ class Trainer:
         lr_base: float = 1e-3,
         lr_schedule_fn: Optional[Callable[[float], float]] = None,
         max_vram_gb: float = 0.0,
+        curriculum: bool = False,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -107,6 +108,8 @@ class Trainer:
         self.lr_base = lr_base
         self.lr_schedule_fn = lr_schedule_fn
         self.max_vram_gb = max_vram_gb
+        self.curriculum = curriculum
+        self._loss_history: list = []   # rolling (step, loss) pairs for live telemetry
 
         # JIT compilation
         self.loss_and_grad_fn = nn.value_and_grad(self.model, self.loss_fn)
@@ -138,6 +141,26 @@ class Trainer:
             except StopIteration:
                 # Dataloader should be infinite for 5-min budget
                 break
+
+            # Curriculum: smoothing for 1D benchmarks (Burgers shocks)
+            # Progress 0.0 -> 0.5: smooth with decreasing kernel
+            if self.curriculum and x.ndim == 3 and progress < 0.5:
+                # Simple spatial moving average (low-pass filter)
+                # Max kernel size 7 at t=0, 1 at t=0.5
+                k = int(7 * (1 - progress / 0.5))
+                if k > 1:
+                    if k % 2 == 0: k += 1
+                    pad = k // 2
+                    x_pad = mx.pad(x, [(0,0), (pad,pad), (0,0)], mode="wrap")
+                    y_pad = mx.pad(y, [(0,0), (pad,pad), (0,0)], mode="wrap")
+                    # Manual moving average in MLX
+                    x_smooth = []
+                    y_smooth = []
+                    for i in range(x.shape[1]):
+                        x_smooth.append(mx.mean(x_pad[:, i:i+k, :], axis=1, keepdims=True))
+                        y_smooth.append(mx.mean(y_pad[:, i:i+k, :], axis=1, keepdims=True))
+                    x = mx.concatenate(x_smooth, axis=1)
+                    y = mx.concatenate(y_smooth, axis=1)
 
             t_step_start = time.time()
             loss, grads = self.loss_and_grad_fn(self.model, x, y)
@@ -179,12 +202,17 @@ class Trainer:
                     import json as _json
                     from pathlib import Path as _Path
                     _telemetry = _Path(__file__).resolve().parent / ".vram_telemetry"
+                    self._loss_history.append([total_steps, loss_val])
+                    if len(self._loss_history) > 100:
+                        self._loss_history = self._loss_history[-100:]
                     _telemetry.write_text(_json.dumps({
                         "vram_active_mb": active_mb,
                         "vram_peak_mb":   peak_mb,
                         "progress":       progress,
                         "remaining_s":    max(0.0, self.time_budget - (t_now2 - t_start)),
                         "step":           total_steps,
+                        "loss":           loss_val,
+                        "loss_history":   self._loss_history,
                     }))
                 except Exception as _e:
                     print(f"[telemetry write error: {_e}]", flush=True)

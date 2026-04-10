@@ -59,8 +59,8 @@ BLACKLIST = {
     "navier_stokes_2d",  # Original NS-2D has broken ICs — use ns_2d_fix
 }
 
-# Known good patterns (from empirical findings across all benchmarks)
-KNOWN_WINS = {
+# Known good patterns (from empirical findings — also updated dynamically from results.json)
+_KNOWN_WINS_HARDCODED = {
     "burgers_1d": {
         "best_modes":  24,
         "best_hidden": 128,
@@ -144,6 +144,58 @@ KNOWN_WINS = {
     },
 }
 
+# ── Dynamic KNOWN_WINS: computed from results.json, falls back to hardcoded ───
+
+_known_wins_cache: dict | None = None
+
+def _compute_known_wins() -> dict:
+    """Build KNOWN_WINS from actual results.json, merging with hardcoded fallback."""
+    from utils import REPO_ROOT
+    results_path = REPO_ROOT / "results.json"
+    computed: dict = {}
+    if results_path.exists():
+        try:
+            data = json.loads(results_path.read_text())
+            by_bm: dict[str, list] = {}
+            for e in data:
+                if e.get("status") == "keep" and e.get("val_l2_rel"):
+                    by_bm.setdefault(e["benchmark"], []).append(e)
+            for bm, entries in by_bm.items():
+                best = min(entries, key=lambda e: e["val_l2_rel"])
+                cfg  = best.get("config") or {}
+                hard = _KNOWN_WINS_HARDCODED.get(bm, {})
+                computed[bm] = {
+                    "best_modes":  cfg.get("n_modes",    hard.get("best_modes",  16)),
+                    "best_hidden": cfg.get("hidden_dim", hard.get("best_hidden", 64)),
+                    "best_layers": cfg.get("n_layers",   hard.get("best_layers",  4)),
+                    "best_model":  best.get("model",     hard.get("best_model",  "FNO")),
+                    "best_val":    best["val_l2_rel"],
+                    "best_config": (best.get("description") or "").split()[0],
+                    "key_findings": hard.get("key_findings", []),
+                }
+        except Exception:
+            pass
+    # Hardcoded values fill in any benchmark not yet in results.json
+    merged = dict(_KNOWN_WINS_HARDCODED)
+    merged.update(computed)
+    return merged
+
+def _get_known_wins() -> dict:
+    """Return KNOWN_WINS, computing once per process and caching."""
+    global _known_wins_cache
+    if _known_wins_cache is None:
+        _known_wins_cache = _compute_known_wins()
+    return _known_wins_cache
+
+# Module-level alias — refreshed on each top-level import (safe for CLI use)
+KNOWN_WINS: dict = {}  # populated by _refresh_known_wins() below
+
+def _refresh_known_wins() -> None:
+    global KNOWN_WINS
+    KNOWN_WINS = _get_known_wins()
+
+_refresh_known_wins()
+
 
 # Aliases to shared utils (kept as module-level names for call-site clarity)
 _load_results        = load_results
@@ -176,7 +228,7 @@ def _generate_empirical_suggestions(rows: list[dict],
     best  = _best_per_benchmark(rows).get(benchmark, float("inf"))
     suggs = []
 
-    wins = KNOWN_WINS.get(benchmark, {})
+    wins = (_get_known_wins()).get(benchmark, {})
     bm   = wins.get("best_modes",  24)
     bh   = wins.get("best_hidden", 128)
     bl   = wins.get("best_layers", 8)
@@ -325,7 +377,7 @@ def _generate_diagnostic_suggestions(benchmark: str) -> list[Suggestion]:
     suggs = []
     done  = _done_names()
     diag_map = _load_diag_from_results()
-    wins = KNOWN_WINS.get(benchmark, {})
+    wins = (_get_known_wins()).get(benchmark, {})
     bh = wins.get("best_hidden", 128)
     bm = wins.get("best_modes", 24)
     bl = wins.get("best_layers", 8)
@@ -372,7 +424,7 @@ def _generate_transfer_suggestions(benchmark: str) -> list[Suggestion]:
     relatives = BENCHMARK_RELATIVES.get(benchmark, [])
 
     for rel_bm in relatives:
-        rel_wins = KNOWN_WINS.get(rel_bm, {})
+        rel_wins = (_get_known_wins()).get(rel_bm, {})
         if not rel_wins or rel_wins.get("best_val", float("inf")) > 0.5:
             continue  # no useful result on the relative benchmark
 
@@ -410,7 +462,7 @@ def _rank_suggestions(suggs: list[Suggestion]) -> list[Suggestion]:
 # ── Reporting ─────────────────────────────────────────────────────────────────
 
 def _print_findings(rows: list[dict], benchmark: str) -> None:
-    wins = KNOWN_WINS.get(benchmark, {})
+    wins = (_get_known_wins()).get(benchmark, {})
     findings = wins.get("key_findings", [])
     if not findings:
         return
@@ -488,7 +540,7 @@ def generate_config_snippets(benchmark: str, top_n: int = 5) -> None:
     """Print ExperimentConfig Python snippets ready to paste into experiments.py."""
     rows  = _load_results(benchmark)
     done  = _done_names()
-    wins  = KNOWN_WINS.get(benchmark, {})
+    wins  = (_get_known_wins()).get(benchmark, {})
     best  = _best_per_benchmark(rows).get(benchmark, 1.0)
     bm    = wins.get("best_modes",  24)
     bh    = wins.get("best_hidden", 128)

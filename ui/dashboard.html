@@ -187,6 +187,22 @@ function barColor(ratio) {
   return "#F87171";
 }
 
+// ── Sparkline: renders a rolling loss history from telemetry ─────────────────
+function SparkLine({ points }) {
+  if (!points || points.length < 3) return null;
+  const W = 100, H = 22;
+  const ys = points.map(p => p[1]);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scX = i => (i / (points.length - 1)) * W;
+  const scY = v => H - (maxY === minY ? H/2 : ((v - minY) / (maxY - minY)) * (H - 2)) - 1;
+  const d = points.map((p, i) => `${i===0?"M":"L"}${scX(i).toFixed(1)},${scY(p[1]).toFixed(1)}`).join(" ");
+  return (
+    <svg width={W} height={H} style={{display:"inline-block",verticalAlign:"middle",flexShrink:0}}>
+      <path d={d} fill="none" stroke="var(--amber)" strokeWidth="1.5" opacity="0.85"/>
+    </svg>
+  );
+}
+
 // Parse training steps from log lines
 function parseTrainingCurve(lines) {
   const pts = [];
@@ -309,6 +325,15 @@ function LogPanel({ expName }) {
 // ── Experiment inspector (right panel) ────────────────────────────────────────
 function Inspector({ exp, sota, onClose }) {
   const [tab, setTab] = useState("details");
+  const [parentExp, setParentExp] = useState(null);
+
+  useEffect(() => {
+    if (!exp?.parent_id) { setParentExp(null); return; }
+    fetch(`${API}/api/experiment/${exp.parent_id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(setParentExp)
+      .catch(() => setParentExp(null));
+  }, [exp?.parent_id]);
   if (!exp) return (
     <div className="inspector">
       <div className="insp-header" style={{color:"var(--txt2)",fontSize:12}}>Select an experiment</div>
@@ -407,10 +432,36 @@ function Inspector({ exp, sota, onClose }) {
 
           {/* Lineage */}
           {exp.parent_id && <div>
-            <div className="sec-label">Lineage</div>
-            <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>
-              parent: {exp.parent_id}
-            </div>
+            <div className="sec-label">Parent Comparison</div>
+            {parentExp ? (<>
+              <div className="metric-row">
+                <span className="metric-key">parent val</span>
+                <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(parentExp.val_l2_rel,6)}</span>
+              </div>
+              {parentExp.val_l2_rel && exp.val_l2_rel && <div className="metric-row">
+                <span className="metric-key">delta</span>
+                <span className="metric-val" style={{color: exp.val_l2_rel < parentExp.val_l2_rel ? "var(--green)" : "var(--red)"}}>
+                  {((exp.val_l2_rel - parentExp.val_l2_rel) / parentExp.val_l2_rel * 100).toFixed(1)}%
+                </span>
+              </div>}
+              {Object.entries(exp.config||{}).map(([k,v]) => {
+                const pv = parentExp.config?.[k];
+                if (pv === undefined || pv === v) return null;
+                return (
+                  <div key={k} className="metric-row">
+                    <span className="metric-key">{k}</span>
+                    <span className="metric-val" style={{color:"var(--amber)"}}>
+                      {typeof pv==="number"&&pv<1?pv.toExponential(2):String(pv)} → {typeof v==="number"&&v<1?v.toExponential(2):String(v)}
+                    </span>
+                  </div>
+                );
+              })}
+              <div style={{fontFamily:"var(--mono)",fontSize:10,color:"var(--txt2)",marginTop:4}}>← {exp.parent_id}</div>
+            </>) : (
+              <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>
+                parent: {exp.parent_id}
+              </div>
+            )}
           </div>}
 
           {/* Inspect image */}
@@ -588,6 +639,102 @@ function QueueTable({ queue, active, onSelect }) {
   );
 }
 
+// ── Model Family Comparison Chart ────────────────────────────────────────────
+function ModelCompareChart({ experiments, benchmark, sota }) {
+  const relevant = experiments.filter(e =>
+    (!benchmark || benchmark === "all" || e.benchmark === benchmark) &&
+    e.val_l2_rel != null && e.val_l2_rel > 0 && e.status !== "crash"
+  );
+  const byModel = {};
+  for (const e of relevant) {
+    (byModel[e.model] = byModel[e.model] || []).push(e.val_l2_rel);
+  }
+  const entries = Object.entries(byModel)
+    .map(([m, vs]) => ({ model: m, best: Math.min(...vs) }))
+    .sort((a,b) => a.best - b.best)
+    .slice(0, 12);
+  if (entries.length < 2) return null;
+
+  const sotaTarget = sota?.[benchmark]?.sota;
+  const maxVal = Math.max(...entries.map(e => e.best));
+  const BAR_MAX = 170;
+  const scBar = v => Math.max(2, Math.round((v / maxVal) * BAR_MAX));
+  const H = entries.length * 26 + 24;
+
+  return (
+    <div style={{marginTop:8}}>
+      <div className="sec-label">Model comparison{benchmark !== "all" ? ` — ${benchmark}` : ""}</div>
+      <svg viewBox={`0 0 230 ${H}`} width="100%" style={{display:"block"}}>
+        {sotaTarget && (() => {
+          const x = scBar(sotaTarget);
+          return <line x1={x} y1={0} x2={x} y2={H} stroke="var(--cyan)" strokeWidth="1" strokeDasharray="3,2" opacity="0.5"/>;
+        })()}
+        {entries.map((e, i) => (
+          <g key={e.model} transform={`translate(0,${i * 26 + 16})`}>
+            <rect x={0} y={0} width={scBar(e.best)} height={14}
+                  fill={sotaTarget && e.best < sotaTarget ? "var(--green)" : "var(--amber)"}
+                  opacity="0.7" rx={2}/>
+            <text x={scBar(e.best)+4} y={10} fill="var(--txt)" fontSize="9">{e.model}</text>
+            <text x={scBar(e.best)+4} y={20} fill="var(--txt2)" fontSize="8">{e.best.toExponential(2)}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── Lineage DAG ───────────────────────────────────────────────────────────────
+function LineageDAG({ lineage, onSelect }) {
+  const { nodes = [], links = [] } = lineage;
+  const byBm = {};
+  for (const n of nodes) {
+    (byBm[n.benchmark || "unknown"] = byBm[n.benchmark || "unknown"] || []).push(n);
+  }
+  const benchmarks = Object.keys(byBm).sort();
+  const COL_W = 200, ROW_H = 34, PAD_T = 28, PAD_L = 10;
+  const W = Math.max(400, benchmarks.length * COL_W + PAD_L * 2);
+  const maxRows = Math.max(1, ...benchmarks.map(b => byBm[b].length));
+  const H = maxRows * ROW_H + PAD_T + 20;
+
+  const pos = {};
+  benchmarks.forEach((bm, ci) => {
+    byBm[bm].forEach((node, ri) => {
+      pos[node.id] = { x: PAD_L + ci * COL_W + COL_W/2, y: PAD_T + ri * ROW_H };
+    });
+  });
+
+  const nodeColor = s => s === "keep" ? "#4ADE80" : s === "crash" ? "#F87171" : "#FBBF24";
+
+  return (
+    <div style={{flex:1,overflow:"auto",padding:8}}>
+      {nodes.length === 0 && <div className="empty">No lineage data yet.</div>}
+      <svg width={W} height={H} style={{display:"block",minWidth:W}}>
+        {benchmarks.map((bm, ci) => (
+          <text key={bm} x={PAD_L + ci*COL_W + COL_W/2} y={PAD_T-8}
+                fill="var(--cyan)" fontSize="10" textAnchor="middle">{bm}</text>
+        ))}
+        {links.map((l,i) => {
+          const s = pos[l.source], t = pos[l.target];
+          if (!s || !t) return null;
+          return <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                       stroke="var(--border)" strokeWidth="1" opacity="0.6"/>;
+        })}
+        {nodes.map(n => {
+          const p = pos[n.id];
+          if (!p) return null;
+          return (
+            <g key={n.id} style={{cursor:"pointer"}} onClick={()=>onSelect&&onSelect(n)}>
+              <circle cx={p.x} cy={p.y} r={7} fill={nodeColor(n.status)} opacity="0.85"/>
+              <text x={p.x+10} y={p.y+4} fill="var(--txt2)" fontSize="8.5"
+                    style={{pointerEvents:"none"}}>{n.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
   const [experiments, setExperiments] = useState([]);
@@ -595,6 +742,7 @@ function App() {
   const [active, setActive] = useState([]);
   const [sota, setSota] = useState({});
   const [status, setStatus] = useState({});
+  const [lineage, setLineage] = useState({nodes:[],links:[]});
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("results");
   const [bmFilter, setBmFilter] = useState("all");
@@ -602,22 +750,24 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [expR, qR, sotaR, stR, actR] = await Promise.all([
+      const [expR, qR, sotaR, stR, actR, linR] = await Promise.all([
         fetch(`${API}/api/experiments`),
         fetch(`${API}/api/queue`),
         fetch(`${API}/api/sota`),
         fetch(`${API}/api/status`),
         fetch(`${API}/api/active`),
+        fetch(`${API}/api/lineage`),
       ]);
       if (!expR.ok) throw new Error(`API ${expR.status}`);
-      const [exps, q, s, st, act] = await Promise.all([
-        expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json()
+      const [exps, q, s, st, act, lin] = await Promise.all([
+        expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json(), linR.json()
       ]);
       setExperiments([...exps].reverse());
       setQueue(q.experiments || []);
       setSota(s);
       setStatus(st);
       setActive(act.active || []);
+      setLineage(lin || {nodes:[],links:[]});
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -626,7 +776,7 @@ function App() {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 8000);
+    const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
   }, [refresh]);
 
@@ -712,11 +862,38 @@ function App() {
                 <span className="metric-key">VRAM peak</span>
                 <span className="metric-val" style={{color:"var(--txt2)"}}>{fmt(status.vram_peak_mb,0)} MB</span>
               </div>
+              {status.progress != null && <>
+                <div className="metric-row">
+                  <span className="metric-key">Progress</span>
+                  <span className="metric-val" style={{color:"var(--cyan)"}}>{(status.progress*100).toFixed(1)}%</span>
+                </div>
+                <div style={{height:4,background:"var(--border)",borderRadius:2,margin:"2px 0 4px"}}>
+                  <div style={{height:"100%",borderRadius:2,width:`${(status.progress*100).toFixed(1)}%`,
+                               background:`hsl(${Math.round(status.progress*120)},70%,50%)`,transition:"width 1s linear"}}/>
+                </div>
+                {status.remaining_s != null && <div className="metric-row">
+                  <span className="metric-key">Time left</span>
+                  <span className="metric-val" style={{color: status.remaining_s < 30 ? "var(--red)" : "var(--amber)"}}>
+                    {status.remaining_s >= 60
+                      ? `${Math.floor(status.remaining_s/60)}m ${Math.round(status.remaining_s%60)}s`
+                      : `${Math.round(status.remaining_s)}s`}
+                  </span>
+                </div>}
+                {status.step != null && <div className="metric-row">
+                  <span className="metric-key">Step</span>
+                  <span className="metric-val" style={{color:"var(--txt2)"}}>{status.step}</span>
+                </div>}
+                {status.loss != null && <div className="metric-row">
+                  <span className="metric-key">Loss</span>
+                  <span className="metric-val" style={{color:"var(--amber)"}}>{status.loss.toExponential(4)}</span>
+                </div>}
+              </>}
               <div className="metric-row">
                 <span className="metric-key">Last update</span>
                 <span style={{fontSize:11,color:"var(--txt2)"}}>{fmtDur(status.last_updated)}</span>
               </div>
             </>}
+          <ModelCompareChart experiments={experiments} benchmark={bmFilter} sota={sota}/>
           </div>
         </div>
 
@@ -729,21 +906,58 @@ function App() {
             <div className={`tab ${tab==="queue"?"active":""}`} onClick={()=>setTab("queue")}>
               Queue ({pendingCount})
             </div>
+            <div className={`tab ${tab==="lineage"?"active":""}`} onClick={()=>setTab("lineage")}>
+              Lineage DAG
+            </div>
           </div>
 
           {/* Active experiment strip — always visible */}
           {active.filter(n => n !== "dashboard_server").map(name => {
             const qExp = queue.find(e => e.name === name);
+            const pct = status.progress != null ? (status.progress * 100).toFixed(1) : null;
+            const remS = status.remaining_s;
+            const remStr = remS != null
+              ? remS >= 60 ? `${Math.floor(remS/60)}m ${Math.round(remS%60)}s` : `${Math.round(remS)}s`
+              : null;
             return (
               <div key={name}
-                style={{background:"var(--bg1)",borderBottom:"1px solid var(--border)",padding:"6px 12px",
-                        display:"flex",alignItems:"center",gap:10,cursor:"pointer",flexShrink:0}}
+                style={{background:"var(--bg1)",borderBottom:"1px solid var(--border)",
+                        display:"flex",flexDirection:"column",gap:0,cursor:"pointer",flexShrink:0}}
                 onClick={() => setSelected({id: name, status:"running", name, ...(qExp||{})})}>
-                <div className="dot dot-live" style={{flexShrink:0}}/>
-                <span style={{fontSize:11,color:"var(--green)",fontFamily:"var(--mono)",fontWeight:600}}>RUNNING</span>
-                <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{name}</span>
-                {qExp && <span style={{fontSize:11,color:"var(--txt2)"}}>· {qExp.benchmark} · {qExp.model} h={qExp.hidden_dim} l={qExp.n_layers} m={qExp.n_modes} · {qExp.budget_s}s budget</span>}
-                <span style={{fontSize:11,color:"var(--txt2)",marginLeft:"auto"}}>click to inspect →</span>
+                {/* Top row */}
+                <div style={{padding:"6px 12px",display:"flex",alignItems:"center",gap:10}}>
+                  <div className="dot dot-live" style={{flexShrink:0}}/>
+                  <span style={{fontSize:11,color:"var(--green)",fontFamily:"var(--mono)",fontWeight:600}}>RUNNING</span>
+                  <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{name}</span>
+                  {qExp && <span style={{fontSize:11,color:"var(--txt2)"}}>· {qExp.benchmark} · {qExp.model} h={qExp.hidden_dim} l={qExp.n_layers} m={qExp.n_modes}</span>}
+                  <span style={{display:"flex",alignItems:"center",gap:14,marginLeft:"auto"}}>
+                    {status.step != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--txt2)"}}>step {status.step}</span>}
+                    {status.loss != null && <span style={{display:"flex",alignItems:"center",gap:4}}>
+                      <SparkLine points={status.loss_history}/>
+                      <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--amber)"}}>loss {status.loss.toExponential(4)}</span>
+                    </span>}
+                    {pct != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:"var(--cyan)"}}>{pct}%</span>}
+                    {remStr != null && <span style={{fontSize:11,fontFamily:"var(--mono)",color:parseFloat(remStr) < 30 ? "var(--red)" : "var(--txt2)"}}>⏱ {remStr}</span>}
+                    <button
+                      className="btn btn-danger"
+                      style={{padding:"1px 7px",fontSize:10,marginLeft:4}}
+                      onClick={async (ev) => {
+                        ev.stopPropagation();
+                        if (confirm(`Kill experiment "${name}"?`)) {
+                          await fetch(`${API}/api/kill/${name}`, {method:"POST"});
+                          refresh();
+                        }
+                      }}>✕ Kill</button>
+                  </span>
+                </div>
+                {/* Progress bar */}
+                {status.progress != null && (
+                  <div style={{height:3,background:"var(--border)",width:"100%"}}>
+                    <div style={{height:"100%",width:`${(status.progress*100).toFixed(1)}%`,
+                                 background:`hsl(${Math.round(status.progress*120)},70%,50%)`,
+                                 transition:"width 1s linear"}}/>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -759,6 +973,7 @@ function App() {
               />
             )}
             {tab==="queue" && <QueueTable queue={queue} active={active} onSelect={(e) => setSelected({id: e.name, status: "running", ...e})}/>}
+            {tab==="lineage" && <LineageDAG lineage={lineage} onSelect={handleSelect}/>}
           </div>
         </div>
 

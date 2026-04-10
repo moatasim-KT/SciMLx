@@ -68,10 +68,10 @@ suggested_experiments:
     n_modes: 16
     rationale: "Use FNO2D with physics loss for Darcy coefficient discovery (staged training)"
 
-  note: |
-    Full inverse PINN implementation would require adding a coefficient_net to losses.py
-    and train.py. The models above run standard operator learning; the inverse problem
-    is a training paradigm, not just an architecture.
+implementation_note: |
+  Full inverse PINN implementation would require adding a coefficient_net to losses.py
+  and train.py. The models above run standard operator learning; the inverse problem
+  is a training paradigm, not just an architecture.
 
 status: pending
 verdict: ""

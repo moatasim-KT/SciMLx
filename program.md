@@ -34,6 +34,15 @@ human input. Use after a Mode A session to saturate the queue overnight.
 uv run agent_loop.py --dry-run       # see what it would do
 uv run agent_loop.py --top 5         # propose 5 new configs
 uv run agent_loop.py --run           # propose + run top-3
+uv run agent_loop.py --no-hpo        # skip Bayesian HPO, use heuristics only
+```
+
+The `--auto` flag wires both modes together: when the queue empties, `autorun.py`
+invokes `agent_loop.py --top 5` and recurses if new experiments are generated.
+
+```bash
+# Guarded overnight run
+uv run autorun.py --auto --commit --max-auto-experiments 20 --max-auto-time 10800
 ```
 
 Both modes share the same `experiments.py` queue and `results.json` lineage.
@@ -49,6 +58,9 @@ touch .autorun_pause
 curl -X POST http://localhost:8000/api/resume
 # or:
 rm .autorun_pause
+
+# Kill a specific running experiment (terminates within 2s)
+curl -X POST http://localhost:8000/api/kill/<name>
 ```
 
 ---
@@ -74,7 +86,7 @@ uv run auto_suggest.py --generate   # print ready-to-paste ExperimentConfig snip
 ```
 
 Suggestion sources (in priority order):
-1. **Empirical wins** — configs that worked well on related benchmarks
+1. **Empirical wins** — configs that worked well on related benchmarks (loaded dynamically from results.json, always up-to-date)
 2. **Paper ideas** — `papers/*.yaml` entries with `status: pending`
 3. **Spectral diagnostic feedback** — if `diag_high_freq_error` is high,
    suggests increasing n_modes or switching to spectral loss
@@ -87,6 +99,9 @@ Suggestion sources (in priority order):
 uv run autorun.py --priority 1 --commit      # run all priority-1 pending
 uv run autorun.py --priority 2 --commit      # run priority 1 + 2
 uv run autorun.py --auto --commit            # run + re-suggest loop until queue empty
+uv run autorun.py --auto --commit \
+  --max-auto-experiments 20 \
+  --max-auto-time 10800                      # guarded overnight run
 uv run autorun.py --dry-run                  # preview without running
 uv run autorun.py --model RFNO               # run only RFNO experiments
 uv run autorun.py --benchmark kdv_1d         # run only kdv_1d experiments
@@ -97,7 +112,8 @@ What autorun does:
 - Writes full stdout to `logs/<name>.log`
 - Parses `val_l2_rel`, `peak_vram_mb`, `diag_*`, `inspect_id` from log
 - Classifies crashes: OOM / NaN-Inf / ImportError / ValueError / Timeout / UnknownError
-- Auto-retries once with halved hidden_dim + n_layers on non-fatal crashes
+- **Multi-fix retry**: collects ALL applicable fixes and merges them — OOM+NaN → both `batch_size//2` AND `lr//10` in one retry (previously only one fix was applied)
+- Polls every 2s for `.kill_{name}` sentinel; terminates process if found
 - With `--commit`: stages `train.py results.tsv` and commits each kept result
 
 ### 4. Add experiments: `experiments.py`
@@ -123,6 +139,10 @@ Priority conventions:
 - `1` — high value, run immediately
 - `2` — medium value, run after priority-1 queue is clear
 - `3` — speculative, auto-generated, run when queue is otherwise empty
+
+**2D benchmark constraint**: always use `h≤32, l≤4, m≤12, budget_s=480`.
+Models larger than h=64 or l=8 crash on all 2D benchmarks (OOM/broadcast errors
+on Apple Silicon unified memory).
 
 ### 5. Inspect failures: `hypothesis.py` + `diagnostics.py`
 
@@ -181,6 +201,9 @@ hpo.tell_multi(cfg, {"val_l2_rel": 0.15, "memory_gb": 0.12})
 front = hpo.pareto_front()   # Pareto-optimal configs
 ```
 
+The HPO is now wired into the `--auto` loop automatically. When the queue exhausts,
+`autorun.py` invokes `agent_loop.py --top 5` (which calls HPO) and recurses.
+
 ### 7. New model code generation: `model_scaffold.py`
 
 ```bash
@@ -208,13 +231,15 @@ uv run uvicorn app:app --reload --port 8000
 ```
 
 Dashboard panels:
-- **Left sidebar** — per-benchmark SOTA comparison bars + quick stats
-- **Results tab** — all 102 completed experiments, sortable by any column, searchable, filterable by benchmark/status
-- **Queue tab** — all 38 pending experiments with priority, config, rationale
+- **Left sidebar** — per-benchmark SOTA comparison bars, model comparison chart, live training quick stats (progress bar, time remaining, step count, loss)
+- **Results tab** — all 184 completed experiments, sortable by any column, searchable, filterable by benchmark/status
+- **Queue tab** — all pending experiments with priority, config, rationale
+- **Lineage DAG tab** — SVG graph of experiment parent→child relationships, colored by status (green=keep, red=crash, amber=discard)
 - **Right inspector** — click any experiment for:
-  - `details`: config grid, val_l2_rel vs SOTA bar, rationale, conclusion, parent lineage
+  - `details`: config grid, val_l2_rel vs SOTA bar, rationale, conclusion, parent lineage with delta % and config diff table
   - `log`: full log file viewer with colorized output and SVG training loss curve
   - `diag`: spectral bias values and diagnostic PNG
+- **Active strip** — running experiment with progress bar, rolling loss sparkline, Kill button
 
 API endpoints (all re-load results.json fresh on each call):
 ```
@@ -223,17 +248,19 @@ GET  /api/experiment/{id}      detail + inspect_url
 GET  /api/sota                 SOTA targets + our best + ratio per benchmark
 GET  /api/queue                all pending experiments with full config
 GET  /api/logs/{name}?tail=N   last N lines of logs/<name>.log
-GET  /api/status               VRAM, count, paused flag
+GET  /api/status               VRAM, progress, remaining_s, step, loss, loss_history, paused flag
 POST /api/pause                create .autorun_pause sentinel
 POST /api/resume               remove .autorun_pause sentinel
 POST /api/inject               add experiment to .injected_experiments.json
 POST /api/priority             override priority via .priority_overrides.json
 GET  /api/lineage              nodes + links for DAG visualization
+POST /api/kill/{name}          write .kill_{name} sentinel → experiment terminates within 2s
 ```
 
 ### 9. Lineage tracking: `tracker.py`
 
-All runs are logged with DAG structure. To log programmatically:
+All runs are logged with DAG structure. IDs include a UUID suffix to avoid collisions.
+To log programmatically:
 ```python
 from tracker import Tracker
 t = Tracker()
@@ -258,34 +285,35 @@ analysis = t.analyze_lineage("burgers_1d")
 
 ## Current state at-a-glance
 
-| Benchmark      | SOTA   | Our best      | Gap     | Priority |
-|----------------|--------|---------------|---------|----------|
-| burgers_1d     | 0.0149 | 0.1468        | 10×     | HIGH     |
-| kdv_1d         | 0.010  | **0.0020** ✓  | 0.2× SOTA | hold |
-| wave_1d        | 0.005  | **0.000992** ✓ | 0.2× SOTA | hold |
-| darcy_2d_fix   | 0.0108 | 0.1469        | 14×     | HIGH     |
-| ns_2d_fix      | 0.0128 | 0.0152        | 1.2×    | MEDIUM   |
-| euler_1d       | ~0.015 | not run       | —       | MEDIUM   |
-| swe_2d         | ~0.002 | not run       | —       | LOW      |
-| allen_cahn_2d  | ~0.020 | not run       | —       | LOW      |
+| Benchmark      | SOTA   | Our best          | Gap      | Priority |
+|----------------|--------|-------------------|----------|----------|
+| burgers_1d     | 0.0149 | 0.1468            | 9.8×     | HIGH     |
+| kdv_1d         | 0.010  | **0.0020** ✓      | 5× better SOTA | hold |
+| wave_1d        | 0.005  | **0.000992** ✓    | 5× better SOTA | hold |
+| euler_1d       | ~0.015 | **0.002413** ✓    | 6.2× better SOTA | hold |
+| darcy_2d_fix   | 0.0108 | 0.1041            | 9.6×     | HIGH — small models only |
+| ns_2d_fix      | 0.0128 | 0.0152            | 1.2×     | MEDIUM   |
+| swe_2d         | ~0.002 | 0.0107            | 5.4×     | MEDIUM   |
+| allen_cahn_2d  | ~0.020 | 0.0628            | 3.1×     | MEDIUM   |
+| ns_hre_2d      | ~0.070 | not run           | —        | LOW (70 min first gen) |
 
-Queue: **38 pending experiments** (check `uv run autorun.py --dry-run` for list)
+184 completed experiments. Check `uv run autorun.py --dry-run` for pending queue.
 
 ---
 
 ## Suggested next actions (ranked)
 
-1. **Burgers gap** — try curriculum training, stronger augmentation, ensemble of FNO+RFNO, PINN variants (not PINO)
-2. **darcy_2d_fix** — FNO h=128 l=6 m=24 (current h=32 is too small)
-3. **Unrun models on burgers** — S4NO, GNOT, PODDeepONet
-4. **euler_1d** — first run, use `--model FNO` with `--benchmark euler_1d` (note: FNO_MC for multi-channel)
-5. **ns_2d_fix** — try RFNO or wider FNO to beat SOTA 0.0128
+1. **Burgers gap** — try SSNO (paper claims 0.007), curriculum training, ensemble FNO+RFNO
+2. **darcy_2d_fix** — FNO h=32 l=4 m=12 budget_s=480 (small model constraint — h≥64 crashes)
+3. **ns_2d_fix** — RFNO h=32 m=8 or H1 loss to push below SOTA 0.0128
+4. **SSNO on all 1D benchmarks** — newly registered model with adaptive S4D damping
+5. **allen_cahn_2d / swe_2d** — only 5 experiments each; explore model families
 
 ```bash
 # Quick wins to run right now:
-uv run train.py --benchmark darcy_2d_fix --model FNO --hidden 128 --layers 6 --modes 24
-uv run train.py --benchmark euler_1d     --model FNO --hidden 128 --layers 8 --modes 24
-uv run train.py --benchmark burgers_1d   --model S4NO --hidden 64 --layers 4 --modes 16
+uv run train.py --benchmark burgers_1d   --model SSNO --hidden 64 --layers 4 --modes 16
+uv run train.py --benchmark darcy_2d_fix --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
+uv run train.py --benchmark ns_2d_fix    --model RFNO --hidden 32 --layers 4 --modes 8  --budget 480
 ```
 
 ---
@@ -336,6 +364,6 @@ regenerate it automatically (and save it), but this eats into the training budge
 | Never hand-edit `results.json` | Use tracker.py; hand edits break DAG |
 | `darcy_2d` is broken | Wrong solver — only use `darcy_2d_fix` |
 | Never add PINO experiments | Endpoint-only formulation always fails |
-| 2D benchmarks need `budget_s=480` | Extra time for 2D model compilation |
+| 2D benchmarks: h≤32, l≤4, budget_s=480 | h≥64 or l≥8 crashes (OOM/broadcast on Apple Silicon) |
 | Stage only specific files with git | Never `git add -A` (avoids committing secrets/data) |
 | No new packages | Only mlx, numpy, scipy, matplotlib, pyyaml, fastapi, uvicorn |

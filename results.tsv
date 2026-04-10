@@ -205,3 +205,7 @@ daa9e49	darcy_2d_fix	FNO	0.168671	2.53	discard	fno_darcy2d_h32_m12_l4_480s FNO  
 daa9e49	darcy_2d_fix	FNO	0.457216	3.20	discard	fno_darcy2d_h64_m8_l4_480s FNO  h=64  l=4  m=8
 daa9e49	ns_2d_fix	FNO	0.015289	2.53	discard	fno_ns2d_h32_m12_l4_480s FNO  h=32  l=4  m=12
 daa9e49	ns_2d_fix	FNO	0.014284	2.42	keep	fno_ns2d_h32_m8_l4_600s FNO  h=32  l=4  m=8
+10462b1	ns_2d_fix	FNO	0.025084	2.42	discard	fno_ns2d_h32_m8_l4_h1loss FNO  h=32  l=4  m=8  loss=h1
+10462b1	darcy_2d_fix	RFNO	1.000000	0.00	crash	rfno_darcy2d_h32_m12_l4_480s RFNO  h=32  l=4  m=12
+10462b1	ns_2d_fix	RFNO	1.000000	0.00	crash	rfno_ns2d_h32_m8_l4_480s RFNO  h=32  l=4  m=8
+10462b1	burgers_1d	SSNO	80.523314	0.69	discard	ssno_burgers_h128_l8_m24 SSNO  h=128  l=8
