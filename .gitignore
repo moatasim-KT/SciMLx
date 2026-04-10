@@ -1,9 +1,59 @@
-.DS_Store
-.venv/
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Virtual environment ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+
+# ── Training logs (per-experiment, reproducible) ─────────────────────────────
+logs/
 *.log
-run.log
+
+# ── Generated figures (reproduced by viz.py / train.py) ──────────────────────
+figs/
+
+# ── Model checkpoints (large binaries) ───────────────────────────────────────
+checkpoints/
+*.npz
+*.npy
+*.safetensors
+*.pt
+*.pth
+
+# ── Runtime sentinel / telemetry files ───────────────────────────────────────
+.active_experiment
+.vram_telemetry
+.autorun_pause
+.kill_*
+.priority_overrides.json
+.injected_experiments.json
+
+# ── Tool caches ───────────────────────────────────────────────────────────────
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ── Misc ephemeral artefacts ──────────────────────────────────────────────────
+test_log.txt
+server_startup.log
+server_uv.log
 surfaces.txt
 surface-verify-prompt.md
 build-2-closeout.md
+
+# ── Claude Code internal state ────────────────────────────────────────────────
+.claude/
+
+# ── omg quota/watch state (ephemeral) ────────────────────────────────────────
+.omg/
