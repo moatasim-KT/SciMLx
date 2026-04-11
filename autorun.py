@@ -52,7 +52,7 @@ TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
 MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
 MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 
-BENCHMARKS_2D = {"darcy_2d_fix", "ns_2d_fix", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
+BENCHMARKS_2D = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
 
 # File written by POST /api/inject — autorun polls this between experiments
 INJECTIONS_FILE = REPO_ROOT / ".injected_experiments.json"

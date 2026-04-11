@@ -509,7 +509,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=5,
-        rationale="FNO on darcy_2d_fix; safe 2D config (h≤32, m≤8). "
+        rationale="FNO on darcy_2d; safe 2D config (h≤32, m≤8). "
                   "Current best is 0.1041 — testing if more budget + correct solver helps.",
     ),
     ExperimentConfig(
@@ -518,7 +518,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=6,
-        rationale="Second darcy_2d_fix sweep with same safe 2D config for reproducibility.",
+        rationale="Second darcy_2d sweep with same safe 2D config for reproducibility.",
     ),
 
     # ── P8 · Batch size sensitivity ──────────────────────────────────────────
@@ -1232,7 +1232,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
 
     # ── P21 · Corrected 2D benchmarks ────────────────────────────────────────
-    # prepare.py's darcy_2d and navier_stokes_2d benchmarks are broken at the
+    # prepare.py's darcy_2d and ns_2d benchmarks are broken at the
     # data level (read-only file).  These use the fixed solvers in benchmarks_ext.py.
     ExperimentConfig(
         name="fno_darcy2d_fix_h32_m8_l4",
@@ -1256,7 +1256,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_ns2d_fix_h32_m8_l4",
-        benchmark="ns_2d_fix", model="FNO",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=1200,
         priority=1,
@@ -1267,7 +1267,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_ns2d_fix_h64_m12_l4",
-        benchmark="ns_2d_fix", model="FNO",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=2,
@@ -1331,20 +1331,20 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # ── New benchmark baselines and near-SOTA pushes ──────────────────────────
 
-    # ns_2d_fix — currently 1.2x SOTA (0.0152 vs 0.0128) with only 1 run
+    # ns_2d — currently 1.2x SOTA (0.0152 vs 0.0128) with only 1 run
     ExperimentConfig(
         name="ns2d_fno_h64_l4_m12",
-        benchmark="ns_2d_fix",
+        benchmark="ns_2d",
         model="FNO",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
-        priority=2,  # deprioritized: ns_2d_fix train data takes ~96min to generate
+        priority=2,  # deprioritized: ns_2d train data takes ~96min to generate
         rationale="Smaller FNO gets more steps in budget; wave_1d showed h=64 l=4 wins over h=128 l=8",
         expected="0.010–0.013",
     ),
     ExperimentConfig(
         name="ns2d_rfno2d_h32_l4_m8",
-        benchmark="ns_2d_fix",
+        benchmark="ns_2d",
         model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=600,
@@ -1354,7 +1354,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="ns2d_fno_h128_l6_m16",
-        benchmark="ns_2d_fix",
+        benchmark="ns_2d",
         model="FNO",
         hidden_dim=128, n_layers=6, n_modes=16,
         budget_s=1200,
@@ -1363,7 +1363,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.010–0.015",
     ),
 
-    # darcy_2d_fix — currently 13.6x SOTA; h=32 too small, h=128 ran out of time
+    # darcy_2d — currently 13.6x SOTA; h=32 too small, h=128 ran out of time
     ExperimentConfig(
         name="darcy2d_rfno2d_h32_l4_m8",
         benchmark="darcy_2d",
@@ -1515,7 +1515,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="tfno2d_ns_h64_m12_l4",
-        benchmark="ns_2d_fix", model="TFNO2D",
+        benchmark="ns_2d", model="TFNO2D",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=2,
@@ -1583,7 +1583,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="transolver2d_ns_h64_l4_s64",
-        benchmark="ns_2d_fix", model="Transolver2D",
+        benchmark="ns_2d", model="Transolver2D",
         hidden_dim=64, n_layers=4, n_modes=12,
         budget_s=1200,
         priority=2,
@@ -1831,7 +1831,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.11–0.14",
     ),
     ExperimentConfig(
-        name="fno_darcy2d_fix_h32_l4_m8",
+        name="fno_darcy2d_h32_l4_m8",
         benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=32, budget_s=480,
@@ -1884,7 +1884,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # ── Darcy 2D fix (scale-up) ───────────────────────────────────────────────
     ExperimentConfig(
-        name="rfno2d_darcy2d_fix_h32_l4_m8",
+        name="rfno2d_darcy2d_h32_l4_m8",
         benchmark="darcy_2d", model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=32, budget_s=480,
@@ -1894,7 +1894,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.04–0.10",
     ),
     ExperimentConfig(
-        name="fno_darcy2d_fix_h32_l4_m8_h1",
+        name="fno_darcy2d_h32_l4_m8_h1",
         benchmark="darcy_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=32, budget_s=480,
@@ -1906,8 +1906,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
 
     # ── NS 2D fix (scale-up from baseline 0.0152) ─────────────────────────────
     ExperimentConfig(
-        name="fno_ns2d_fix_h32_l4_m8",
-        benchmark="ns_2d_fix", model="FNO",
+        name="fno_ns2d_h32_l4_m8",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=16, budget_s=600,
         priority=2,
@@ -1915,8 +1915,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
         expected="0.010–0.015",
     ),
     ExperimentConfig(
-        name="rfno2d_ns2d_fix_h32_l4_m8",
-        benchmark="ns_2d_fix", model="RFNO2D",
+        name="rfno2d_ns2d_h32_l4_m8",
+        benchmark="ns_2d", model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=8,
         batch_size=16, budget_s=600,
         priority=2,
@@ -2085,7 +2085,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_ns2d_h32_m12_l4_480s",
-        benchmark="ns_2d_fix", model="FNO",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=12,
         budget_s=480,
         priority=1,
@@ -2144,7 +2144,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     # m=12 was worse than m=8; try: more steps via smaller model, H1 loss for vorticity shocks
     ExperimentConfig(
         name="fno_ns2d_h32_m8_l4_600s",
-        benchmark="ns_2d_fix", model="FNO",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=600,
         priority=1,
@@ -2153,7 +2153,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="fno_ns2d_h32_m8_l4_h1loss",
-        benchmark="ns_2d_fix", model="FNO",
+        benchmark="ns_2d", model="FNO",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480, loss_type="h1",
         priority=1,
@@ -2162,7 +2162,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name="rfno2d_ns2d_h32_m8_l4_480s",
-        benchmark="ns_2d_fix", model="RFNO2D",
+        benchmark="ns_2d", model="RFNO2D",
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
         priority=1,
@@ -2181,8 +2181,8 @@ EXPERIMENTS: List[ExperimentConfig] = [
         paper_ref='rfno-2024',
     ),
     ExperimentConfig(
-        name='agent_rfno2d_nsfix_h32_l4_m8',
-        benchmark='ns_2d_fix',
+        name='agent_rfno2d_ns2d_h32_l4_m8',
+        benchmark='ns_2d',
         model='RFNO2D',
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
@@ -2192,7 +2192,7 @@ EXPERIMENTS: List[ExperimentConfig] = [
     ),
     ExperimentConfig(
         name='agent_rfno2d_darcy_h32_l4_m8',
-        benchmark='darcy_2d_fix',
+        benchmark='darcy_2d',
         model='RFNO2D',
         hidden_dim=32, n_layers=4, n_modes=8,
         budget_s=480,
@@ -2200,6 +2200,27 @@ EXPERIMENTS: List[ExperimentConfig] = [
         rationale='Exploring RFNO2D stability on Darcy 2D (fixed).',
         paper_ref='rfno-2024',
     ),
+    ExperimentConfig(
+        name="ssno_burgers_h128_l8_lr3e4",
+        benchmark="burgers_1d", model="SSNO",
+        hidden_dim=128, n_layers=8, n_modes=24,
+        lr=3e-4,
+        budget_s=300,
+        priority=1,
+        rationale="Previous SSNO (h128) got 80.5 error. Lowering LR to 3e-4 to stabilize deep SSM layers for Burgers gap closing toward 0.007.",
+    ),
+
+
+    # ── PACMANN (auto-registered by model_scaffold.py) ──
+ExperimentConfig(
+    name='pacmann_burge_baseline',
+    benchmark='burgers_1d',
+    model='PACMANN',
+    hidden_dim=64, n_layers=4, n_modes=16,
+    budget_s=300,
+    priority=3,
+    rationale="Auto-generated baseline for PACMANN on burgers_1d",
+),
 
 ]
 

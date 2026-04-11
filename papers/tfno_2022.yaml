@@ -24,7 +24,7 @@ our_results: {}
 
 advantages:
   - "~2-4x fewer spectral parameters → can increase hidden_dim or n_layers at same VRAM"
-  - "Low-rank inductive bias reduces overfitting on small datasets (darcy_2d_fix)"
+  - "Low-rank inductive bias reduces overfitting on small datasets (darcy_2d)"
   - "Tucker rank_ratio is a tunable regularization knob (0.25=aggressive, 0.75=near-full)"
   - "RTFNO = Tucker + Pre-LN residual: dual benefit for deep stacks"
   - "CP variant is extremely compact: tests limit of low-rank spectral representation"
@@ -66,7 +66,7 @@ suggested_experiments:
     rationale: "Tucker TFNO on KdV — low-rank may capture soliton structure efficiently"
 
   - name: "tfno2d_darcy_h128_m24_l4_r05"
-    benchmark: "darcy_2d_fix"
+    benchmark: "darcy_2d"
     model: "TFNO2D"
     hidden_dim: 128
     n_layers: 4

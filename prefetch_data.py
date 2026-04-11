@@ -33,7 +33,7 @@ def log(bm: str, msg: str):
 # ── Per-source prefetch functions ─────────────────────────────────────────────
 
 def prefetch_ext(benchmark: str) -> str:
-    """Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy, ns_2d_fix)."""
+    """Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy, ns_2d)."""
     from benchmarks_ext import (
         _get_ext_train, _load_or_gen_ext_val,
         _get_ext_val_cache, _get_ext_train_cache_path, N_TRAIN,
@@ -122,7 +122,7 @@ TASKS = [
     ("kdv_1d",        prefetch_ext,            ("kdv_1d",)),
     ("wave_1d",       prefetch_ext,            ("wave_1d",)),
     ("darcy_2d",  prefetch_ext,            ("darcy_2d",)),
-    ("ns_2d_fix",     prefetch_ext,            ("ns_2d_fix",)),
+    ("ns_2d",     prefetch_ext,            ("ns_2d",)),
     ("euler_1d",      prefetch_sim,            ("euler_1d",)),
     ("swe_2d",        prefetch_sim,            ("swe_2d",)),
     ("allen_cahn_2d", prefetch_sim,            ("allen_cahn_2d",)),

@@ -35,7 +35,7 @@ benchmarks:
     our_best: 0.998617  # FNO baseline — solver approximation issue
     gap_ratio: 92.5
     notes: "Darcy solver uses averaged permeability; heterogeneous solver needed."
-  navier_stokes_2d:
+  ns_2d:
     reported_val_l2_rel: 0.0128
     our_best: null  # crashes
     notes: "NS solver diverges; need improved IC generation."

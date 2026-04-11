@@ -91,7 +91,7 @@ Suggestion sources (in priority order):
 3. **Spectral diagnostic feedback** — if `diag_high_freq_error` is high,
    suggests increasing n_modes or switching to spectral loss
 4. **Cross-benchmark transfer** — winning config on kdv_1d suggested on wave_1d,
-   winning config on burgers_1d suggested on ns_2d_fix, etc.
+   winning config on burgers_1d suggested on ns_2d, etc.
 
 ### 3. Run the queue: `autorun.py`
 
@@ -291,8 +291,8 @@ analysis = t.analyze_lineage("burgers_1d")
 | kdv_1d         | 0.010  | **0.0020** ✓      | 5× better SOTA | hold |
 | wave_1d        | 0.005  | **0.000992** ✓    | 5× better SOTA | hold |
 | euler_1d       | ~0.015 | **0.002413** ✓    | 6.2× better SOTA | hold |
-| darcy_2d_fix   | 0.0108 | 0.1041            | 9.6×     | HIGH — small models only |
-| ns_2d_fix      | 0.0128 | 0.0152            | 1.2×     | MEDIUM   |
+| darcy_2d   | 0.0108 | 0.1041            | 9.6×     | HIGH — small models only |
+| ns_2d      | 0.0128 | 0.0152            | 1.2×     | MEDIUM   |
 | swe_2d         | ~0.002 | 0.0107            | 5.4×     | MEDIUM   |
 | allen_cahn_2d  | ~0.020 | 0.0628            | 3.1×     | MEDIUM   |
 | ns_hre_2d      | ~0.070 | not run           | —        | LOW (70 min first gen) |
@@ -304,16 +304,16 @@ analysis = t.analyze_lineage("burgers_1d")
 ## Suggested next actions (ranked)
 
 1. **Burgers gap** — try SSNO (paper claims 0.007), curriculum training, ensemble FNO+RFNO
-2. **darcy_2d_fix** — FNO h=32 l=4 m=12 budget_s=480 (small model constraint — h≥64 crashes)
-3. **ns_2d_fix** — RFNO h=32 m=8 or H1 loss to push below SOTA 0.0128
+2. **darcy_2d** — FNO h=32 l=4 m=12 budget_s=480 (small model constraint — h≥64 crashes)
+3. **ns_2d** — RFNO h=32 m=8 or H1 loss to push below SOTA 0.0128
 4. **SSNO on all 1D benchmarks** — newly registered model with adaptive S4D damping
 5. **allen_cahn_2d / swe_2d** — only 5 experiments each; explore model families
 
 ```bash
 # Quick wins to run right now:
 uv run train.py --benchmark burgers_1d   --model SSNO --hidden 64 --layers 4 --modes 16
-uv run train.py --benchmark darcy_2d_fix --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
-uv run train.py --benchmark ns_2d_fix    --model RFNO --hidden 32 --layers 4 --modes 8  --budget 480
+uv run train.py --benchmark darcy_2d --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
+uv run train.py --benchmark ns_2d    --model RFNO --hidden 32 --layers 4 --modes 8  --budget 480
 ```
 
 ---
@@ -334,7 +334,7 @@ uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min, everything else)
 ```
 
 Without this, train.py regenerates training data from scratch on every subprocess
-call — causing ns_2d_fix to always timeout (4096 × 2D NS solver steps takes longer
+call — causing ns_2d to always timeout (4096 × 2D NS solver steps takes longer
 than the 1500s hard kill limit in autorun.py).
 
 | Benchmark | Train cache file | Val cache file |
@@ -342,8 +342,8 @@ than the 1500s hard kill limit in autorun.py).
 | `burgers_1d` | `burgers_1d_train_N64.npz` | `burgers_1d_val_N64.npz` |
 | `kdv_1d` | `kdv_1d_train_N4096_ext.npz` | `kdv_1d_val_N64_ext.npz` |
 | `wave_1d` | `wave_1d_train_N4096_ext.npz` | `wave_1d_val_N64_ext.npz` |
-| `darcy_2d_fix` | `darcy_2d_fix_train_N4096_ext.npz` | `darcy_2d_fix_val_N64_ext.npz` |
-| `ns_2d_fix` | `ns_2d_fix_train_N4096_ext.npz` | `ns_2d_fix_val_N64_ext.npz` |
+| `darcy_2d` | `darcy_2d_train_N4096_ext.npz` | `darcy_2d_val_N64_ext.npz` |
+| `ns_2d` | `ns_2d_train_N4096_ext.npz` | `ns_2d_val_N64_ext.npz` |
 | `euler_1d` | `euler_1d_train_N64_s300_seed7.npz` | `euler_1d_val_N64_s300_seed42.npz` |
 | `swe_2d` | `swe_2d_train_N64_s1_seed7.npz` | `swe_2d_val_N64_s1_seed42.npz` |
 | `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz` | `allen_cahn_2d_val_N64_s200_seed42.npz` |
@@ -362,7 +362,7 @@ regenerate it automatically (and save it), but this eats into the training budge
 | Never modify `prepare.py` | Defines ground-truth metric for all experiments |
 | `ExperimentConfig.name` must be globally unique | Dedup key in results.json |
 | Never hand-edit `results.json` | Use tracker.py; hand edits break DAG |
-| `darcy_2d` is broken | Wrong solver — only use `darcy_2d_fix` |
+| `darcy_2d` is broken | Wrong solver — only use `darcy_2d` |
 | Never add PINO experiments | Endpoint-only formulation always fails |
 | 2D benchmarks: h≤32, l≤4, budget_s=480 | h≥64 or l≥8 crashes (OOM/broadcast on Apple Silicon) |
 | Stage only specific files with git | Never `git add -A` (avoids committing secrets/data) |

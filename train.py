@@ -26,7 +26,8 @@ from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_
 from simulations import SIM_BENCHMARKS, SIM_IS_MC, SIM_N_CHANNELS
 from losses import get_loss_fn
 from research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
-from trainer import Trainer, AdamW, get_lr_schedule
+from trainer import Trainer, get_lr_schedule
+from mlx.optimizers import AdamW
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
 BENCHMARK    = "burgers_1d"
@@ -164,7 +165,7 @@ print(f"Benchmark: {BENCHMARK}")
 print(f"Model    : {MODEL_TYPE}  layers={N_LAYERS}  hidden={HIDDEN_DIM}")
 print(f"Params   : {n_params / 1e6:.3f}M")
 
-optimizer = AdamW(lr=LR, weight_decay=WEIGHT_DECAY, betas=ADAM_BETAS)
+optimizer = AdamW(learning_rate=LR, weight_decay=WEIGHT_DECAY, betas=list(ADAM_BETAS))
 
 # ── Forward & Loss ─────────────────────────────────────────────────────────────
 

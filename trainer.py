@@ -4,83 +4,17 @@ import time
 import math
 import mlx.core as mx
 import mlx.nn as nn
-from mlx.utils import tree_flatten
+from mlx.optimizers import AdamW
+from mlx.utils import tree_flatten, tree_map
 from typing import Callable, Any, Dict, Optional, Tuple
-
-def _set(model, path, val):
-    parts = path.split(".")
-    obj   = model
-    for p in parts[:-1]:
-        obj = obj[int(p)] if isinstance(obj, list) else (
-              obj[p]      if isinstance(obj, dict)  else getattr(obj, p))
-    last = parts[-1]
-    if   isinstance(obj, list): obj[int(last)] = val
-    elif isinstance(obj, dict): obj[last]      = val
-    else:                       setattr(obj, last, val)
-
-class AdamW:
-    """AdamW with runtime learning-rate control and robust MLX parameter updates."""
-
-    def __init__(self, lr: float, weight_decay: float,
-                 betas=(0.9, 0.999), eps: float = 1e-8):
-        self.lr   = lr
-        self.wd   = weight_decay
-        self.b1, self.b2 = betas
-        self.eps  = eps
-        self._s: dict = {}
-        self._t   = 0
-
-    def update(self, model: nn.Module, grads: Any):
-        self._t += 1
-        flat_g = dict(tree_flatten(grads))
-        flat_p = dict(tree_flatten(model.parameters()))
-        b1, b2 = self.b1, self.b2
-
-        for path, g in flat_g.items():
-            p   = flat_p[path].astype(mx.float32)
-            g   = g.astype(mx.float32)
-            if path not in self._s:
-                self._s[path] = {"m": mx.zeros_like(g), "v": mx.zeros_like(g)}
-            s      = self._s[path]
-            s["m"] = b1 * s["m"] + (1 - b1) * g
-            s["v"] = b2 * s["v"] + (1 - b2) * g * g
-            mh     = s["m"] / (1 - b1 ** self._t)
-            vh     = s["v"] / (1 - b2 ** self._t)
-            p      = p * (1 - self.lr * self.wd) - self.lr * mh / (mx.sqrt(vh) + self.eps)
-            _set(model, path, p.astype(flat_p[path].dtype))
-
-    @property
-    def state_arrays(self):
-        out = []
-        for s in self._s.values():
-            out += [s["m"], s["v"]]
-        return out
-
-def get_lr_schedule(warmup_ratio: float, wardown_ratio: float, final_lr_frac: float) -> Callable[[float], float]:
-    def lr_schedule(progress: float) -> float:
-        """Linear warmup → flat → cosine warmdown."""
-        if progress < warmup_ratio:
-            return progress / warmup_ratio if warmup_ratio > 0 else 1.0
-        if progress < 1.0 - wardown_ratio:
-            return 1.0
-        t = (1.0 - progress) / wardown_ratio
-        return t + (1 - t) * final_lr_frac
-    return lr_schedule
 
 def clip_grad_norm(grads, max_norm: float) -> Tuple[Any, float]:
     """Clip gradient tree by global L2 norm. Returns (clipped_grads, norm)."""
-    flat_g = dict(tree_flatten(grads))
-    sq_sum = sum(float(mx.sum(g * g).item()) for g in flat_g.values())
-    norm   = sq_sum ** 0.5
-    if norm > max_norm:
-        scale = max_norm / (norm + 1e-6)
-        def _scale(tree):
-            if isinstance(tree, mx.array): return tree * scale
-            if isinstance(tree, dict): return {k: _scale(v) for k, v in tree.items()}
-            if isinstance(tree, list): return [_scale(v) for v in tree]
-            return tree
-        grads = _scale(grads)
-    return grads, norm
+    norm = mx.sqrt(sum(mx.sum(g * g) for _, g in tree_flatten(grads)))
+    scale = mx.minimum(1.0, max_norm / (norm + 1e-6))
+    from mlx.utils import tree_map
+    return tree_map(lambda g: g * scale, grads), norm
+
 
 class Trainer:
     """Encapsulates training loop, evaluation, and metrics."""
@@ -155,20 +89,17 @@ class Trainer:
             if self.curriculum and x.ndim == 3 and progress < 0.5:
                 # Simple spatial moving average (low-pass filter)
                 # Max kernel size 7 at t=0, 1 at t=0.5
+                # Vectorized moving average using conv1d
                 k = int(7 * (1 - progress / 0.5))
                 if k > 1:
                     if k % 2 == 0: k += 1
-                    pad = k // 2
-                    x_pad = mx.pad(x, [(0,0), (pad,pad), (0,0)], mode="wrap")
-                    y_pad = mx.pad(y, [(0,0), (pad,pad), (0,0)], mode="wrap")
-                    # Manual moving average in MLX
-                    x_smooth = []
-                    y_smooth = []
-                    for i in range(x.shape[1]):
-                        x_smooth.append(mx.mean(x_pad[:, i:i+k, :], axis=1, keepdims=True))
-                        y_smooth.append(mx.mean(y_pad[:, i:i+k, :], axis=1, keepdims=True))
-                    x = mx.concatenate(x_smooth, axis=1)
-                    y = mx.concatenate(y_smooth, axis=1)
+                    weight = mx.ones((x.shape[-1], 1, k)) / k
+                    # conv1d expects [B, N, C], permute to [B, C, N]
+                    x_c = mx.transpose(x, (0, 2, 1))
+                    y_c = mx.transpose(y, (0, 2, 1))
+                    x = mx.transpose(nn.conv1d(x_c, weight, padding=k//2, groups=x.shape[-1]), (0, 2, 1))
+                    y = mx.transpose(nn.conv1d(y_c, weight, padding=k//2, groups=x.shape[-1]), (0, 2, 1))
+
 
             t_step_start = time.time()
             loss, grads = self.loss_and_grad_fn(self.model, x, y)
@@ -186,7 +117,7 @@ class Trainer:
                 max_grad_norm = max(max_grad_norm, gnorm)
 
             self.optimizer.update(self.model, grads)
-            mx.eval(self.model.parameters(), self.optimizer.state_arrays)
+            mx.eval(self.model.parameters(), self.optimizer.state)
 
             total_train_time += (time.time() - t_step_start)
             total_steps += 1
@@ -205,24 +136,32 @@ class Trainer:
                     peak_mb   = mx.get_peak_memory() / 1024 / 1024
                 except Exception:
                     active_mb = peak_mb = 0.0
-                # Write live stats so the dashboard server (different process) can read them
-                try:
-                    import json as _json
-                    self._loss_history.append([total_steps, loss_val])
-                    if len(self._loss_history) > 100:
-                        self._loss_history = self._loss_history[-100:]
-                    self._telemetry_path.write_text(_json.dumps({
-                        "experiment":     self.exp_name,
-                        "vram_active_mb": active_mb,
-                        "vram_peak_mb":   peak_mb,
-                        "progress":       progress,
-                        "remaining_s":    max(0.0, self.time_budget - (t_now2 - t_start)),
-                        "step":           total_steps,
-                        "loss":           loss_val,
-                        "loss_history":   self._loss_history,
-                    }))
-                except Exception as _e:
-                    print(f"[telemetry write error: {_e}]", flush=True)
+                # Asynchronous telemetry update
+                import threading
+                import json as _json
+
+                def _async_write(path, data):
+                    try:
+                        path.write_text(_json.dumps(data))
+                    except Exception as e:
+                        print(f"[telemetry write error: {e}]", flush=True)
+
+                self._loss_history.append([total_steps, loss_val])
+                if len(self._loss_history) > 100:
+                    self._loss_history = self._loss_history[-100:]
+                
+                payload = {
+                    "experiment":     self.exp_name,
+                    "vram_active_mb": active_mb,
+                    "vram_peak_mb":   peak_mb,
+                    "progress":       progress,
+                    "remaining_s":    max(0.0, self.time_budget - (t_now2 - t_start)),
+                    "step":           total_steps,
+                    "loss":           loss_val,
+                    "loss_history":   self._loss_history,
+                }
+                threading.Thread(target=_async_write, args=(self._telemetry_path, payload), daemon=True).start()
+
                 if self.max_vram_gb > 0 and peak_mb / 1024 > self.max_vram_gb:
                     raise RuntimeError(
                         f"VRAM limit exceeded: {peak_mb/1024:.2f} GB > {self.max_vram_gb:.1f} GB"
@@ -256,3 +195,14 @@ class Trainer:
 
     def evaluate(self):
         return self.eval_fn(lambda x: self.forward_fn(self.model, x))
+
+def get_lr_schedule(warmup_ratio: float, wardown_ratio: float, final_lr_frac: float) -> Callable[[float], float]:
+    def lr_schedule(progress: float) -> float:
+        """Linear warmup → flat → cosine warmdown."""
+        if progress < warmup_ratio:
+            return progress / warmup_ratio if warmup_ratio > 0 else 1.0
+        if progress < 1.0 - wardown_ratio:
+            return 1.0
+        t = (1.0 - progress) / wardown_ratio
+        return t + (1 - t) * final_lr_frac
+    return lr_schedule

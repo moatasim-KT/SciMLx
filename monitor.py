@@ -93,7 +93,7 @@ def leaderboard():
     bm_best = {}
     for r in results:
         bm = r.get("benchmark", "")
-        if bm in ("burgers_1d", "darcy_2d", "navier_stokes_2d"):
+        if bm in ("burgers_1d", "darcy_2d", "ns_2d"):
             continue
         val = r.get("val_l2_rel")
         if val and (bm not in bm_best or val < bm_best[bm][0]):
@@ -149,8 +149,8 @@ def render(log_path, log_info, board, n_done, n_pending):
     lines.append(f"  {'─'*20}  {'─'*10}  {'─'*12}  {'─'*15}")
 
     sota_targets = {
-        "allen_cahn_2d": 0.020, "darcy_2d_fix": 0.0108, "euler_1d": 0.015,
-        "kdv_1d": 0.010, "ns_2d_fix": 0.0128, "swe_2d": 0.002, "wave_1d": 0.005,
+        "allen_cahn_2d": 0.020, "darcy_2d": 0.0108, "euler_1d": 0.015,
+        "kdv_1d": 0.010, "ns_2d": 0.0128, "swe_2d": 0.002, "wave_1d": 0.005,
     }
     for bm in sorted(sota_targets):
         s = sota_targets[bm]

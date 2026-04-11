@@ -6,9 +6,9 @@ Supported benchmarks:
     "kdv_1d"       – Korteweg–de Vries soliton dynamics   (ETDRK4 solver)
     "wave_1d"      – 1D wave equation  u_tt = c² u_xx      (Störmer-Verlet)
     "darcy_2d" – 2D Darcy with proper variable-coeff solver (Richardson iter)
-    "ns_2d_fix"    – 2D Navier-Stokes with stable IC amplitude (CFL < 1)
+    "ns_2d"    – 2D Navier-Stokes with stable IC amplitude (CFL < 1)
 
-Why darcy_2d and ns_2d_fix?
+Why darcy_2d and ns_2d?
     prepare.py's darcy_2d solver uses only mean(a) → loses all spatial info;
     source term f uses a FIXED seed independent of a → u is uncorrelated with a.
     prepare.py's ns_2d solver uses IC scale=1.0 → CFL≈61 → immediate NaN.
@@ -41,7 +41,7 @@ from prepare import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d_fix"}
+EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d"}
 
 # KdV parameters
 KDV_T       = 1.0    # final time
@@ -57,10 +57,10 @@ DARCY_FIX_N_ITER  = 40   # PCG iterations
 DARCY_FIX_MODES_F = 5    # source term Fourier modes
 
 # NS fix parameters — reduces CFL from ~61 to ~0.6
-NS_FIX_SCALE  = 0.1     # IC vorticity amplitude (vs 1.0 in prepare.py → 10× smaller)
-NS_FIX_NSTEPS = 1000    # time steps (vs 100) — gives dt=0.001, CFL≈0.6
-NS_FIX_NU     = 1e-2    # kinematic viscosity (same as original)
-NS_FIX_T      = 1.0     # final time
+NS_SCALE  = 0.1     # IC vorticity amplitude (vs 1.0 in prepare.py → 10× smaller)
+NS_NSTEPS = 1000    # time steps (vs 100) — gives dt=0.001, CFL≈0.6
+NS_NU     = 1e-2    # kinematic viscosity (same as original)
+NS_T      = 1.0     # final time
 
 # ── 2D Solvers (corrected) ────────────────────────────────────────────────────
 
@@ -144,16 +144,16 @@ def solve_darcy_2d_batch(
     return u.astype(np.float32)
 
 
-def solve_ns_2d_fix_batch(
+def solve_ns_2d_batch(
     w0: np.ndarray,
-    nu: float = NS_FIX_NU,
-    T: float = NS_FIX_T,
-    n_steps: int = NS_FIX_NSTEPS,
+    nu: float = NS_NU,
+    T: float = NS_T,
+    n_steps: int = NS_NSTEPS,
 ) -> np.ndarray:
     """Stable 2D Navier-Stokes solver (vorticity form) on [0, 2π)².
 
-    Identical algorithm to prepare.py's solve_navier_stokes_2d_batch, but
-    designed around CFL < 1.  With NS_FIX_SCALE=0.1 ICs:
+    Identical algorithm to prepare.py's solve_ns_2d_batch, but
+    designed around CFL < 1.  With NS_SCALE=0.1 ICs:
         max_velocity ≈ 9.5 → CFL = 9.5 × 0.001 × 64 ≈ 0.61 < 1  ✓
 
     Root cause of prepare.py instability:
@@ -242,10 +242,10 @@ def _darcy_fix_ic(n: int, N: int, rng: np.random.RandomState
 def _ns_fix_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
     """ICs for corrected NS benchmark: vorticity with small amplitude.
 
-    Uses scale=NS_FIX_SCALE=0.1 (vs 1.0 in prepare.py) to ensure CFL < 1:
+    Uses scale=NS_SCALE=0.1 (vs 1.0 in prepare.py) to ensure CFL < 1:
         max_velocity ≈ 6–10  →  CFL = v_max × dt × N ≈ 0.4–0.6 < 1  ✓
     """
-    return _random_ic_2d(n, N, rng, n_modes=4, scale=NS_FIX_SCALE, offset=0.0)
+    return _random_ic_2d(n, N, rng, n_modes=4, scale=NS_SCALE, offset=0.0)
 
 
 # ── Dataset generation ─────────────────────────────────────────────────────────
@@ -263,10 +263,10 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
         a, f    = _darcy_fix_ic(n, GRID_SIZE, rng)
         inputs  = a
         targets = solve_darcy_2d_batch(a, f)
-    elif benchmark == "ns_2d_fix":
+    elif benchmark == "ns_2d":
         w0      = _ns_fix_ic(n, GRID_SIZE, rng)
         inputs  = w0
-        targets = solve_ns_2d_fix_batch(w0)
+        targets = solve_ns_2d_batch(w0)
     else:
         raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
     return inputs, targets
@@ -369,7 +369,7 @@ EXT_SOTA = {
     "kdv_1d":       0.010,   # FNO on KdV, Tran et al. 2023
     "wave_1d":      0.005,   # Wave equation: easier than Burgers, FNO near-exact
     "darcy_2d": 0.0108,  # Li et al. 2020 FNO on Darcy (proper solver)
-    "ns_2d_fix":    0.0128,  # Li et al. 2020 FNO on NS (T=1, ν=1e-2)
+    "ns_2d":    0.0128,  # Li et al. 2020 FNO on NS (T=1, ν=1e-2)
 }
 
 
@@ -409,17 +409,17 @@ EXT_BENCHMARK_INFO = {
             "solve_darcy_2d_batch uses a_avg (scalar) → u independent of spatial a; "
             "f uses fixed seed=42 → u uncorrelated with model input a",
     },
-    "ns_2d_fix": {
+    "ns_2d": {
         "pde":        "ω_t + (u·∇)ω = ν Δω  (2D NS, vorticity form)",
         "domain":     "[0, 2π)², periodic",
         "ic_type":    "small-amplitude vorticity (scale=0.1) → CFL≈0.6 < 1",
         "solver":     "Semi-implicit Euler, 2/3-rule dealiasing, n_steps=1000",
-        "t_final":    NS_FIX_T,
-        "n_steps":    NS_FIX_NSTEPS,
+        "t_final":    NS_T,
+        "n_steps":    NS_NSTEPS,
         "sota_model": "FNO",
         "notes":      "Fixed: IC scale 1.0→0.1 reduces CFL from 61 to ~0.6",
         "known_issue_in_prepare_py":
-            "solve_navier_stokes_2d_batch uses IC scale=1.0 → max_velocity≈95 → "
+            "solve_ns_2d_batch uses IC scale=1.0 → max_velocity≈95 → "
             "CFL≈61 → semi-implicit Euler explodes to NaN on step 1",
     },
 }

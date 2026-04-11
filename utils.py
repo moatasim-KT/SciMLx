@@ -23,11 +23,11 @@ SOTA: dict[str, float] = {
     # prepare.py benchmarks
     "burgers_1d":       0.0149,
     "darcy_2d":         0.0108,
-    "navier_stokes_2d": 0.0128,
+    "ns_2d": 0.0128,
     # benchmarks_ext.py
     "kdv_1d":           0.010,
     "wave_1d":          0.005,
-    "ns_2d_fix":        0.0128,
+    "ns_2d":        0.0128,
     # simulations/ (high-fidelity)
     "euler_1d":         0.015,   # smooth subsonic Euler (multi-channel)
     "swe_2d":           0.002,   # linearized gravity waves (analytic GT)

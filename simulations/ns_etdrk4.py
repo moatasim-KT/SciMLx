@@ -4,7 +4,7 @@ PDE on [0, 2π)², periodic BCs:
     ω_t + (u·∇)ω = ν·∇²ω
 
     u = (∂ψ/∂y, −∂ψ/∂x),   ∇²ψ = ω    (stream function)
-    ν = 1×10⁻³             (10× lower than ns_2d_fix → Re ≈ 1000)
+    ν = 1×10⁻³             (10× lower than ns_2d → Re ≈ 1000)
 
 Scheme: ETDRK4 (Cox-Matthews exponential Runge-Kutta, 4th order in time).
   Split: ω_t = L̂ω + N(ω)
@@ -15,7 +15,7 @@ Scheme: ETDRK4 (Cox-Matthews exponential Runge-Kutta, 4th order in time).
   advective CFL bounds the time step.  2/3-rule dealiasing prevents aliasing
   in the nonlinear convolution product u·∇ω.
 
-vs ns_2d_fix (benchmarks_ext.py):
+vs ns_2d (benchmarks_ext.py):
   - ν: 1e-3 vs 1e-2  (10× higher Re → richer turbulent cascade)
   - T: 2.0 vs 1.0    (2× longer prediction horizon)
   - Scheme: ETDRK4 (4th order) vs semi-implicit Euler (1st order)
@@ -38,7 +38,7 @@ from prepare import _random_ic_2d
 # ── Physical constants ─────────────────────────────────────────────────────────
 
 NU        = 1e-3    # kinematic viscosity (Re ≈ 1/ν ≈ 1000 at unit velocity/length)
-T_FINAL   = 2.0    # longer horizon: 2× harder than ns_2d_fix
+T_FINAL   = 2.0    # longer horizon: 2× harder than ns_2d
 N_STEPS   = 1000   # dt = 0.002, advective CFL ≈ 0.05 for IC scale=0.05
 IC_SCALE  = 0.05   # vorticity amplitude (CFL-safe with 1000 steps)
 
@@ -50,7 +50,7 @@ METADATA = {
     "n_steps":  N_STEPS,
     "in_shape": "B,N,N",
     "out_shape": "B,N,N",
-    "notes":    ("10× higher Re than ns_2d_fix; 2× longer horizon. "
+    "notes":    ("10× higher Re than ns_2d; 2× longer horizon. "
                  "First-run generation is slow (~15 min for 4096 samples); disk-cached thereafter."),
 }
 

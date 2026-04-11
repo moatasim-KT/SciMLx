@@ -16,7 +16,7 @@ CP: W[m,i,o] ≈ Σ_r A[m,r] * B[i,r] * C[o,r]
 
 Benefits over full FNO:
   - ~2–4× fewer spectral params → can increase hidden_dim or n_layers at same memory
-  - Low-rank inductive bias reduces overfitting on small datasets (e.g. darcy_2d_fix)
+  - Low-rank inductive bias reduces overfitting on small datasets (e.g. darcy_2d)
   - PhysicsNeMo shows TFNO matches or beats FNO on Darcy, NS, MHD benchmarks
 """
 
@@ -354,8 +354,8 @@ class TFNO2d(nn.Module):
     """Tucker-Factorized FNO for 2-D operator learning.
 
     Drop-in for FNO2d with Tucker-factorized spectral weights.
-    Well-suited for darcy_2d_fix (low-rank permeability → pressure mapping)
-    and ns_2d_fix (vorticity → stream function).
+    Well-suited for darcy_2d (low-rank permeability → pressure mapping)
+    and ns_2d (vorticity → stream function).
     """
 
     def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int,

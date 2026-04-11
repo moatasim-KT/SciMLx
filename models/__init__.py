@@ -13,6 +13,7 @@ from .hnn          import HamiltonianNO1d, HamiltonianNet1d, EnergyConservingFNO
 from .neural_ode   import NeuralODE1d, UniversalDE1d, LatentODE1d
 from .ssno         import SSNO1d
 
+from .pacmann  import PACMANN
 __all__ = [
     # FNO family
     "FNO1d", "FNO2d", "FNO1dMC",
@@ -45,4 +46,5 @@ __all__ = [
     "NeuralODE1d", "UniversalDE1d", "LatentODE1d",
     # State-Space Neural Operator (SS-NO) — adaptive S4D + spectral conv dual-branch
     "SSNO1d",
+    "PACMANN",
 ]

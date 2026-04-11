@@ -24,7 +24,7 @@ benchmarks:
   darcy_2d:
     reported_val_l2_rel: 0.0041
     notes: "64×64 grid; attention over 4096 tokens is O(4096²) — use chunked attention."
-  navier_stokes_2d:
+  ns_2d:
     reported_val_l2_rel: 0.0188
     notes: "Reported for T=10 (harder setting)."
 

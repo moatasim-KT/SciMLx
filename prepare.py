@@ -93,56 +93,7 @@ def solve_burgers_batch(
 
 
 
-def solve_navier_stokes_2d_batch(
-    w0: np.ndarray,
-    nu: float = 1e-2,
-    T: float = 1.0,
-    n_steps: int = 100,
-) -> np.ndarray:
-    """
-    Spectral solver for 2D Navier-Stokes (vorticity form) on [0, 2π)².
-    Using 2/3-rule dealiasing for stability.
-    """
-    _, N, _ = w0.shape
-    dt = T / n_steps
-    
-    k = np.fft.fftfreq(N).reshape(N, 1)
-    k1, k2 = np.meshgrid(k, k)
-    laplacian = -(k1**2 + k2**2)
-    laplacian[0, 0] = 1.0
-    
-    cutoff = (2 * N) // 3
-    
-    w_hat = np.fft.fft2(w0.astype(np.float64), axes=(1, 2))
-    
-    for _ in range(n_steps):
-        # Dealias
-        w_hat_d = w_hat.copy()
-        mask = (np.abs(k1 * N) > cutoff) | (np.abs(k2 * N) > cutoff)
-        w_hat_d[:, mask] = 0.0
-        
-        # 1. Stream function: Δψ = ω
-        psi_hat = w_hat_d / laplacian
-        psi_hat[:, 0, 0] = 0.0
-        
-        # 2. Velocity: u = (∂ψ/∂y, -∂ψ/∂x)
-        u = np.fft.ifft2(1j * k2 * psi_hat).real
-        v = np.fft.ifft2(-1j * k1 * psi_hat).real
-        
-        # 3. Non-linear term: (u·∇)ω
-        wx = np.fft.ifft2(1j * k1 * w_hat_d).real
-        wy = np.fft.ifft2(1j * k2 * w_hat_d).real
-        
-        nonlin = np.fft.fft2(u * wx + v * wy)
-        
-        # 4. Step (Semi-implicit): ω_next = (ω - dt * nonlin) / (1 - dt * nu * laplacian)
-        w_hat = (w_hat - dt * nonlin) / (1.0 - dt * nu * laplacian)
-        
-        # Stability check
-        if np.any(np.isnan(w_hat)):
-            break
-            
-    return np.fft.ifft2(w_hat).real.astype(np.float32)
+
 
 
 # ── Additional PDE solvers (optional, available for experiments) ─────────────
@@ -253,9 +204,6 @@ def _generate_dataset(benchmark: str, n: int, seed: int) -> tuple:
     if benchmark == "burgers_1d":
         inputs = _random_ic(n, GRID_SIZE, rng)
         targets = solve_burgers_batch(inputs)
-    elif benchmark == "navier_stokes_2d":
-        inputs = _random_ic_2d(n, GRID_SIZE, rng, scale=1.0, offset=0.0)
-        targets = solve_navier_stokes_2d_batch(inputs)
     else:
         raise ValueError(f"Unknown benchmark: {benchmark}")
     return inputs, targets
@@ -354,11 +302,11 @@ def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> floa
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare SciML evaluation harness")
-    parser.add_argument("--benchmark", type=str, choices=["burgers_1d", "navier_stokes_2d", "all"],
+    parser.add_argument("--benchmark", type=str, choices=["burgers_1d", "ns_2d", "all"],
                         default="burgers_1d", help="Run solver timing benchmarks")
     args = parser.parse_args()
 
-    benchmarks = ["burgers_1d", "navier_stokes_2d"] if args.benchmark == "all" else [args.benchmark]
+    benchmarks = ["burgers_1d", "ns_2d"] if args.benchmark == "all" else [args.benchmark]
 
     print(f"Cache dir  : {CACHE_DIR}")
     print()
@@ -377,10 +325,10 @@ if __name__ == "__main__":
                     u0 = _random_ic(batch_size, GRID_SIZE, rng)
                     t0 = time.time()
                     solve_burgers_batch(u0)
-                elif b == "navier_stokes_2d":
+                elif b == "ns_2d":
                     w0 = _random_ic_2d(batch_size, GRID_SIZE, rng)
                     t0 = time.time()
-                    solve_navier_stokes_2d_batch(w0)
+                    solve_ns_2d_batch(w0)
                 print(f"  Solver {b}  B={batch_size:4d}  → {(time.time()-t0)*1000:.1f} ms")
         print()
 

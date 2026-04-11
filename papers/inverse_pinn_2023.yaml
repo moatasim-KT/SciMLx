@@ -35,7 +35,7 @@ key_idea: |
     - Automatic differentiation through the PDE operator
 
 applications_in_our_pipeline:
-  darcy_2d_fix: |
+  darcy_2d: |
     Darcy: -∇·(a(x)∇u) = f  — a(x) is the permeability field
     Inverse: given pressure field u measurements, discover a(x)
     This would enable: train on (f, u) pairs → simultaneously learn operator AND permeability
@@ -61,7 +61,7 @@ training_insights:
 
 suggested_experiments:
   - name: "inv_pinn_darcy_h64_l4"
-    benchmark: "darcy_2d_fix"
+    benchmark: "darcy_2d"
     model: "FNO2D"
     hidden_dim: 64
     n_layers: 4

@@ -21,7 +21,7 @@ benchmarks:
     reported_val_l2_rel: 0.0085  # Table 3 in paper (1D, T=1)
     paper_epochs: 20
     notes: "1D regular grid; message passing on chain graph."
-  navier_stokes_2d:
+  ns_2d:
     reported_val_l2_rel: 0.0175
     notes: "2D irregular mesh — FNO cannot handle this."
 

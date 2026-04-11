@@ -37,9 +37,9 @@ BENCHMARK_RELATIVES = {
     "burgers_1d":   ["kdv_1d", "wave_1d"],
     "kdv_1d":       ["burgers_1d", "wave_1d"],
     "wave_1d":      ["burgers_1d", "kdv_1d"],
-    "darcy_2d": ["ns_2d_fix", "swe_2d", "allen_cahn_2d"],
-    "ns_2d_fix":    ["darcy_2d", "swe_2d"],
-    "swe_2d":       ["darcy_2d", "ns_2d_fix"],
+    "darcy_2d": ["ns_2d", "swe_2d", "allen_cahn_2d"],
+    "ns_2d":    ["darcy_2d", "swe_2d"],
+    "swe_2d":       ["darcy_2d", "ns_2d"],
     "allen_cahn_2d":["darcy_2d"],
     "euler_1d":     ["burgers_1d", "kdv_1d"],
 }
@@ -56,7 +56,7 @@ BLACKLIST = {
     "afno_burgers",      # AFNO consistently 0.50-0.72 on Burgers — wrong inductive bias
     "h=128_2d_budget",   # 2D models with h=128 only get 2 steps in 5-min budget
     # "darcy_2d" is now consolidated
-    "navier_stokes_2d",  # Original NS-2D has broken ICs — use ns_2d_fix
+    "ns_2d",  # Original NS-2D has broken ICs — use ns_2d
 }
 
 # Known good patterns (from empirical findings — also updated dynamically from results.json)
@@ -127,7 +127,7 @@ _KNOWN_WINS_HARDCODED = {
             "FNO2D auto-routed from FNO for 2D benchmarks",
         ],
     },
-    "ns_2d_fix": {
+    "ns_2d": {
         "best_modes":  8,
         "best_hidden": 32,
         "best_layers": 4,
@@ -137,7 +137,7 @@ _KNOWN_WINS_HARDCODED = {
         "key_findings": [
             "Only 1 run so far — baseline FNO h=32 l=4 m=8",
             "1.2x from SOTA (0.0152 vs 0.0128) — very close, likely beatable",
-            "Use ns_2d_fix only — original ns_2d has broken ICs (CFL>60, NaN)",
+            "Use ns_2d only — original ns_2d has broken ICs (CFL>60, NaN)",
             "2D models need extended budget (~480s)",
             "Wave 1D finding suggests smaller model + more steps may help",
         ],

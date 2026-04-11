@@ -15,21 +15,6 @@
     "conclusion": ""
   },
   {
-    "id": "legacy_2_2c511b0",
-    "parent_id": null,
-    "timestamp": 1775341388,
-    "benchmark": "navier_stokes_2d",
-    "model": "FNO",
-    "val_l2_rel": 1.0,
-    "memory_gb": 0.0,
-    "status": "crash",
-    "description": "diverged in step 67",
-    "commit": "2c511b0",
-    "config": {},
-    "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
-  },
-  {
     "id": "legacy_3_37100",
     "parent_id": "legacy_0_2c511b0",
     "timestamp": 1775342388,
@@ -1488,7 +1473,7 @@
     "id": "legacy_100_3415d16",
     "parent_id": null,
     "timestamp": 1775439388,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 0.015166,
     "memory_gb": 1.8,
@@ -1515,7 +1500,7 @@
     "conclusion": ""
   },
   {
-    "id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775471776",
     "parent_id": "legacy_99_3415d16",
     "timestamp": 1775471776,
     "benchmark": "darcy_2d",
@@ -1527,7 +1512,7 @@
     "commit": "675957e",
     "config": {
       "name": "darcy2d_fno_h64_l6_m16",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 64,
       "n_layers": 6,
@@ -1549,15 +1534,15 @@
       "paper_ref": ""
     },
     "rationale": "FNO h=64 \u2014 goldilocks size for 2D budget constraint",
-    "conclusion": "FNO_darcy_2d_fix_1775471772",
+    "conclusion": "FNO_darcy_2d_1775471772",
     "diag": {
       "diag_low_freq_error": 0.015916,
       "diag_high_freq_error": 0.030923
     }
   },
   {
-    "id": "darcy_2d_fix_RFNO_1775471777",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_RFNO_1775471777",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775471777,
     "benchmark": "darcy_2d",
     "model": "RFNO",
@@ -1568,7 +1553,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "darcy2d_rfno_h64_l8_m12",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "RFNO",
       "hidden_dim": 64,
       "n_layers": 8,
@@ -1963,10 +1948,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775497146",
+    "id": "ns_2d_FNO_1775497146",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775497147,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -1975,7 +1960,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "ns2d_fno_h128_l6_m16",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 128,
       "n_layers": 6,
@@ -2083,8 +2068,8 @@
     }
   },
   {
-    "id": "darcy_2d_fix_TFNO2D_1775540444",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_TFNO2D_1775540444",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775540444,
     "benchmark": "darcy_2d",
     "model": "TFNO2D",
@@ -2095,7 +2080,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "tfno2d_darcy_h128_m24_l4",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "TFNO2D",
       "hidden_dim": 128,
       "n_layers": 4,
@@ -2117,15 +2102,15 @@
       "paper_ref": ""
     },
     "rationale": "Tucker TFNO2D on Darcy. Paper reports Tucker beats FNO2D (0.0094 vs 0.0108). Darcy permeability fields are inherently low-rank \u2192 ideal for Tucker.",
-    "conclusion": "TFNO2D_darcy_2d_fix_1775540442",
+    "conclusion": "TFNO2D_darcy_2d_1775540442",
     "diag": {
       "diag_low_freq_error": 0.238511,
       "diag_high_freq_error": 0.495837
     }
   },
   {
-    "id": "darcy_2d_fix_TFNO2D_1775543188",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_TFNO2D_1775543188",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775543188,
     "benchmark": "darcy_2d",
     "model": "TFNO2D",
@@ -2136,7 +2121,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "tfno2d_darcy_h64_m16_l4",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "TFNO2D",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -2158,7 +2143,7 @@
       "paper_ref": ""
     },
     "rationale": "Smaller Tucker TFNO2D on Darcy \u2014 validate Tucker benefit at moderate size.",
-    "conclusion": "TFNO2D_darcy_2d_fix_1775543186",
+    "conclusion": "TFNO2D_darcy_2d_1775543186",
     "diag": {
       "diag_low_freq_error": 0.08374,
       "diag_high_freq_error": 0.171423
@@ -2370,8 +2355,8 @@
     }
   },
   {
-    "id": "darcy_2d_fix_Transolver2D_1775550598",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_Transolver2D_1775550598",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775550598,
     "benchmark": "darcy_2d",
     "model": "Transolver2D",
@@ -2382,7 +2367,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "transolver2d_darcy_h64_l4_s64",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "Transolver2D",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -2404,7 +2389,7 @@
       "paper_ref": ""
     },
     "rationale": "Transolver2D on Darcy \u2014 paper's reported SOTA architecture (0.0084 vs FNO 0.0108).",
-    "conclusion": "Transolver2D_darcy_2d_fix_1775550597",
+    "conclusion": "Transolver2D_darcy_2d_1775550597",
     "diag": {
       "diag_low_freq_error": 0.585783,
       "diag_high_freq_error": 1.194245
@@ -2818,8 +2803,8 @@
     }
   },
   {
-    "id": "darcy_2d_fix_FNO_1775576031",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775576031",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775576031,
     "benchmark": "darcy_2d",
     "model": "FNO",
@@ -2830,7 +2815,7 @@
     "commit": "80b6b97",
     "config": {
       "name": "fno_darcy2d_fix_h128_l8_m24",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 128,
       "n_layers": 8,
@@ -2852,7 +2837,7 @@
       "paper_ref": ""
     },
     "rationale": "Darcy is 13.6\u00d7 from SOTA \u2014 current best (h=32) is far too small. Scale to h=128 l=8 m=24 (same config that dominates 1D benchmarks).",
-    "conclusion": "FNO_darcy_2d_fix_1775576029",
+    "conclusion": "FNO_darcy_2d_1775576029",
     "diag": {
       "diag_low_freq_error": 0.389462,
       "diag_high_freq_error": 0.786471
@@ -3372,8 +3357,8 @@
     "diag": {}
   },
   {
-    "id": "darcy_2d_fix_FNO_1775672288",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775672288",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775672288,
     "benchmark": "darcy_2d",
     "model": "FNO",
@@ -3384,7 +3369,7 @@
     "commit": "a9676d6",
     "config": {
       "name": "fno_darcy2d_fix_h128_l8_m24_h1",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 128,
       "n_layers": 8,
@@ -3406,15 +3391,15 @@
       "paper_ref": ""
     },
     "rationale": "FNO h=128 + H1 loss on Darcy: H1 penalises gradient errors, useful for Darcy where solution smoothness matters.",
-    "conclusion": "FNO_darcy_2d_fix_1775672286",
+    "conclusion": "FNO_darcy_2d_1775672286",
     "diag": {
       "diag_low_freq_error": 0.538852,
       "diag_high_freq_error": 1.08474
     }
   },
   {
-    "id": "darcy_2d_fix_FNO_1775673539",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775673539",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775673539,
     "benchmark": "darcy_2d",
     "model": "FNO",
@@ -3425,7 +3410,7 @@
     "commit": "a9676d6",
     "config": {
       "name": "fno_darcy2d_fix_h64_m12_l4",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -3447,7 +3432,7 @@
       "paper_ref": ""
     },
     "rationale": "Larger FNO on corrected Darcy 2D to approach SOTA 0.0108.",
-    "conclusion": "FNO_darcy_2d_fix_1775673537",
+    "conclusion": "FNO_darcy_2d_1775673537",
     "diag": {
       "diag_low_freq_error": 0.053731,
       "diag_high_freq_error": 0.10963
@@ -3495,10 +3480,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775677745",
+    "id": "ns_2d_FNO_1775677745",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775677745,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -3507,7 +3492,7 @@
     "commit": "a9676d6",
     "config": {
       "name": "fno_ns2d_fix_h128_l8_m12",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 128,
       "n_layers": 8,
@@ -4244,10 +4229,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775713421",
+    "id": "ns_2d_FNO_1775713421",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775713421,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -4256,7 +4241,7 @@
     "commit": "3e75214",
     "config": {
       "name": "fno_ns2d_fix_h64_m12_l4",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -4487,10 +4472,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775719077",
+    "id": "ns_2d_FNO_1775719077",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775719077,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -4499,7 +4484,7 @@
     "commit": "3e75214",
     "config": {
       "name": "ns2d_fno_h64_l4_m12",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -4783,8 +4768,8 @@
     }
   },
   {
-    "id": "darcy_2d_fix_Transolver2D_1775763644",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_Transolver2D_1775763644",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775763644,
     "benchmark": "darcy_2d",
     "model": "Transolver2D",
@@ -4795,7 +4780,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "transolver2d_darcy_h128_l4_s64",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "Transolver2D",
       "hidden_dim": 128,
       "n_layers": 4,
@@ -4820,7 +4805,7 @@
       "paper_ref": ""
     },
     "rationale": "Wider Transolver2D: approaching paper's default capacity.",
-    "conclusion": "Transolver2D_darcy_2d_fix_1775763641",
+    "conclusion": "Transolver2D_darcy_2d_1775763641",
     "diag": {
       "diag_low_freq_error": 0.347928,
       "diag_high_freq_error": 0.719301
@@ -4871,10 +4856,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_RFNO_1775763966",
+    "id": "ns_2d_RFNO_1775763966",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775763966,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "RFNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -4883,7 +4868,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "ns2d_rfno_h128_l8_m24",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "RFNO",
       "hidden_dim": 128,
       "n_layers": 8,
@@ -4912,8 +4897,8 @@
     "diag": {}
   },
   {
-    "id": "darcy_2d_fix_RFNO_1775763966",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_RFNO_1775763966",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775763966,
     "benchmark": "darcy_2d",
     "model": "RFNO",
@@ -4924,7 +4909,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "rfno_darcy2d_fix_h128_l8_m24",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "RFNO",
       "hidden_dim": 128,
       "n_layers": 8,
@@ -4953,10 +4938,10 @@
     "diag": {}
   },
   {
-    "id": "ns_2d_fix_RFNO_1775763966",
+    "id": "ns_2d_RFNO_1775763966",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775763966,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "RFNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -4965,7 +4950,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "rfno_ns2d_fix_h64_l8_m12",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "RFNO",
       "hidden_dim": 64,
       "n_layers": 8,
@@ -5211,10 +5196,10 @@
     "diag": {}
   },
   {
-    "id": "ns_2d_fix_TFNO2D_1775768368",
+    "id": "ns_2d_TFNO2D_1775768368",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775768368,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "TFNO2D",
     "val_l2_rel": 0.028963,
     "memory_gb": 3.28359375,
@@ -5223,7 +5208,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "tfno2d_ns_h64_m12_l4",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "TFNO2D",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -5248,7 +5233,7 @@
       "paper_ref": ""
     },
     "rationale": "Tucker TFNO2D on NS \u2014 our FNO2D got 0.0152 \u2248 SOTA (0.0128); Tucker may close gap.",
-    "conclusion": "TFNO2D_ns_2d_fix_1775768367",
+    "conclusion": "TFNO2D_ns_2d_1775768367",
     "diag": {
       "diag_low_freq_error": 0.007109,
       "diag_high_freq_error": 0.016572
@@ -5343,10 +5328,10 @@
     }
   },
   {
-    "id": "ns_2d_fix_Transolver2D_1775772066",
+    "id": "ns_2d_Transolver2D_1775772066",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775772066,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "Transolver2D",
     "val_l2_rel": 0.999887,
     "memory_gb": 5.1158203125,
@@ -5355,7 +5340,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "transolver2d_ns_h64_l4_s64",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "Transolver2D",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -5380,7 +5365,7 @@
       "paper_ref": ""
     },
     "rationale": "Transolver2D on NS \u2014 attention over vorticity slices; paper reports strong NS results.",
-    "conclusion": "Transolver2D_ns_2d_fix_1775772063",
+    "conclusion": "Transolver2D_ns_2d_1775772063",
     "diag": {
       "diag_low_freq_error": 0.235524,
       "diag_high_freq_error": 0.499804
@@ -5431,8 +5416,8 @@
     }
   },
   {
-    "id": "darcy_2d_fix_FNO_1775773771_7a9e9f",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775773771_7a9e9f",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775773771,
     "benchmark": "darcy_2d",
     "model": "FNO",
@@ -5443,7 +5428,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "fno_darcy2d_h32_m12_l4_480s",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -5468,15 +5453,15 @@
       "paper_ref": ""
     },
     "rationale": "2D rebalancing: small model + 480s budget. wave_1d shows smaller+steps beats larger+fewer. m=12 > m=8 baseline.",
-    "conclusion": "FNO_darcy_2d_fix_1775773770",
+    "conclusion": "FNO_darcy_2d_1775773770",
     "diag": {
       "diag_low_freq_error": 0.027634,
       "diag_high_freq_error": 0.056651
     }
   },
   {
-    "id": "darcy_2d_fix_FNO_1775774257_cfb756",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_FNO_1775774257_cfb756",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775774257,
     "benchmark": "darcy_2d",
     "model": "FNO",
@@ -5487,7 +5472,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "fno_darcy2d_h64_m8_l4_480s",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "FNO",
       "hidden_dim": 64,
       "n_layers": 4,
@@ -5512,17 +5497,17 @@
       "paper_ref": ""
     },
     "rationale": "Capacity vs steps tradeoff: h=64 vs h=32 at 480s on Darcy 2D. Tests if higher capacity compensates for fewer steps.",
-    "conclusion": "FNO_darcy_2d_fix_1775774254",
+    "conclusion": "FNO_darcy_2d_1775774254",
     "diag": {
       "diag_low_freq_error": 0.076681,
       "diag_high_freq_error": 0.148737
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775774741_c8d97c",
+    "id": "ns_2d_FNO_1775774741_c8d97c",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775774741,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 0.015289,
     "memory_gb": 2.52744140625,
@@ -5531,7 +5516,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "fno_ns2d_h32_m12_l4_480s",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -5556,17 +5541,17 @@
       "paper_ref": ""
     },
     "rationale": "NS 2D near SOTA (0.0152 vs 0.0128). m=12 vs m=8 baseline + 480s budget may push past SOTA.",
-    "conclusion": "FNO_ns_2d_fix_1775774739",
+    "conclusion": "FNO_ns_2d_1775774739",
     "diag": {
       "diag_low_freq_error": 0.007443,
       "diag_high_freq_error": 0.014367
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775775345_30d593",
+    "id": "ns_2d_FNO_1775775345_30d593",
     "parent_id": "legacy_100_3415d16",
     "timestamp": 1775775345,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 0.014284,
     "memory_gb": 2.42001953125,
@@ -5575,7 +5560,7 @@
     "commit": "daa9e49",
     "config": {
       "name": "fno_ns2d_h32_m8_l4_600s",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -5600,17 +5585,17 @@
       "paper_ref": ""
     },
     "rationale": "NS 2D: same winning config (h=32 m=8 l=4) but 600s budget = 25% more steps. wave_1d showed more steps > bigger model. Gap is only 1.2\u00d7 \u2014 extra steps may close it.",
-    "conclusion": "FNO_ns_2d_fix_1775775343",
+    "conclusion": "FNO_ns_2d_1775775343",
     "diag": {
       "diag_low_freq_error": 0.005874,
       "diag_high_freq_error": 0.010617
     }
   },
   {
-    "id": "ns_2d_fix_FNO_1775775828_439784",
-    "parent_id": "ns_2d_fix_FNO_1775775345_30d593",
+    "id": "ns_2d_FNO_1775775828_439784",
+    "parent_id": "ns_2d_FNO_1775775345_30d593",
     "timestamp": 1775775828,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "FNO",
     "val_l2_rel": 0.025084,
     "memory_gb": 2.42001953125,
@@ -5619,7 +5604,7 @@
     "commit": "10462b1",
     "config": {
       "name": "fno_ns2d_h32_m8_l4_h1loss",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "FNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -5644,15 +5629,15 @@
       "paper_ref": ""
     },
     "rationale": "NS 2D with H1 loss: vorticity has sharp gradients. H1 penalises \u2202u/\u2202x errors \u2014 should help the 0.003 gap to SOTA on vorticity field.",
-    "conclusion": "FNO_ns_2d_fix_1775775827",
+    "conclusion": "FNO_ns_2d_1775775827",
     "diag": {
       "diag_low_freq_error": 0.01302,
       "diag_high_freq_error": 0.02544
     }
   },
   {
-    "id": "darcy_2d_fix_RFNO_1775775830_d554f4",
-    "parent_id": "darcy_2d_fix_FNO_1775471776",
+    "id": "darcy_2d_RFNO_1775775830_d554f4",
+    "parent_id": "darcy_2d_FNO_1775471776",
     "timestamp": 1775775830,
     "benchmark": "darcy_2d",
     "model": "RFNO",
@@ -5663,7 +5648,7 @@
     "commit": "10462b1",
     "config": {
       "name": "rfno_darcy2d_h32_m12_l4_480s",
-      "benchmark": "darcy_2d_fix",
+      "benchmark": "darcy_2d",
       "model": "RFNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -5692,10 +5677,10 @@
     "diag": {}
   },
   {
-    "id": "ns_2d_fix_RFNO_1775775832_8537f9",
-    "parent_id": "ns_2d_fix_FNO_1775775345_30d593",
+    "id": "ns_2d_RFNO_1775775832_8537f9",
+    "parent_id": "ns_2d_FNO_1775775345_30d593",
     "timestamp": 1775775832,
-    "benchmark": "ns_2d_fix",
+    "benchmark": "ns_2d",
     "model": "RFNO",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
@@ -5704,7 +5689,7 @@
     "commit": "10462b1",
     "config": {
       "name": "rfno_ns2d_h32_m8_l4_480s",
-      "benchmark": "ns_2d_fix",
+      "benchmark": "ns_2d",
       "model": "RFNO",
       "hidden_dim": 32,
       "n_layers": 4,
@@ -6126,23 +6111,23 @@
     }
   },
   {
-    "id": "navier_stokes_2d_RFNO_1775807749_3daf57",
+    "id": "darcy_2d_RFNO2D_1775814258_415411",
     "parent_id": null,
-    "timestamp": 1775807749,
-    "benchmark": "navier_stokes_2d",
-    "model": "RFNO",
+    "timestamp": 1775814258,
+    "benchmark": "darcy_2d",
+    "model": "RFNO2D",
     "val_l2_rel": 1.0,
     "memory_gb": 0.0,
     "status": "crash",
-    "description": "agent_rfno_navie_h128_l8_m24 RFNO  h=128  l=8  m=24",
-    "commit": "1b9bc6c",
+    "description": "agent_rfno2d_darcy_h32_l4_m8 RFNO2D  h=32  l=4",
+    "commit": "f582012",
     "config": {
-      "name": "agent_rfno_navie_h128_l8_m24",
-      "benchmark": "navier_stokes_2d",
-      "model": "RFNO",
-      "hidden_dim": 128,
-      "n_layers": 8,
-      "n_modes": 24,
+      "name": "agent_rfno2d_darcy_h32_l4_m8",
+      "benchmark": "darcy_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
       "n_levels": 3,
       "n_head": 4,
       "slice_num": 32,
@@ -6158,12 +6143,425 @@
       "budget_s": 480,
       "parent_name": "",
       "priority": 1,
-      "rationale": "current_val (1.0000) within 5% of best (1.0000). Exploring different model family: RFNO.",
+      "rationale": "Exploring RFNO2D stability on Darcy 2D (fixed).",
       "expected": "",
       "paper_ref": "rfno-2024"
     },
-    "rationale": "current_val (1.0000) within 5% of best (1.0000). Exploring different model family: RFNO.",
+    "rationale": "Exploring RFNO2D stability on Darcy 2D (fixed).",
     "conclusion": "",
     "diag": {}
+  },
+  {
+    "id": "ns_2d_RFNO2D_1775827027_978684",
+    "parent_id": "ns_2d_FNO_1775775345_30d593",
+    "timestamp": 1775827027,
+    "benchmark": "ns_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "agent_rfno2d_ns2d_h32_l4_m8 RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "agent_rfno2d_ns2d_h32_l4_m8",
+      "benchmark": "ns_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Trying RFNO2D to close NS 2D gap on safe config.",
+      "expected": "",
+      "paper_ref": "rfno-2024"
+    },
+    "rationale": "Trying RFNO2D to close NS 2D gap on safe config.",
+    "conclusion": "crash:Killed ",
+    "diag": {}
+  },
+  {
+    "id": "ns_hre_2d_RFNO2D_1775830346_37bece",
+    "parent_id": null,
+    "timestamp": 1775830346,
+    "benchmark": "ns_hre_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "agent_rfno2d_nshre_h32_l4_m8 RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "agent_rfno2d_nshre_h32_l4_m8",
+      "benchmark": "ns_hre_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Exploring Pre-LN residuals (RFNO2D) on high-Re NS on safe config.",
+      "expected": "",
+      "paper_ref": "rfno-2024"
+    },
+    "rationale": "Exploring Pre-LN residuals (RFNO2D) on high-Re NS on safe config.",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "darcy_2d_FNO_1775838166_45229f",
+    "parent_id": "darcy_2d_FNO_1775471776",
+    "timestamp": 1775838166,
+    "benchmark": "darcy_2d",
+    "model": "FNO",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "darcy2d_fno_h32_l4_m8 FNO  h=32  l=4  m=8",
+    "commit": "f582012",
+    "config": {
+      "name": "darcy2d_fno_h32_l4_m8",
+      "benchmark": "darcy_2d",
+      "model": "FNO",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "FNO h=32 \u2014 goldilocks safe size for 2D budget",
+      "expected": "0.05\u20130.12",
+      "paper_ref": ""
+    },
+    "rationale": "FNO h=32 \u2014 goldilocks safe size for 2D budget",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "darcy_2d_RFNO2D_1775853653_c23015",
+    "parent_id": "darcy_2d_FNO_1775471776",
+    "timestamp": 1775853653,
+    "benchmark": "darcy_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "darcy2d_rfno2d_h32_l4_m8 RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "darcy2d_rfno2d_h32_l4_m8",
+      "benchmark": "darcy_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "RFNO2D safe 2D config; pre-LN stability for Darcy net",
+      "expected": "0.05\u20130.10",
+      "paper_ref": ""
+    },
+    "rationale": "RFNO2D safe 2D config; pre-LN stability for Darcy net",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "darcy_2d_FNO_1775855163_617e41",
+    "parent_id": "darcy_2d_FNO_1775471776",
+    "timestamp": 1775855163,
+    "benchmark": "darcy_2d",
+    "model": "FNO",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "fno_darcy2d_h32_l4_m8 FNO  h=32  l=4  m=8",
+    "commit": "f582012",
+    "config": {
+      "name": "fno_darcy2d_h32_l4_m8",
+      "benchmark": "darcy_2d",
+      "model": "FNO",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 32,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Darcy fix on safe 2D config (h=32 l=4 m=8).",
+      "expected": "0.05\u20130.15",
+      "paper_ref": ""
+    },
+    "rationale": "Darcy fix on safe 2D config (h=32 l=4 m=8).",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "swe_2d_FNO_1775855173_acfd3b",
+    "parent_id": "swe_2d_FNO2D_1775685392",
+    "timestamp": 1775855173,
+    "benchmark": "swe_2d",
+    "model": "FNO",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "fno_swe2d_h32_l4_m8 FNO  h=32  l=4  m=8",
+    "commit": "f582012",
+    "config": {
+      "name": "fno_swe2d_h32_l4_m8",
+      "benchmark": "swe_2d",
+      "model": "FNO",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Baseline FNO for swe_2d; downscaled to safe 2D config.",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "Baseline FNO for swe_2d; downscaled to safe 2D config.",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "darcy_2d_RFNO2D_1775855182_875fdf",
+    "parent_id": "darcy_2d_FNO_1775471776",
+    "timestamp": 1775855182,
+    "benchmark": "darcy_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "rfno2d_darcy2d_h32_m12_l4_480s RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "rfno2d_darcy2d_h32_m12_l4_480s",
+      "benchmark": "darcy_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 12,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "RFNO2D on Darcy 2D with 480s budget. Pre-LN residual stability matters for 2D spectral conv. RFNO2D won KdV \u2014 test on Darcy.",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "RFNO2D on Darcy 2D with 480s budget. Pre-LN residual stability matters for 2D spectral conv. RFNO2D won KdV \u2014 test on Darcy.",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "ns_2d_RFNO2D_1775855191_2a942a",
+    "parent_id": "ns_2d_FNO_1775775345_30d593",
+    "timestamp": 1775855191,
+    "benchmark": "ns_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "rfno2d_ns2d_h32_m8_l4_480s RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "rfno2d_ns2d_h32_m8_l4_480s",
+      "benchmark": "ns_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "RFNO2D on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. RFNO2D won KdV (solitons) \u2014 worth testing on vorticity.",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "RFNO2D on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. RFNO2D won KdV (solitons) \u2014 worth testing on vorticity.",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "swe_2d_RFNO2D_1775855200_16b983",
+    "parent_id": "swe_2d_FNO2D_1775685392",
+    "timestamp": 1775855200,
+    "benchmark": "swe_2d",
+    "model": "RFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 0.0,
+    "status": "crash",
+    "description": "rfno2d_swe2d_h32_l4_m8 RFNO2D  h=32  l=4",
+    "commit": "f582012",
+    "config": {
+      "name": "rfno2d_swe2d_h32_l4_m8",
+      "benchmark": "swe_2d",
+      "model": "RFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 4,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "RFNO2D for swe_2d; pre-LN residual stability on safe 2D config.",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "RFNO2D for swe_2d; pre-LN residual stability on safe 2D config.",
+    "conclusion": "",
+    "diag": {}
+  },
+  {
+    "id": "burgers_1d_SSNO_1775855585_52fc0e",
+    "parent_id": "legacy_96_73e08fc",
+    "timestamp": 1775855585,
+    "benchmark": "burgers_1d",
+    "model": "SSNO",
+    "val_l2_rel": 0.227306,
+    "memory_gb": 0.6939453125,
+    "status": "discard",
+    "description": "ssno_burgers_h128_l8_lr3e4 SSNO  h=128  l=8  lr=3e-04",
+    "commit": "f582012",
+    "config": {
+      "name": "ssno_burgers_h128_l8_lr3e4",
+      "benchmark": "burgers_1d",
+      "model": "SSNO",
+      "hidden_dim": 128,
+      "n_layers": 8,
+      "n_modes": 24,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.0003,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "budget_s": 300,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Previous SSNO (h128) got 80.5 error. Lowering LR to 3e-4 to stabilize deep SSM layers for Burgers gap closing toward 0.007.",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "Previous SSNO (h128) got 80.5 error. Lowering LR to 3e-4 to stabilize deep SSM layers for Burgers gap closing toward 0.007.",
+    "conclusion": "SSNO_burgers_1d_1775855575",
+    "diag": {
+      "diag_low_freq_error": 0.020353,
+      "diag_high_freq_error": 0.071514
+    }
   }
 ]

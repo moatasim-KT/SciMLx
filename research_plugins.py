@@ -1,104 +1,67 @@
-"""Research plugin system for autonomous SciML experimentation.
-
-Provides:
-  1. ModelRegistry — auto-discovers and registers models without editing train.py
-  2. BenchmarkRegistry — maps benchmark names to dataloader/eval functions
-  3. Abstract interfaces aligned with MLX's nn.Module pattern
-
-Adding a new model:
-    1. Implement in models/<name>.py (subclass nn.Module, standard __call__)
-    2. Register via @MODEL_REGISTRY.register("MYMODEL") decorator, or
-       call MODEL_REGISTRY.register_class("MYMODEL", MyModel1d) in models/__init__.py
-    3. Add ExperimentConfig entries in experiments.py — no changes to train.py needed
-
-Adding a new benchmark:
-    1. Implement solver in benchmarks_ext.py
-    2. Call BENCHMARK_REGISTRY.register(...) with make_dataloader and evaluate_fn
-    3. train.py routing picks it up automatically
-"""
-
-from __future__ import annotations
-
 import mlx.nn as nn
 import mlx.core as mx
-from typing import Callable, Dict, Any, Optional, Type
-
+from typing import Callable, Dict, Any, Optional, Type, List
 
 # ── Model Registry ────────────────────────────────────────────────────────────
 
 class ModelRegistry:
-    """Central registry mapping MODEL_TYPE strings to factory callables.
-
-    Usage:
-        # Register a class (called with n_modes, hidden_dim, n_layers kwargs)
-        MODEL_REGISTRY.register_class("FNO", FNO1d)
-
-        # Register a custom factory
-        @MODEL_REGISTRY.register("MYFNO")
-        def _make_myfno(n_modes, hidden_dim, n_layers, **kw):
-            return MyFNO1d(n_modes, hidden_dim, n_layers, block_size=kw.get("block_size", 32))
-
-        # Instantiate from registry
-        model = MODEL_REGISTRY.build("FNO", n_modes=24, hidden_dim=128, n_layers=8)
-    """
-
     def __init__(self):
         self._registry: Dict[str, Callable] = {}
+        self._lazy_imports: Dict[str, tuple[str, str]] = {}
 
-    def register_class(self, name: str, cls: Type[nn.Module],
-                       **fixed_kwargs) -> None:
-        """Register an nn.Module class. fixed_kwargs are always passed."""
+    def register_lazy(self, name: str, module_name: str, class_name: str) -> None:
+        self._lazy_imports[name] = (module_name, class_name)
+
+    def register(self, name: str) -> Callable:
+        def _decorator(fn: Callable) -> Callable:
+            self._registry[name] = fn
+            return fn
+        return _decorator
+
+    def build(self, name: str, benchmark: str = "", **kwargs) -> nn.Module:
+        # Safety constraint: 2D benchmark model size limits
+        if benchmark in ["darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d"]:
+            hidden = kwargs.get("hidden_dim", 64)
+            layers = kwargs.get("n_layers", 4)
+            if hidden >= 64 or layers >= 8:
+                raise ValueError(
+                    f"Configuration (hidden={hidden}, layers={layers}) is too large for 2D "
+                    f"benchmark {benchmark!r} and will crash (OOM). Use hidden<64, layers<8."
+                )
+
+        if name not in self._registry and name in self._lazy_imports:
+            mod_name, cls_name = self._lazy_imports[name]
+            import importlib
+            module = importlib.import_module(f"models.{mod_name}")
+            cls = getattr(module, cls_name)
+            self.register_class(name, cls)
+            
+        if name not in self._registry:
+            available = ", ".join(sorted(set(self._registry) | set(self._lazy_imports)))
+            raise ValueError(
+                f"Unknown model {name!r}. Available: {available}"
+            )
+        return self._registry[name](**kwargs)
+
+    def register_class(self, name: str, cls: Type[nn.Module], **fixed_kwargs) -> None:
         def _factory(**kwargs):
             kwargs.update(fixed_kwargs)
             return cls(**kwargs)
         _factory.__name__ = f"factory_{name}"
         self._registry[name] = _factory
 
-    def register(self, name: str) -> Callable:
-        """Decorator to register a factory function."""
-        def _decorator(fn: Callable) -> Callable:
-            self._registry[name] = fn
-            return fn
-        return _decorator
-
-    def build(self, name: str, **kwargs) -> nn.Module:
-        """Instantiate a registered model."""
-        if name not in self._registry:
-            available = ", ".join(sorted(self._registry))
-            raise ValueError(
-                f"Unknown model {name!r}. Available: {available}"
-            )
-        return self._registry[name](**kwargs)
-
     @property
     def available(self):
-        return sorted(self._registry)
+        return sorted(set(self._registry) | set(self._lazy_imports))
 
     def __contains__(self, name: str) -> bool:
-        return name in self._registry
-
+        return name in self._registry or name in self._lazy_imports
 
 MODEL_REGISTRY = ModelRegistry()
-
 
 # ── Benchmark Registry ────────────────────────────────────────────────────────
 
 class BenchmarkRegistry:
-    """Maps benchmark names to (make_dataloader, evaluate_fn) pairs.
-
-    Usage:
-        BENCHMARK_REGISTRY.register(
-            "my_pde",
-            make_loader=make_my_dataloader,
-            evaluate=evaluate_my_l2_rel,
-            sota=0.005,
-            description="My PDE description",
-        )
-
-        loader = BENCHMARK_REGISTRY.make_loader("my_pde", "train", batch_size=32)
-        score  = BENCHMARK_REGISTRY.evaluate("my_pde", model)
-    """
-
     def __init__(self):
         self._loaders:  Dict[str, Callable] = {}
         self._evals:    Dict[str, Callable] = {}
@@ -135,193 +98,57 @@ class BenchmarkRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._loaders
 
-
 BENCHMARK_REGISTRY = BenchmarkRegistry()
-
 
 # ── Populate registries from existing codebase ────────────────────────────────
 
 def _register_defaults():
-    """Register all built-in models and benchmarks."""
-    from models import (
-        FNO1d, FNO2d, FNO1dMC, UNO1d, RFNO1d, RFNO2d,
-        AFNO1d, FFNO1d,
-        WNO1d, DeepONet, PODDeepONet,
-        S4NO1d, GNOT1d, GNOT2d,
-        PINO1d,
-        # TFNO family (Tucker/CP factorized FNO — PhysicsNeMo)
-        TFNO1d, RTFNO1d, CPFNO1d, TFNO2d,
-        # Transolver (Physics Attention Transformer — NeurIPS 2024 / PhysicsNeMo)
-        Transolver1d, Transolver2d,
-        # Time-Marching DeepONet (FE-NO coupling — CMAME 2025)
-        TimeDeepONet1d, DualBranchDeepONet1d,
-        # Hamiltonian Neural Networks (Greydanus et al. NeurIPS 2019 / MathWorks SciML examples)
-        HamiltonianNO1d, EnergyConservingFNO1d,
-        # Neural ODEs + Universal Differential Equations (Chen et al. / Rackauckas et al.)
-        NeuralODE1d, UniversalDE1d, LatentODE1d,
-        # State-Space Neural Operator (adaptive S4D + spectral conv)
-        SSNO1d,
-    )
     from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
     from benchmarks_ext import (
         EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
     )
 
-    # ── 1-D models (factories accept **kw to absorb unused params) ───────────
+    # ── 1-D models (Lazy registration) ────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("FNO", "fno", "FNO1d")
+    MODEL_REGISTRY.register_lazy("RFNO", "rfno", "RFNO1d")
+    MODEL_REGISTRY.register_lazy("AFNO", "afno", "AFNO1d")
+    MODEL_REGISTRY.register_lazy("FFNO", "ffno", "FFNO1d")
+    MODEL_REGISTRY.register_lazy("UNO", "uno", "UNO1d")
+    MODEL_REGISTRY.register_lazy("WNO", "wno", "WNO1d")
+    MODEL_REGISTRY.register_lazy("DeepONet", "deeponet", "DeepONet")
+    MODEL_REGISTRY.register_lazy("PODDeepONet", "deeponet", "PODDeepONet")
+    MODEL_REGISTRY.register_lazy("S4NO", "s4d", "S4NO1d")
+    MODEL_REGISTRY.register_lazy("SSNO", "ssno", "SSNO1d")
+    MODEL_REGISTRY.register_lazy("GNOT", "gnot", "GNOT1d")
+    MODEL_REGISTRY.register_lazy("GNOT2D", "gnot", "GNOT2d")
+    MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
+    MODEL_REGISTRY.register_lazy("FNO2D", "fno", "FNO2d")
+    MODEL_REGISTRY.register_lazy("RFNO2D", "rfno", "RFNO2d")
+    MODEL_REGISTRY.register_lazy("FNO_MC", "fno", "FNO1dMC")
+    MODEL_REGISTRY.register_lazy("TFNO", "tfno", "TFNO1d")
+    MODEL_REGISTRY.register_lazy("RTFNO", "tfno", "RTFNO1d")
+    MODEL_REGISTRY.register_lazy("CPFNO", "tfno", "CPFNO1d")
+    MODEL_REGISTRY.register_lazy("TFNO2D", "tfno", "TFNO2d")
+    MODEL_REGISTRY.register_lazy("Transolver", "transolver", "Transolver1d")
+    MODEL_REGISTRY.register_lazy("Transolver2D", "transolver", "Transolver2d")
+    MODEL_REGISTRY.register_lazy("TimeDeepONet", "time_deeponet", "TimeDeepONet1d")
+    MODEL_REGISTRY.register_lazy("DualDeepONet", "time_deeponet", "DualBranchDeepONet1d")
+    MODEL_REGISTRY.register_lazy("HNN", "hnn", "HamiltonianNO1d")
+    MODEL_REGISTRY.register_lazy("EnergyFNO", "hnn", "EnergyConservingFNO1d")
+    MODEL_REGISTRY.register_lazy("NeuralODE", "neural_ode", "NeuralODE1d")
+    MODEL_REGISTRY.register_lazy("UDE", "neural_ode", "UniversalDE1d")
+    MODEL_REGISTRY.register_lazy("LatentODE", "neural_ode", "LatentODE1d")
+    MODEL_REGISTRY.register_lazy("PACMANN", "pacmann", "PACMANN")
+
     @MODEL_REGISTRY.register("FNO")
     def _make_fno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        from models.fno import FNO1d
         return FNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
 
     @MODEL_REGISTRY.register("RFNO")
     def _make_rfno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
+        from models.rfno import RFNO1d
         return RFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("AFNO")
-    def _make_afno(n_modes=16, hidden_dim=64, n_layers=4, sparsity=0.01, **kw):
-        return AFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers, sparsity=sparsity)
-
-    @MODEL_REGISTRY.register("FFNO")
-    def _make_ffno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return FFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("UNO")
-    def _make_uno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return UNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("WNO")
-    def _make_wno(n_modes=16, hidden_dim=64, n_layers=4, n_levels=3, **kw):
-        return WNO1d(n_levels=n_levels, hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("DeepONet")
-    def _make_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return DeepONet(branch_dim=GRID_SIZE, trunk_dim=1,
-                        hidden_dim=hidden_dim, out_dim=hidden_dim,
-                        n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("PODDeepONet")
-    def _make_pod(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return PODDeepONet(branch_dim=GRID_SIZE, n_basis=hidden_dim,
-                           hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("S4NO")
-    def _make_s4no(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return S4NO1d(hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("SSNO")
-    def _make_ssno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return SSNO1d(hidden_dim=hidden_dim, n_layers=n_layers, n_modes=n_modes)
-
-    @MODEL_REGISTRY.register("GNOT")
-    def _make_gnot(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return GNOT1d(hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("GNOT2D")
-    def _make_gnot2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
-        return GNOT2d(hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("PINO")
-    def _make_pino(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return PINO1d(sensor_dim=GRID_SIZE, hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("FNO2D")
-    def _make_fno2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
-        return FNO2d(n_modes1=n_modes, n_modes2=n_modes,
-                     hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("RFNO2D")
-    def _make_rfno2d(n_modes=12, hidden_dim=64, n_layers=4, **kw):
-        return RFNO2d(n_modes1=n_modes, n_modes2=n_modes,
-                      hidden_dim=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("FNO_MC")
-    def _make_fno_mc(n_modes=16, hidden_dim=64, n_layers=4,
-                     in_channels=3, out_channels=3, **kw):
-        return FNO1dMC(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers,
-                       in_channels=in_channels, out_channels=out_channels)
-
-    # ── TFNO family (Tucker / CP factorized — from PhysicsNeMo) ──────────────
-    @MODEL_REGISTRY.register("TFNO")
-    def _make_tfno(n_modes=16, hidden_dim=64, n_layers=4,
-                   rank_ratio=0.5, **kw):
-        return TFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                      n_layers=n_layers, rank_ratio=rank_ratio)
-
-    @MODEL_REGISTRY.register("RTFNO")
-    def _make_rtfno(n_modes=16, hidden_dim=64, n_layers=4,
-                    rank_ratio=0.5, **kw):
-        return RTFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                       n_layers=n_layers, rank_ratio=rank_ratio)
-
-    @MODEL_REGISTRY.register("CPFNO")
-    def _make_cpfno(n_modes=16, hidden_dim=64, n_layers=4,
-                    rank=8, **kw):
-        return CPFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                       n_layers=n_layers, rank=rank)
-
-    @MODEL_REGISTRY.register("TFNO2D")
-    def _make_tfno2d(n_modes=12, hidden_dim=64, n_layers=4,
-                     rank_ratio=0.5, **kw):
-        return TFNO2d(n_modes1=n_modes, n_modes2=n_modes,
-                      hidden_dim=hidden_dim, n_layers=n_layers,
-                      rank_ratio=rank_ratio)
-
-    # ── Transolver (Physics Attention — NeurIPS 2024 / PhysicsNeMo) ──────────
-    @MODEL_REGISTRY.register("Transolver")
-    def _make_transolver(n_modes=16, hidden_dim=64, n_layers=4,
-                         n_head=4, slice_num=32, **kw):
-        return Transolver1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                            n_layers=n_layers, n_head=n_head,
-                            slice_num=slice_num)
-
-    @MODEL_REGISTRY.register("Transolver2D")
-    def _make_transolver2d(n_modes=12, hidden_dim=64, n_layers=4,
-                           n_head=4, slice_num=64, **kw):
-        return Transolver2d(n_modes1=n_modes, n_modes2=n_modes,
-                            hidden_dim=hidden_dim, n_layers=n_layers,
-                            n_head=n_head, slice_num=slice_num)
-
-    # ── Time-Marching DeepONet (FE-NO coupling — CMAME 2025) ─────────────────
-    @MODEL_REGISTRY.register("TimeDeepONet")
-    def _make_time_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return TimeDeepONet1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
-                              p=hidden_dim, n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("DualDeepONet")
-    def _make_dual_deeponet(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return DualBranchDeepONet1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
-                                    p=hidden_dim, n_layers=n_layers)
-
-    # ── Hamiltonian Neural Networks (MathWorks SciML examples / Greydanus 2019) ──
-    @MODEL_REGISTRY.register("HNN")
-    def _make_hnn(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return HamiltonianNO1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
-                               n_layers=n_layers)
-
-    @MODEL_REGISTRY.register("EnergyFNO")
-    def _make_energy_fno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        return EnergyConservingFNO1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                                     n_layers=n_layers)
-
-    # ── Neural ODEs + Universal DEs (Rackauckas 2020 / Chen 2018) ────────────
-    @MODEL_REGISTRY.register("NeuralODE")
-    def _make_neural_ode(n_modes=16, hidden_dim=64, n_layers=4,
-                         n_steps=20, **kw):
-        return NeuralODE1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                           n_layers=n_layers, n_steps=n_steps)
-
-    @MODEL_REGISTRY.register("UDE")
-    def _make_ude(n_modes=16, hidden_dim=32, n_layers=3,
-                  n_steps=50, **kw):
-        # n_steps=50 → dt=0.02, satisfying CFL dt < 1/(N/2)=1/32≈0.031
-        return UniversalDE1d(n_modes=n_modes, hidden_dim=hidden_dim,
-                             n_layers=n_layers, n_steps=n_steps,
-                             nu=0.01 / 3.14159)
-
-    @MODEL_REGISTRY.register("LatentODE")
-    def _make_latent_ode(n_modes=16, hidden_dim=64, n_layers=4,
-                         n_steps=20, **kw):
-        return LatentODE1d(n_sensors=GRID_SIZE, hidden_dim=hidden_dim,
-                           n_layers=n_layers, n_steps=n_steps)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────
     _std = {"burgers_1d"}
@@ -343,7 +170,7 @@ def _register_defaults():
                 "kdv_1d":       "KdV soliton (ETDRK4)",
                 "wave_1d":      "1D wave u_tt=c²u_xx",
                 "darcy_2d":     "2D Darcy -∇·(a∇u)=f (corrected solver)",
-                "ns_2d_fix":    "2D NS vorticity (CFL-stable ICs)",
+                "ns_2d":        "2D NS vorticity (CFL-stable ICs)",
             }.get(bm, ""),
         )
 
@@ -361,6 +188,5 @@ def _register_defaults():
             sota=SIM_SOTA.get(bm),
             description=meta.get("pde", ""),
         )
-
 
 _register_defaults()

@@ -218,10 +218,10 @@ class TransolverBlock2d(nn.Module):
 
 
 class Transolver2d(nn.Module):
-    """Transolver for 2-D structured grids (darcy_2d_fix, ns_2d_fix).
+    """Transolver for 2-D structured grids (darcy_2d, ns_2d).
 
     Flattens the grid, applies Physics Attention, reshapes output.
-    For darcy_2d_fix (64×64 = 4096 points), slice_num=64 groups similar
+    For darcy_2d (64×64 = 4096 points), slice_num=64 groups similar
     permeability regions into coherent physics tokens.
     """
 

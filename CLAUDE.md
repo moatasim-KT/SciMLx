@@ -77,8 +77,8 @@ uv run train.py --model FNO  --hidden 128 --layers 8  --modes 24 --loss h1
 # Extended benchmarks
 uv run train.py --benchmark kdv_1d       --model RFNO --hidden 128 --layers 8  --modes 24
 uv run train.py --benchmark wave_1d      --model FNO  --hidden 64  --layers 4  --modes 16
-uv run train.py --benchmark darcy_2d_fix --model FNO  --hidden 64  --layers 4  --modes 12
-uv run train.py --benchmark ns_2d_fix    --model FNO  --hidden 64  --layers 4  --modes 12
+uv run train.py --benchmark darcy_2d --model FNO  --hidden 64  --layers 4  --modes 12
+uv run train.py --benchmark ns_2d    --model FNO  --hidden 64  --layers 4  --modes 12
 
 # High-fidelity simulations (ns_hre_2d first run ~70 min, cached after)
 uv run train.py --benchmark euler_1d      --model FNO    --hidden 128 --layers 8 --modes 24
@@ -249,8 +249,8 @@ uv run simulations             # smoke test all 4 simulation modules
 | `kdv_1d`          | KdV soliton             | ~0.010   | **0.0020** (RFNO)               | 5× better than SOTA ✓       |
 | `wave_1d`         | 1D wave u_tt=c²u_xx     | ~0.005   | **0.000992** (FNO h=64 l=4)     | 5× better than SOTA ✓       |
 | `euler_1d`        | Compressible Euler 1D   | ~0.015   | **0.002413** (FNO h=64 l=4)     | 6.2× better than SOTA ✓     |
-| `darcy_2d_fix`    | 2D Darcy (corrected)    | 0.0108   | 0.1041 (FNO h=32)               | h≤32 l≤4 only — OOM above   |
-| `ns_2d_fix`       | 2D NS vorticity         | 0.0128   | 0.01428 (FNO 600s)              | 1.12× gap — budget=600 key  |
+| `darcy_2d`    | 2D Darcy (corrected)    | 0.0108   | 0.1041 (FNO h=32)               | h≤32 l≤4 only — OOM above   |
+| `ns_2d`       | 2D NS vorticity         | 0.0128   | 0.01428 (FNO 600s)              | 1.12× gap — budget=600 key  |
 | `swe_2d`          | 2D Shallow Water        | ~0.002   | 0.0107 (FNO2D)                  | 5.4× gap                    |
 | `allen_cahn_2d`   | Allen-Cahn phase field  | ~0.020   | 0.0628 (FNO)                    | 3.1× gap                    |
 | `ns_hre_2d`       | NS 2D Re=1000           | ~0.070   | not run                         | first run ~70 min           |
@@ -295,10 +295,10 @@ uv run simulations             # smoke test all 4 simulation modules
 
 **2D Benchmarks (critical constraint):**
 - **h≥64 or l≥8 crashes on ALL 2D benchmarks** (OOM/broadcast errors on Apple Silicon)
-- Safe config: `h≤32, l≤4, m≤8, budget_s=480` (m=12 confirmed worse than m=8 on ns_2d_fix)
+- Safe config: `h≤32, l≤4, m≤8, budget_s=480` (m=12 confirmed worse than m=8 on ns_2d)
 - **RFNO is 1D-only** — crashes on ALL 2D benchmarks with `ValueError: too many values to unpack`; never add RFNO to 2D benchmarks
-- `darcy_2d` is broken (wrong solver) — always use `darcy_2d_fix`
-- ns_2d_fix new best 0.014284 with 600s budget (vs SOTA 0.0128 = 1.12×); H1 loss hurts (0.025)
+- `darcy_2d` is broken (wrong solver) — always use `darcy_2d`
+- ns_2d new best 0.014284 with 600s budget (vs SOTA 0.0128 = 1.12×); H1 loss hurts (0.025)
 - `WARMDOWN_RATIO=0.2` in `train.py` — cosine decay starts at 80% of budget (was 0.4), giving ~40 more flat-LR steps
 - **SSNO is unstable** on Burgers with h=128 l=8 (val=80.5) — needs smaller config or lr tuning before use
 
@@ -318,7 +318,7 @@ uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min for everything els
 ```
 
 Without this, `train.py` regenerates training data per subprocess. For 2D benchmarks
-(especially `ns_2d_fix` with 4096 × 2D NS samples), this exceeds the 1500s hard timeout
+(especially `ns_2d` with 4096 × 2D NS samples), this exceeds the 1500s hard timeout
 in `autorun.py` and causes every experiment to crash before training begins.
 
 | Benchmark | Train cache | Val cache |
@@ -326,8 +326,8 @@ in `autorun.py` and causes every experiment to crash before training begins.
 | `burgers_1d` | `burgers_1d_train_N64.npz` | `burgers_1d_val_N64.npz` |
 | `kdv_1d` | `kdv_1d_train_N4096_ext.npz` | `kdv_1d_val_N64_ext.npz` |
 | `wave_1d` | `wave_1d_train_N4096_ext.npz` | `wave_1d_val_N64_ext.npz` |
-| `darcy_2d_fix` | `darcy_2d_fix_train_N4096_ext.npz` | `darcy_2d_fix_val_N64_ext.npz` |
-| `ns_2d_fix` | `ns_2d_fix_train_N4096_ext.npz` | `ns_2d_fix_val_N64_ext.npz` |
+| `darcy_2d` | `darcy_2d_train_N4096_ext.npz` | `darcy_2d_val_N64_ext.npz` |
+| `ns_2d` | `ns_2d_train_N4096_ext.npz` | `ns_2d_val_N64_ext.npz` |
 | `euler_1d` | `euler_1d_train_N64_s300_seed7.npz` | `euler_1d_val_N64_s300_seed42.npz` |
 | `swe_2d` | `swe_2d_train_N64_s1_seed7.npz` | `swe_2d_val_N64_s1_seed42.npz` |
 | `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz` | `allen_cahn_2d_val_N64_s200_seed42.npz` |
@@ -341,7 +341,7 @@ in `autorun.py` and causes every experiment to crash before training begins.
 - **No new packages** beyond `pyproject.toml` (mlx, numpy, scipy, matplotlib, pyyaml, fastapi, uvicorn).
 - **`ExperimentConfig.name` must be unique** across all entries — it's the dedup key.
 - **`results.json` is SSoT** — never hand-edit; all writes go through `tracker.py`.
-- **`darcy_2d` is broken** — only use `darcy_2d_fix` and `ns_2d_fix`.
+- **`darcy_2d` is broken** — only use `darcy_2d` and `ns_2d`.
 - **PINO is broken** for endpoint-only formulation — never add PINO experiments.
 - **RFNO is 1D-only** — crashes with `ValueError: too many values to unpack` on 2D input; never use RFNO on 2D benchmarks.
 - **2D model size**: h≤32, l≤4, m≤8, budget_s≥480 — larger configs OOM/crash on Apple Silicon.

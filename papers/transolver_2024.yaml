@@ -65,7 +65,7 @@ suggested_experiments:
     rationale: "Transolver on KdV: solitons may form natural physics slices"
 
   - name: "transolver2d_darcy_h64_l4_s64"
-    benchmark: "darcy_2d_fix"
+    benchmark: "darcy_2d"
     model: "Transolver2D"
     hidden_dim: 64
     n_layers: 4
@@ -75,7 +75,7 @@ suggested_experiments:
     rationale: "Transolver2D on Darcy — reported SOTA architecture; slice_num=64 for 2D"
 
   - name: "transolver2d_darcy_h128_l4_s64"
-    benchmark: "darcy_2d_fix"
+    benchmark: "darcy_2d"
     model: "Transolver2D"
     hidden_dim: 128
     n_layers: 4
@@ -85,7 +85,7 @@ suggested_experiments:
     rationale: "Wider Transolver2D — closer to paper's default dim=256"
 
   - name: "transolver2d_ns_h64_l4_s64"
-    benchmark: "ns_2d_fix"
+    benchmark: "ns_2d"
     model: "Transolver2D"
     hidden_dim: 64
     n_layers: 4
