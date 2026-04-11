@@ -21,27 +21,25 @@ models/
 └── pinn.py           # PINN, PINO (3KB, PINO broken)
 ```
 
-## WHERE TO LOOK
-| Model | File | Status | Best Result |
-|-------|------|--------|-------------|
-| FNO (baseline) | fno.py | ✓ | 0.1468 burgers+aug |
-| RFNO (residual) | fno.py | ✓ 1D only | 0.0020 kdv_1d (SOTA) |
-| FFNO | tfno.py | ~ | 0.24 burgers |
-| DeepONet | deeponet.py | ✓ | 0.808 |
-| S4NO | s4d.py | ✓ | not benchmarked |
-| SSNO | ssno.py | ⚠ unstable | val=80.5 at h=128 |
-| PINO | pinn.py | ✗ | never use |
+## STATUS (184+ experiments)
+| Model | Status | Notes |
+|-------|--------|-------|
+| FNO | ✓ | Reliable baseline. Best on burgers+aug. |
+| RFNO | ✓ 1D only | Best on kdv_1d (SOTA). Crashes on 2D. |
+| UNO | ✓ | Multiscale encoder-decoder. Good potential for shocks. |
+| DeepONet | ✓ | Trunk/Branch architecture. |
+| SSNO | ⚠ Unstable | val=80.5 at h=128. Needs small config/low LR. |
+| AFNO | ✗ Skip | Wrong spectral bias (0.5-0.7 on Burgers). |
+| PINO | ✗ Broken | Never use. |
 
 ## CONVENTIONS
-- Export from `models/__init__.py`
-- Register in `research_plugins.py` ModelRegistry
-- Follow existing patterns (afno.py for reference)
-- Use `model_scaffold.py --stub` for gated addition
-- 28+ models registered via `ModelRegistry`
+- Export from `models/__init__.py`.
+- Register in `research_plugins.py` ModelRegistry.
+- Use `model_scaffold.py --stub` for gated addition.
+- 28+ models registered.
 
 ## ANTI-PATTERNS
-- **AFNO** — wrong bias, 0.50-0.72 on Burgers, skip
-- **PINO** — broken for endpoint-only, never queue
-- **Transolver2D** — unreliable on 2D benchmarks
-- **RFNO on 2D** — ValueError: too many values to unpack
-- **SSNO at h≥128** — unstable (val=80.5), use h≤64 l≤4 + lower lr
+- **AFNO** — skip.
+- **PINO** — never use.
+- **RFNO on 2D** — crashes.
+- **h≥64 or l≥8 on 2D** — OOM.

@@ -1,17 +1,22 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2025-01-13
-**Commit:** f582012
+**Generated:** 2026-04-11
+**Commit:** Latest
 **Branch:** SciML
 
 ## OVERVIEW
 Autonomous AI-driven research loop for Scientific Machine Learning (SciML) on Apple Silicon, built on MLX. Explores PDE solver architectures (Neural Operators, PINNs) within fixed 5-min training budget.
 
+## CURRENT STATUS (184+ experiments)
+- **SOTA BEATEN**: `kdv_1d` (5×), `wave_1d` (5×), `euler_1d` (6×).
+- **CRITICAL GAPS**: `burgers_1d` (47× gap to GNOT), `darcy_2d` (25× gap).
+- **NEAR SOTA**: `ns_2d` (1.12× gap, budget=600 key).
+
 ## STRUCTURE
 ```
 ./
 ├── models/           # 14 model implementations (FNO, RFNO, DeepONet, S4NO, etc.)
-├── papers/           # 15 paper YAMLs with SOTA + suggested experiments
+├── papers/           # 20 paper YAMLs with SOTA + suggested experiments
 ├── simulations/     # 4 high-fidelity PDE solvers
 ├── docs/             # SOTA.md, LITERATURE.md, TERMINOLOGY.md
 ├── logs/             # Per-experiment training logs
@@ -34,32 +39,31 @@ Autonomous AI-driven research loop for Scientific Machine Learning (SciML) on Ap
 | Add model | `models/` + `research_plugins.py` | Update ModelRegistry |
 
 ## CONVENTIONS
-- **Never modify `prepare.py`** — defines ground-truth metric
-- **results.json is SSoT** — never hand-edit; use `tracker.py`
-- **ExperimentConfig.name must be unique** — dedup key
-- **darcy_2d is broken** — use darcy_2d only
-- **RFNO is 1D-only** — crashes on 2D with ValueError
-- **2D safe config**: h≤32, l≤4, m≤8, budget_s=480
-- **SSNO** — unstable at h≥128, use h≤64 l≤4 + lower lr
-- **WARMDOWN_RATIO=0.2** — cosine decay starts at 80% of budget
+- **Never modify `prepare.py`** — defines ground-truth metric.
+- **results.json is SSoT** — never hand-edit; use `tracker.py`.
+- **ExperimentConfig.name must be unique** — dedup key.
+- **darcy_2d is broken** — use `darcy_2d` ( Richardson solver).
+- **RFNO is 1D-only** — crashes on 2D benchmarks.
+- **2D safe config**: h≤32, l≤4, m≤8, budget_s=480.
+- **SSNO** — unstable at h≥128, use h≤64 l≤4 + lower lr.
+- **WARMDOWN_RATIO=0.2** — cosine decay starts at 80% of budget.
 
-## ANTI-PATTERNS (THIS PROJECT)
-- **Never use PINO** — broken for endpoint-only formulation
-- **Never use AFNO** — wrong spectral bias (0.50-0.72 on Burgers)
-- **Never use h≥64 or l≥8 on 2D** — OOM/broadcast errors
-- **Never git add -A** — stage only train.py, models/, experiments.py, results.tsv
+## ANTI-PATTERNS
+- **Never use PINO** — broken for endpoint-only formulation.
+- **Never use AFNO** — wrong spectral bias (0.50-0.72 on Burgers).
+- **Never use h≥64 or l≥8 on 2D** — OOM/broadcast errors.
+- **Never git add -A** — stage only code and results.
 
 ## UNIQUE STYLES
-- Dual orchestration: Mode A (external agent) + Mode B (agent_loop.py)
-- Bayesian HPO auto-loop when queue exhausts
-- Multi-fix crash recovery (batch_size//2 + lr//10 applied together)
-- Sentinel kill via .kill_{name} files
+- Dual orchestration: Mode A (external agent) + Mode B (agent_loop.py).
+- Bayesian HPO auto-loop when queue exhausts.
+- Multi-fix crash recovery (batch_size//2 + lr//10 applied together).
+- Sentinel kill via `.kill_{name}` files.
 
 ## COMMANDS
 ```bash
 uv sync                          # Install dependencies
 uv run prefetch_data.py          # Cache PDE datasets (~20 min)
-uv run prefetch_data.py --skip-slow  # Skip ns_hre_2d (~2 min)
 uv run train.py --model FNO --hidden 128 --layers 8 --modes 24
 uv run analyze.py --papers       # Results vs SOTA
 uv run auto_suggest.py --generate  # Output ready-to-paste ExperimentConfig snippets
@@ -67,16 +71,9 @@ uv run autorun.py --priority 1 --commit
 uv run uvicorn app:app --reload --port 8000  # Dashboard
 ```
 
-## NOTES
-- Data cached at: ~/.cache/sciml_autoresearch/
-- 184+ experiments completed, 3 benchmarks beat SOTA (kdv_1d, wave_1d, euler_1d)
-- burgers_1d has 9.8× gap to SOTA (priority target)
-- SSNO unstable at h≥128 — start with h≤64 l≤4 + lower lr if exploring
-- Trainer writes rolling loss to `.vram_telemetry`
-
 ## RESEARCH PRIORITIES
-1. **Close Burgers gap** — best 0.1468, SOTA 0.0149 (9.8×). SSNO paper claims 0.007.
-2. **Scale darcy_2d** — try h=32 l=4 m=12 budget=480 (small models only)
-3. **Push ns_2d below SOTA** — 0.01428 vs 0.0128; try RFNO h=32 m=8
-4. **Benchmark SSNO** on burgers_1d (paper target: 0.007)
-5. **Run simulation benchmarks** — swe_2d, allen_cahn_2d need more experiments
+1. **Close Burgers gap** — best 0.1468, SOTA 0.0031 (47×). Try SSNO, curriculum.
+2. **Scale darcy_2d** — try h=32 l=4 m=12 budget=480 (small models only).
+3. **Push ns_2d below SOTA** — 0.01428 vs 0.0128; try RFNO h=32 m=8 (if it doesn't crash).
+4. **Benchmark SSNO** on burgers_1d (paper target: 0.007).
+5. **Run simulation benchmarks** — swe_2d, allen_cahn_2d need more experiments.

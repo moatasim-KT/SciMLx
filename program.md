@@ -112,9 +112,9 @@ What autorun does:
 - Writes full stdout to `logs/<name>.log`
 - Parses `val_l2_rel`, `peak_vram_mb`, `diag_*`, `inspect_id` from log
 - Classifies crashes: OOM / NaN-Inf / ImportError / ValueError / Timeout / UnknownError
-- **Multi-fix retry**: collects ALL applicable fixes and merges them — OOM+NaN → both `batch_size//2` AND `lr//10` in one retry (previously only one fix was applied)
+- **Multi-fix retry**: collects ALL applicable fixes and merges them — OOM+NaN → both `batch_size//2` AND `lr//10` in one retry
 - Polls every 2s for `.kill_{name}` sentinel; terminates process if found
-- With `--commit`: stages `train.py results.tsv` and commits each kept result
+- With `--commit`: stages code and `results.tsv` and commits each kept result
 
 ### 4. Add experiments: `experiments.py`
 
@@ -142,7 +142,7 @@ Priority conventions:
 
 **2D benchmark constraint**: always use `h≤32, l≤4, m≤12, budget_s=480`.
 Models larger than h=64 or l=8 crash on all 2D benchmarks (OOM/broadcast errors
-on Apple Silicon unified memory).
+on Apple Silicon unified memory). **RFNO is 1D-only.**
 
 ### 5. Inspect failures: `hypothesis.py` + `diagnostics.py`
 
@@ -231,14 +231,11 @@ uv run uvicorn app:app --reload --port 8000
 ```
 
 Dashboard panels:
-- **Left sidebar** — per-benchmark SOTA comparison bars, model comparison chart, live training quick stats (progress bar, time remaining, step count, loss)
-- **Results tab** — all 184 completed experiments, sortable by any column, searchable, filterable by benchmark/status
+- **Left sidebar** — per-benchmark SOTA comparison bars, model comparison chart, live training quick stats
+- **Results tab** — all 184 completed experiments, sortable/searchable/filterable
 - **Queue tab** — all pending experiments with priority, config, rationale
-- **Lineage DAG tab** — SVG graph of experiment parent→child relationships, colored by status (green=keep, red=crash, amber=discard)
-- **Right inspector** — click any experiment for:
-  - `details`: config grid, val_l2_rel vs SOTA bar, rationale, conclusion, parent lineage with delta % and config diff table
-  - `log`: full log file viewer with colorized output and SVG training loss curve
-  - `diag`: spectral bias values and diagnostic PNG
+- **Lineage DAG tab** — SVG graph of experiment parent→child relationships
+- **Right inspector** — click any experiment for details, log, spectral diagnostics, parent comparison
 - **Active strip** — running experiment with progress bar, rolling loss sparkline, Kill button
 
 API endpoints (all re-load results.json fresh on each call):
@@ -247,7 +244,7 @@ GET  /api/experiments          all completed experiments
 GET  /api/experiment/{id}      detail + inspect_url
 GET  /api/sota                 SOTA targets + our best + ratio per benchmark
 GET  /api/queue                all pending experiments with full config
-GET  /api/logs/{name}?tail=N   last N lines of logs/<name>.log
+GET  /api/logs/{name}?tail=N   last N lines of a log file
 GET  /api/status               VRAM, progress, remaining_s, step, loss, loss_history, paused flag
 POST /api/pause                create .autorun_pause sentinel
 POST /api/resume               remove .autorun_pause sentinel
@@ -268,11 +265,8 @@ t.log_experiment(
     benchmark="burgers_1d",
     model="FNO",
     val_l2_rel=0.155,
-    memory_gb=0.12,
     status="keep",
-    description="FNO h=128 l=8 m=24",
     config={"hidden_dim": 128, "n_layers": 8, "n_modes": 24},
-    diag={"diag_high_freq_error": 0.05, "diag_low_freq_error": 0.01},
     parent_name="fno_h128_m24_l6",   # links to parent in DAG
 )
 
@@ -287,12 +281,12 @@ analysis = t.analyze_lineage("burgers_1d")
 
 | Benchmark      | SOTA   | Our best          | Gap      | Priority |
 |----------------|--------|-------------------|----------|----------|
-| burgers_1d     | 0.0149 | 0.1468            | 9.8×     | HIGH     |
+| burgers_1d     | 0.0031 | 0.1468            | 47.3×    | **CRITICAL** |
+| darcy_2d       | 0.0041 | 0.1041            | 25.4×    | **HIGH** |
 | kdv_1d         | 0.010  | **0.0020** ✓      | 5× better SOTA | hold |
 | wave_1d        | 0.005  | **0.000992** ✓    | 5× better SOTA | hold |
 | euler_1d       | ~0.015 | **0.002413** ✓    | 6.2× better SOTA | hold |
-| darcy_2d   | 0.0108 | 0.1041            | 9.6×     | HIGH — small models only |
-| ns_2d      | 0.0128 | 0.0152            | 1.2×     | MEDIUM   |
+| ns_2d          | 0.0128 | 0.01428           | 1.1×     | MEDIUM   |
 | swe_2d         | ~0.002 | 0.0107            | 5.4×     | MEDIUM   |
 | allen_cahn_2d  | ~0.020 | 0.0628            | 3.1×     | MEDIUM   |
 | ns_hre_2d      | ~0.070 | not run           | —        | LOW (70 min first gen) |
@@ -303,17 +297,16 @@ analysis = t.analyze_lineage("burgers_1d")
 
 ## Suggested next actions (ranked)
 
-1. **Burgers gap** — try SSNO (paper claims 0.007), curriculum training, ensemble FNO+RFNO
+1. **Close Burgers gap** — try SSNO (paper claims 0.007), curriculum training, ensemble FNO+RFNO
 2. **darcy_2d** — FNO h=32 l=4 m=12 budget_s=480 (small model constraint — h≥64 crashes)
-3. **ns_2d** — RFNO h=32 m=8 or H1 loss to push below SOTA 0.0128
+3. **ns_2d** — try H1 loss or longer budget (720s) to push below SOTA 0.0128
 4. **SSNO on all 1D benchmarks** — newly registered model with adaptive S4D damping
-5. **allen_cahn_2d / swe_2d** — only 5 experiments each; explore model families
+5. **allen_cahn_2d / swe_2d** — only a few experiments each; explore model families
 
 ```bash
 # Quick wins to run right now:
 uv run train.py --benchmark burgers_1d   --model SSNO --hidden 64 --layers 4 --modes 16
 uv run train.py --benchmark darcy_2d --model FNO  --hidden 32 --layers 4 --modes 12 --budget 480
-uv run train.py --benchmark ns_2d    --model RFNO --hidden 32 --layers 4 --modes 8  --budget 480
 ```
 
 ---
@@ -333,25 +326,9 @@ uv run prefetch_data.py              # pre-cache all benchmarks (~20 min total)
 uv run prefetch_data.py --skip-slow  # skip ns_hre_2d (~2 min, everything else)
 ```
 
-Without this, train.py regenerates training data from scratch on every subprocess
-call — causing ns_2d to always timeout (4096 × 2D NS solver steps takes longer
-than the 1500s hard kill limit in autorun.py).
-
-| Benchmark | Train cache file | Val cache file |
-|---|---|---|
-| `burgers_1d` | `burgers_1d_train_N64.npz` | `burgers_1d_val_N64.npz` |
-| `kdv_1d` | `kdv_1d_train_N4096_ext.npz` | `kdv_1d_val_N64_ext.npz` |
-| `wave_1d` | `wave_1d_train_N4096_ext.npz` | `wave_1d_val_N64_ext.npz` |
-| `darcy_2d` | `darcy_2d_train_N4096_ext.npz` | `darcy_2d_val_N64_ext.npz` |
-| `ns_2d` | `ns_2d_train_N4096_ext.npz` | `ns_2d_val_N64_ext.npz` |
-| `euler_1d` | `euler_1d_train_N64_s300_seed7.npz` | `euler_1d_val_N64_s300_seed42.npz` |
-| `swe_2d` | `swe_2d_train_N64_s1_seed7.npz` | `swe_2d_val_N64_s1_seed42.npz` |
-| `allen_cahn_2d` | `allen_cahn_2d_train_N64_s200_seed7.npz` | `allen_cahn_2d_val_N64_s200_seed42.npz` |
-| `ns_hre_2d` | `ns_hre_2d_train_N64_s*_seed7.npz` | `ns_hre_2d_val_N64_s*_seed42.npz` |
-
-If a benchmark's train cache is missing, the first experiment on that benchmark will
-regenerate it automatically (and save it), but this eats into the training budget.
-`prefetch_data.py` avoids this by generating everything upfront.
+Without this, train.py regenerates training data per subprocess. For 2D benchmarks
+(especially `ns_2d` with 4096 × 2D NS samples), this exceeds the 1500s hard timeout
+in `autorun.py` and causes every experiment to crash before training begins.
 
 ---
 

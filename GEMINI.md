@@ -149,12 +149,12 @@ uv run viz.py --mode leaderboard
 
 | Benchmark | PDE | SOTA | Our best | Notes |
 |-----------|-----|------|----------|-------|
-| `burgers_1d` | 1D viscous Burgers | 0.0149 | 0.1468 | **HIGH** (9.8× gap) |
+| `burgers_1d` | 1D viscous Burgers | 0.0031 | 0.1468 | **CRITICAL** (47× gap) |
 | `kdv_1d` | KdV soliton | 0.010 | **0.0020** ✓ | 5× better than SOTA |
 | `wave_1d` | 1D wave | 0.005 | **0.000992** ✓ | 5× better than SOTA |
-| `euler_1d` | Compressible Euler | ~0.015 | **0.002413** ✓ | 6.2× better than SOTA |
-| `darcy_2d` | 2D Darcy | 0.0108 | 0.1041 | HIGH — need h≤32 l≤4 |
-| `ns_2d` | 2D NS vorticity | 0.0128 | 0.01428 | MEDIUM — 1.12× gap, budget=600 |
+| `euler_1d` | Compressible Euler | 0.015 | **0.002413** ✓ | 6.2× better than SOTA |
+| `darcy_2d` | 2D Darcy | 0.0041 | 0.1041 | **HIGH** (25× gap) |
+| `ns_2d` | 2D NS vorticity | 0.0128 | 0.01428 | 1.12× gap, budget=600 |
 | `swe_2d` | 2D Shallow Water | ~0.002 | 0.0107 | 5.4× gap |
 | `allen_cahn_2d` | Allen-Cahn | ~0.020 | 0.0628 | 3.1× gap |
 | `ns_hre_2d` | NS Re=1000 | ~0.070 | not run | ~70 min first gen |
@@ -239,3 +239,4 @@ ExperimentConfig(
 ```
 
 Then run: `uv run autorun.py --priority 1 --commit`
+y 1 --commit`
