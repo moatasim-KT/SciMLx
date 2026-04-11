@@ -7,7 +7,7 @@ import numpy as np
 import mlx.core as mx
 from pathlib import Path
 import matplotlib.pyplot as plt
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional, List
 
 from utils import FIGS_DIR
 
@@ -46,6 +46,176 @@ def calculate_spectral_bias(pred: np.ndarray, truth: np.ndarray) -> Dict[str, fl
         "high_freq_error": float(high_err),
         "spectral_gap": float(np.max(err_ft))
     }
+
+def parse_log_file(log_path: Path) -> Dict[str, Any]:
+    """Extract metrics, diagnostics, and crash type from a train.py log file."""
+    results = {
+        "val": None,
+        "mem_mb": 0.0,
+        "diag": {},
+        "inspect_id": None,
+        "crash_type": None,
+    }
+    if not log_path.exists():
+        results["crash_type"] = "FileNotFound"
+        return results
+
+    try:
+        content = log_path.read_text()
+        for line in content.splitlines():
+            if line.startswith("val_l2_rel:"):
+                results["val"] = float(line.split(":")[1].strip())
+            elif line.startswith("peak_vram_mb:"):
+                results["mem_mb"] = float(line.split(":")[1].strip())
+            elif line.startswith("diag_"):
+                key = line.split(":")[0].strip()
+                val = float(line.split(":")[1].strip())
+                results["diag"][key] = val
+            elif line.startswith("inspect_id:"):
+                results["inspect_id"] = line.split(":", 1)[1].strip()
+
+        # Classify crash type if no val_l2_rel found
+        if results["val"] is None:
+            results["crash_type"] = classify_failure(content)
+    except Exception:
+        results["crash_type"] = "ParseError"
+        
+    return results
+
+def classify_failure(content: str) -> str:
+    """Detailed classification of log content into failure types."""
+    lower = content.lower()
+    
+    # Incompatibility: 1D model on 2D benchmark
+    if "too many values to unpack" in lower and ("expected 2" in lower or "expected 3" in lower):
+        return "IncompatibleDimensions"
+    
+    # OOM / VRAM issues
+    if "vram limit exceeded" in lower:
+        return "VRAMLimit"
+    if "out of memory" in lower or "[metal::malloc]" in lower or "alloc" in lower:
+        return "OOM"
+    
+    # Divergence / Numerical
+    if "nan" in lower or "inf" in lower or "diverged" in lower:
+        return "NaN/Inf"
+    
+    # Broadcasting / Grid issues
+    if "broadcast_shapes" in lower or "cannot be broadcast" in lower:
+        return "BroadcastingError"
+    
+    # Timeouts
+    if "timeout" in lower or "timed out" in lower:
+        return "Timeout"
+    
+    # Code issues
+    if "importerror" in lower or "modulenotfounderror" in lower:
+        return "ImportError"
+    if "valueerror" in lower:
+        return "ValueError"
+    if "assertionerror" in lower:
+        return "AssertionError"
+    if "runtimeerror" in lower:
+        return "RuntimeError"
+    
+    # Catch-alls
+    if "traceback" in lower or "error" in lower:
+        return "UnknownError"
+    
+    return "NoOutput"
+
+def check_early_stop_condition(log_path: Path, baseline: float, multiplier: float = 50.0) -> Optional[float]:
+    """Scan log for early-stop conditions (val >> baseline)."""
+    if baseline >= float("inf") or baseline <= 0:
+        return None
+    threshold = baseline * multiplier
+    try:
+        content = log_path.read_text()
+    except Exception:
+        return None
+    for line in reversed(content.splitlines()):
+        if not line.startswith("val@"):
+            continue
+        try:
+            pct_part, val_part = line.split(":", 1)
+            pct = int(pct_part[4:].rstrip("%"))
+            mid_val = float(val_part.split()[0])
+            if pct >= 30 and mid_val > threshold:
+                return mid_val
+        except (ValueError, IndexError):
+            continue
+        break
+    return None
+
+def get_fix_strategies(crash_type: str, current_config: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+    """Map crash types to a list of potential configuration fixes (Cause-to-Fix Map).
+    
+    Returns a list of (description, field_overrides) tuples.
+    """
+    fixes = []
+    
+    if crash_type == "IncompatibleDimensions":
+        # Usually unfixable without changing the model/benchmark pairing
+        return []
+
+    if crash_type == "VRAMLimit":
+        fixes.append((
+            "Reduce hidden_dim, layers, and batch_size (VRAM limit)",
+            {
+                "hidden_dim": max(32, current_config.get("hidden_dim", 64) // 2),
+                "n_layers": max(2, current_config.get("n_layers", 4) // 2),
+                "batch_size": max(8, current_config.get("batch_size", 32) // 2),
+            }
+        ))
+
+    if crash_type == "OOM":
+        fixes.append((
+            "Halve batch_size (OOM)",
+            {"batch_size": max(8, current_config.get("batch_size", 32) // 2)}
+        ))
+
+    if crash_type == "NaN/Inf":
+        fixes.append((
+            "Reduce learning rate and add grad clipping (NaN/Inf)",
+            {
+                "lr": round(current_config.get("lr", 1e-3) / 10, 8),
+                "grad_clip": 5.0
+            }
+        ))
+
+    if crash_type == "BroadcastingError":
+        fixes.append((
+            "Halve n_modes (Broadcasting Error)",
+            {"n_modes": max(4, current_config.get("n_modes", 16) // 2)}
+        ))
+
+    if crash_type == "Timeout":
+        fixes.append((
+            "Reduce model depth and width (Timeout)",
+            {
+                "hidden_dim": max(32, current_config.get("hidden_dim", 64) // 2),
+                "n_layers": max(2, current_config.get("n_layers", 4) // 2),
+            }
+        ))
+
+    if crash_type in ["ValueError", "RuntimeError", "AssertionError"]:
+        # Generic fallback for common errors: reduce modes
+        fixes.append((
+            "Reduce n_modes (Generic Error Fallback)",
+            {"n_modes": max(4, current_config.get("n_modes", 16) // 2)}
+        ))
+
+    if not fixes and crash_type not in ["NoOutput", "Killed", "FileNotFound"]:
+        # Catch-all unknown error fix
+        fixes.append((
+            "General model size reduction (Unknown Error)",
+            {
+                "hidden_dim": max(32, current_config.get("hidden_dim", 64) // 2),
+                "n_layers": max(2, current_config.get("n_layers", 4) // 2),
+            }
+        ))
+
+    return fixes
 
 def generate_experiment_comparison(exp_id: str, 
                                    inputs: np.ndarray, 

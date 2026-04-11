@@ -226,3 +226,9 @@ f582012	darcy_2d	RFNO2D	1.000000	0.00	crash	rfno2d_darcy2d_h32_m12_l4_480s RFNO2
 f582012	ns_2d	RFNO2D	1.000000	0.00	crash	rfno2d_ns2d_h32_m8_l4_480s RFNO2D  h=32  l=4
 f582012	swe_2d	RFNO2D	1.000000	0.00	crash	rfno2d_swe2d_h32_l4_m8 RFNO2D  h=32  l=4
 f582012	burgers_1d	SSNO	0.227306	0.69	discard	ssno_burgers_h128_l8_lr3e4 SSNO  h=128  l=8  lr=3e-04
+82df26e	allen_cahn_2d	RFNO2D	1.000000	0.00	crash	allen_cahn_rfno2d_h32_l4_m8 RFNO2D  h=32  l=4
+82df26e	darcy_2d	FNO	0.144524	1.51	discard	fno_darcy2d_h32_l4_m8_h1 FNO  h=32  l=4  m=8  loss=h1
+82df26e	burgers_1d	AFNO	1.000000	0.00	crash	afno_h128_m24_l10 AFNO  h=128  l=10  m=24
+82df26e	burgers_1d	FNO	0.297090	0.43	discard	test_watchdog_extension FNO  h=32  l=2  m=12
+82df26e	burgers_1d	FNO	0.298215	0.42	discard	test_watchdog_extension FNO  h=32  l=2  m=12
+6849908	burgers_1d	PACMANN	0.189913	0.42	discard	pacmann_burge_baseline PACMANN  h=64  l=4

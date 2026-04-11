@@ -1,5 +1,6 @@
 import mlx.nn as nn
 import mlx.core as mx
+import inspect
 from typing import Callable, Dict, Any, Optional, Type, List
 
 # ── Model Registry ────────────────────────────────────────────────────────────
@@ -41,12 +42,25 @@ class ModelRegistry:
             raise ValueError(
                 f"Unknown model {name!r}. Available: {available}"
             )
+
+        # Map n_modes -> (n_modes1, n_modes2) for 2D models
+        if name.endswith("2D") and "n_modes" in kwargs:
+            m = kwargs.pop("n_modes")
+            kwargs["n_modes1"] = m
+            kwargs["n_modes2"] = m
+
         return self._registry[name](**kwargs)
 
     def register_class(self, name: str, cls: Type[nn.Module], **fixed_kwargs) -> None:
         def _factory(**kwargs):
             kwargs.update(fixed_kwargs)
-            return cls(**kwargs)
+            # Filter kwargs to only those accepted by cls.__init__
+            sig = inspect.signature(cls.__init__)
+            valid_args = {
+                k: v for k, v in kwargs.items()
+                if k in sig.parameters or any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values())
+            }
+            return cls(**valid_args)
         _factory.__name__ = f"factory_{name}"
         self._registry[name] = _factory
 
@@ -110,10 +124,10 @@ def _register_defaults():
 
     # ── 1-D models (Lazy registration) ────────────────────────────────────────
     MODEL_REGISTRY.register_lazy("FNO", "fno", "FNO1d")
-    MODEL_REGISTRY.register_lazy("RFNO", "rfno", "RFNO1d")
+    MODEL_REGISTRY.register_lazy("RFNO", "fno", "RFNO1d")
     MODEL_REGISTRY.register_lazy("AFNO", "afno", "AFNO1d")
-    MODEL_REGISTRY.register_lazy("FFNO", "ffno", "FFNO1d")
-    MODEL_REGISTRY.register_lazy("UNO", "uno", "UNO1d")
+    MODEL_REGISTRY.register_lazy("FFNO", "afno", "FFNO1d")
+    MODEL_REGISTRY.register_lazy("UNO", "fno", "UNO1d")
     MODEL_REGISTRY.register_lazy("WNO", "wno", "WNO1d")
     MODEL_REGISTRY.register_lazy("DeepONet", "deeponet", "DeepONet")
     MODEL_REGISTRY.register_lazy("PODDeepONet", "deeponet", "PODDeepONet")
@@ -123,7 +137,7 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("GNOT2D", "gnot", "GNOT2d")
     MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
     MODEL_REGISTRY.register_lazy("FNO2D", "fno", "FNO2d")
-    MODEL_REGISTRY.register_lazy("RFNO2D", "rfno", "RFNO2d")
+    MODEL_REGISTRY.register_lazy("RFNO2D", "fno", "RFNO2d")
     MODEL_REGISTRY.register_lazy("FNO_MC", "fno", "FNO1dMC")
     MODEL_REGISTRY.register_lazy("TFNO", "tfno", "TFNO1d")
     MODEL_REGISTRY.register_lazy("RTFNO", "tfno", "RTFNO1d")
@@ -147,7 +161,7 @@ def _register_defaults():
 
     @MODEL_REGISTRY.register("RFNO")
     def _make_rfno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
-        from models.rfno import RFNO1d
+        from models.fno import RFNO1d
         return RFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────

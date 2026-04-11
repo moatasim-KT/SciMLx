@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from diagnostics import parse_log_file, check_early_stop_condition, get_fix_strategies
 from experiments import ExperimentConfig, get_experiments
 from utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, load_results, done_names, best_per_benchmark
 from tracker import Tracker
@@ -106,174 +107,48 @@ def current_commit() -> str:
         return "unknown"
 
 
-def parse_log(log_path: Path) -> dict:
-    """Extract metrics, diagnostics, and crash type from a train.py log file."""
-    results = {
-        "val": None,
-        "mem_mb": 0.0,
-        "diag": {},
-        "inspect_id": None,
-        "crash_type": None,
-    }
-    try:
-        content = log_path.read_text()
-        for line in content.splitlines():
-            if line.startswith("val_l2_rel:"):
-                results["val"] = float(line.split(":")[1].strip())
-            elif line.startswith("peak_vram_mb:"):
-                results["mem_mb"] = float(line.split(":")[1].strip())
-            elif line.startswith("diag_"):
-                key = line.split(":")[0].strip()
-                val = float(line.split(":")[1].strip())
-                results["diag"][key] = val
-            elif line.startswith("inspect_id:"):
-                results["inspect_id"] = line.split(":", 1)[1].strip()
-
-        # Classify crash type if no val_l2_rel found
-        if results["val"] is None:
-            lower = content.lower()
-            if "vram limit exceeded" in lower:
-                results["crash_type"] = "VRAMLimit"
-            elif "out of memory" in lower or ("memory" in lower and "error" in lower):
-                results["crash_type"] = "OOM"
-            elif "nan" in lower or "inf" in lower or "diverged" in lower:
-                results["crash_type"] = "NaN/Inf"
-            elif "importerror" in lower or "modulenotfounderror" in lower:
-                results["crash_type"] = "ImportError"
-            elif "valueerror" in lower or "assertionerror" in lower or "runtimeerror" in lower:
-                results["crash_type"] = "ValueError"
-            elif "timeout" in lower or "timed out" in lower:
-                results["crash_type"] = "Timeout"
-            elif "traceback" in lower or "error" in lower:
-                results["crash_type"] = "UnknownError"
-            else:
-                results["crash_type"] = "NoOutput"
-    except Exception:
-        pass
-    return results
-
-
-def check_early_stop(log_path: Path, baseline: float) -> Optional[float]:
-    """Scan log tail for trainer mid-run val lines (e.g. 'val@30%: 12.34').
-
-    Returns the offending val if it exceeds baseline × EARLY_STOP_MULTIPLIER at
-    ≥ 30% progress, else None. Called every 2 s from the experiment poll loop.
-    """
-    if baseline >= float("inf") or baseline <= 0:
-        return None
-    threshold = baseline * EARLY_STOP_MULTIPLIER
-    try:
-        content = log_path.read_text()
-    except Exception:
-        return None
-    for line in reversed(content.splitlines()):
-        if not line.startswith("val@"):
-            continue
-        # Format: "val@30%: 0.123456" or "val@30%: 0.123456 ✓ best"
-        try:
-            pct_part, val_part = line.split(":", 1)
-            pct = int(pct_part[4:].rstrip("%"))
-            mid_val = float(val_part.split()[0])
-        except (ValueError, IndexError):
-            continue
-        if pct >= 30 and mid_val > threshold:
-            return mid_val
-        break  # only check the most recent val line
-    return None
+def is_arch_compatible(e1: ExperimentConfig, e2: ExperimentConfig) -> bool:
+    """Return True if two configs share the same architecture (can load weights)."""
+    return (
+        e1.model == e2.model and
+        e1.hidden_dim == e2.hidden_dim and
+        e1.n_layers == e2.n_layers and
+        e1.n_modes == e2.n_modes and
+        e1.n_head == e2.n_head and
+        e1.slice_num == e2.slice_num and
+        e1.n_levels == e2.n_levels
+    )
 
 
 def smart_fix(exp: ExperimentConfig, log_path: Path, results: dict) -> Optional[tuple]:
     """Analyse crash log and compose ALL applicable fixes into a single retry config.
-
-    Collects every matching fix pattern, merges field overrides (last-writer wins),
-    and returns a single retry ExperimentConfig. Multiple concurrent failure modes
-    (e.g. OOM + NaN/Inf) are handled in one retry instead of requiring two retries.
+    Uses centralized fix strategy logic from diagnostics.py.
     """
-    try:
-        content = log_path.read_text()
-    except Exception:
-        content = ""
-    lower = content.lower()
+    crash_type = results.get("crash_type")
+    if not crash_type:
+        return None
 
-    # ── Unfixable: 1D model on 2D input ──────────────────────────────────────
-    if "too many values to unpack" in lower:
+    if crash_type == "IncompatibleDimensions":
         wprint("  DIAGNOSIS: 1D model given 2D input — incompatible pairing, skipping.")
         return None
 
-    # ── Collect all applicable fixes ─────────────────────────────────────────
-    fixes: list[tuple[str, dict]] = []   # (description, {field: new_value})
-
-    # Fix A: Modes too wide for grid (broadcast error)
-    if "broadcast_shapes" in lower or (
-        "cannot be broadcast" in lower and ("modes" in lower or "shapes" in lower)
-    ):
-        new_modes = max(4, exp.n_modes // 2)
-        fixes.append((f"modes {exp.n_modes}→{new_modes} (broadcast)", {"n_modes": new_modes}))
-
-    # Fix B: VRAM soft limit (our own guard) — more aggressive than OOM
-    if "vram limit exceeded" in lower:
-        fixes.append((
-            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
-            f"l {exp.n_layers}→{max(2, exp.n_layers//2)}, "
-            f"batch {exp.batch_size}→{max(8, exp.batch_size//2)} (VRAM limit)",
-            {
-                "hidden_dim": max(32, exp.hidden_dim // 2),
-                "n_layers":   max(2,  exp.n_layers   // 2),
-                "batch_size": max(8,  exp.batch_size // 2),
-            }
-        ))
-    # Fix C: Metal OOM (halve batch only, keep model size)
-    elif "out of memory" in lower or ("memory" in lower and "alloc" in lower):
-        new_batch = max(8, exp.batch_size // 2)
-        fixes.append((f"batch {exp.batch_size}→{new_batch} (OOM)", {"batch_size": new_batch}))
-
-    # Fix D: NaN / Inf divergence
-    if "nan" in lower or ("inf" in lower and "loss" in lower):
-        new_lr = round(exp.lr / 10, 8)
-        fixes.append((
-            f"lr {exp.lr:.1e}→{new_lr:.1e}, grad_clip→5.0 (NaN/Inf)",
-            {"lr": new_lr, "grad_clip": 5.0}
-        ))
-
-    # Fix E: Timeout — shrink model
-    if results.get("crash_type") == "Timeout":
-        fixes.append((
-            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
-            f"l {exp.n_layers}→{max(2, exp.n_layers//2)} (timeout)",
-            {
-                "hidden_dim": max(32, exp.hidden_dim // 2),
-                "n_layers":   max(2,  exp.n_layers   // 2),
-            }
-        ))
-
-    # Fix F: ValueError / RuntimeError — try halving modes first
-    if not fixes and ("valueerror" in lower or "runtimeerror" in lower or "assertionerror" in lower):
-        for line in reversed(content.splitlines()):
-            if "error:" in line.lower() or "Error" in line:
-                wprint(f"  DIAGNOSIS: {line.strip()}")
-                break
-        new_modes = max(4, exp.n_modes // 2)
-        fixes.append((f"modes {exp.n_modes}→{new_modes} (ValueError)", {"n_modes": new_modes}))
-
-    # Fix G: Unknown — generic size reduction (only if nothing else matched)
+    # ── Get list of applicable fixes for this specific crash ────────────────
+    # get_fix_strategies maps crash_type strings to field overrides
+    fixes = get_fix_strategies(crash_type, vars(exp))
+    
     if not fixes:
-        fixes.append((
-            f"h {exp.hidden_dim}→{max(32, exp.hidden_dim//2)}, "
-            f"l {exp.n_layers}→{max(2, exp.n_layers//2)} (unknown)",
-            {
-                "hidden_dim": max(32, exp.hidden_dim // 2),
-                "n_layers":   max(2,  exp.n_layers   // 2),
-            }
-        ))
+        return None
 
-    # ── Merge all fixes into one retry config ────────────────────────────────
-    merged_kwargs: dict = {}
-    for _, kwargs in fixes:
-        merged_kwargs.update(kwargs)   # later fixes override earlier for same field
+    # Merge overrides from all fixes (later ones in list win)
+    merged_kwargs = {}
+    for desc, field_overrides in fixes:
+        merged_kwargs.update(field_overrides)
 
-    desc = " + ".join(d for d, _ in fixes)
-    wprint(f"  DIAGNOSIS: {len(fixes)} fix(es) composed: {desc}")
-    return desc, dataclasses.replace(exp, name=f"{exp.name}_r1", **merged_kwargs)
+    full_desc = " + ".join(d for d, _ in fixes)
+    wprint(f"  DIAGNOSIS: {len(fixes)} fix(es) composed from {crash_type}: {full_desc}")
+    
+    # Return as (description, new_config)
+    return full_desc, dataclasses.replace(exp, name=f"{exp.name}_r1", **merged_kwargs)
 
 
 def _build_r2(exp: ExperimentConfig) -> ExperimentConfig:
@@ -412,6 +287,7 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
             try:
                 kill_file = REPO_ROOT / f".kill_{exp.name}"
                 deadline = time.time() + TIMEOUT_S
+                last_size = 0
                 while time.time() < deadline:
                     if kill_file.exists():
                         proc.terminate()
@@ -420,8 +296,29 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
                         wprint(f"  KILLED by dashboard request")
                         return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None,
                                 "crash_type": "Killed"}
+                    
+                    # Watch for budget extensions in the log
+                    try:
+                        if log_path.exists():
+                            curr_size = log_path.stat().st_size
+                            if curr_size > last_size:
+                                with open(log_path, "r") as f:
+                                    f.seek(last_size)
+                                    new_content = f.read()
+                                    if "[Dynamic Budget]" in new_content:
+                                        import re
+                                        matches = re.findall(r"Extending budget by (\d+)s to (\d+)s", new_content)
+                                        if matches:
+                                            ext_s, total_s = map(int, matches[-1])
+                                            # Push deadline by the extension amount
+                                            deadline += ext_s
+                                            wprint(f"  Watchdog extended by {ext_s}s (new budget: {total_s}s)")
+                                last_size = curr_size
+                    except Exception as e:
+                        pass
+
                     # Early-stop: check mid-run val from trainer log
-                    bad_val = check_early_stop(log_path, baseline)
+                    bad_val = check_early_stop_condition(log_path, baseline, EARLY_STOP_MULTIPLIER)
                     if bad_val is not None:
                         proc.terminate()
                         proc.wait()
@@ -454,13 +351,13 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
                 with _print_lock:
                     for line in tail:
                         print(f"    {line}", end="")
-                return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
+                return parse_log_file(log_path)
 
         except Exception as e:
             wprint(f"  ERROR: {e}")
             return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None}
 
-        return parse_log(log_path)
+        return parse_log_file(log_path)
     finally:
         with _active_lock:
             _active_experiments.discard(exp.name)
@@ -633,6 +530,13 @@ def main() -> None:
                     continue
 
                 wprint(f"\n  ── Retry {_attempt_n}/{len(_strategies)} [{_retry_exp.name}]: {_strat_desc}")
+                # Add resumption if architecture matches and original might have saved a checkpoint
+                if is_arch_compatible(exp, _retry_exp):
+                    ckpt_path = REPO_ROOT / "checkpoints" / f"{exp.name}_best.npz"
+                    if ckpt_path.exists():
+                        _retry_exp.resume_from = exp.name
+                        wprint(f"     Resuming from parent checkpoint: {ckpt_path.name}")
+
                 _retry_log = LOGS_DIR / f"{_retry_exp.name}.log"
                 with _baselines_lock:
                     _bl_now = baselines.get(exp.benchmark, float("inf"))
@@ -691,6 +595,13 @@ def main() -> None:
                         f"{_adapt_exp.model} h={_adapt_exp.hidden_dim} "
                         f"l={_adapt_exp.n_layers} m={_adapt_exp.n_modes}"
                     )
+                    # Add resumption if architecture matches
+                    if is_arch_compatible(exp, _adapt_exp):
+                        ckpt_path = REPO_ROOT / "checkpoints" / f"{exp.name}_best.npz"
+                        if ckpt_path.exists():
+                            _adapt_exp.resume_from = exp.name
+                            wprint(f"     Resuming from original checkpoint: {ckpt_path.name}")
+
                     wprint(f"     {_suggestion.get('rationale', '')[:140]}")
                     _adapt_log = LOGS_DIR / f"{_adapt_exp.name}.log"
                     with _baselines_lock:

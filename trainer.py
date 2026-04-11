@@ -67,12 +67,30 @@ class Trainer:
         best_params = None
         next_eval_progress = 0.10   # first mid-run eval at 10%
         EVAL_INTERVAL = 0.10        # then every 10%
+        
+        initial_loss = None
+        loss_at_50 = None
+        extensions_count = 0
+        MAX_EXTENSIONS = 5
 
         while True:
             t_now = time.time()
             elapsed = t_now - t_start
             if elapsed > self.time_budget:
-                break
+                # Dynamic budget extension: if loss is decreasing well at the end, add 20% more time
+                if extensions_count < MAX_EXTENSIONS and initial_loss and loss_at_50:
+                    # Heuristic: loss has dropped significantly from start and is still dropping from mid-point
+                    if self._loss_history[-1][1] < 0.8 * initial_loss and \
+                       self._loss_history[-1][1] < 0.9 * loss_at_50:
+                        extension = int(self.time_budget * 0.2)
+                        self.time_budget += extension
+                        extensions_count += 1
+                        print(f"\n[Dynamic Budget] Loss is decreasing well ({self._loss_history[-1][1]:.6f}). "
+                              f"Extending budget by {extension}s to {self.time_budget}s.", flush=True)
+                    else:
+                        break
+                else:
+                    break
 
             progress = elapsed / self.time_budget
             if self.lr_schedule_fn:
@@ -105,6 +123,9 @@ class Trainer:
             loss, grads = self.loss_and_grad_fn(self.model, x, y)
 
             loss_val = loss.item()
+            if initial_loss is None: initial_loss = loss_val
+            if progress >= 0.5 and loss_at_50 is None: loss_at_50 = loss_val
+
             if math.isnan(loss_val) or math.isinf(loss_val):
                 print(f"\nNaN/Inf loss detected at step {total_steps} — aborting.", flush=True)
                 print(f"  lr={self.optimizer.lr:.2e}  grad_clip={self.grad_clip}", flush=True)
@@ -178,6 +199,15 @@ class Trainer:
                     best_params = tree_unflatten(
                         [(k, v) for k, v in tree_flatten(self.model.parameters())]
                     )
+                    # Periodic checkpointing to disk for resumption
+                    if self.exp_name:
+                        from utils import REPO_ROOT
+                        ckpt_dir = REPO_ROOT / "checkpoints"
+                        ckpt_dir.mkdir(exist_ok=True)
+                        ckpt_path = ckpt_dir / f"{self.exp_name}_best.npz"
+                        mx.savez(str(ckpt_path), **dict(tree_flatten(self.model.parameters())))
+                        print(f"  [Checkpoint] Saved best weights so far to {ckpt_path.name}", flush=True)
+
                 next_eval_progress += EVAL_INTERVAL
 
         print()

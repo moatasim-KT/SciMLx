@@ -80,6 +80,8 @@ def _parse_args():
     p.add_argument("--augment",     action="store_true", default=AUGMENT)
     p.add_argument("--curriculum",  action="store_true", default=CURRICULUM)
     p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT)
+    p.add_argument("--resume",      action="store_true", help="Resume from best checkpoint if exists")
+    p.add_argument("--resume_from", default="", help="Resume from specific checkpoint name/path")
     p.add_argument("--max_vram_gb", type=float, default=5.0,
                    help="Abort training if peak VRAM exceeds this (GB). 0=disabled.")
     return p.parse_args()
@@ -158,6 +160,26 @@ model = MODEL_REGISTRY.build(
     sparsity=SPARSITY,
     in_channels=n_ch, out_channels=n_ch,   # absorbed by **kw for non-MC models
 )
+
+# Resumption logic: load best weights if available
+if (args.resume or args.resume_from) and EXP_NAME:
+    # Use explicit resume_from if provided, otherwise fallback to current EXP_NAME
+    source_name = args.resume_from if args.resume_from else EXP_NAME
+    # If source_name doesn't end in .npz, assume it's an experiment name and append _best.npz
+    if not source_name.endswith(".npz"):
+        ckpt_path = REPO_ROOT / "checkpoints" / f"{source_name}_best.npz"
+    else:
+        ckpt_path = Path(source_name)
+        if not ckpt_path.is_absolute():
+            ckpt_path = REPO_ROOT / "checkpoints" / ckpt_path
+
+    if ckpt_path.exists():
+        print(f"Resuming from checkpoint: {ckpt_path.name}")
+        model.load_weights(str(ckpt_path))
+        mx.eval(model.parameters())
+    else:
+        if args.resume_from:
+            print(f"Warning: Checkpoint {ckpt_path} not found. Starting from scratch.")
 
 mx.eval(model.parameters())
 n_params = sum(p.size for _, p in tree_flatten(model.parameters()))

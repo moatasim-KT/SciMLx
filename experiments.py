@@ -43,6 +43,8 @@ class ExperimentConfig:
     augment:     bool  = False    # spatial-shift augmentation (periodic BCs only)
     curriculum:  bool  = False    # training curriculum (e.g. increase difficulty)
     save_ckpt:   bool  = False    # save model checkpoint after training
+    resume:      bool  = False    # resume from best checkpoint if exists
+    resume_from: str   = ""       # resume from specific checkpoint name/path
     budget_s:    int  = 1200      # training time budget in seconds (default 20 min)
     parent_name: str  = ""        # name of parent experiment this branches from (for DAG lineage)
     priority:    int  = 5         # 1 = highest; run in ascending order
@@ -76,6 +78,10 @@ class ExperimentConfig:
             args += ["--slice_num", str(self.slice_num)]
         if self.save_ckpt:
             args += ["--save_ckpt"]
+        if self.resume:
+            args += ["--resume"]
+        if self.resume_from:
+            args += ["--resume_from", self.resume_from]
         args += ["--budget", str(self.budget_s)]
         return args
 
@@ -105,7 +111,6 @@ class ExperimentConfig:
 # ── Experiment queue ──────────────────────────────────────────────────────────
 
 EXPERIMENTS: List[ExperimentConfig] = [
-
     # ── P25 · Untouched Benchmarks & Models ──────────────────────────────────
     # [swe_2d] 2D Shallow Water - 480s budget
     ExperimentConfig(
