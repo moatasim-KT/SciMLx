@@ -29,7 +29,7 @@ if FIGS_DIR.exists():
 if LOGS_DIR.exists():
     app.mount("/logs", StaticFiles(directory=str(LOGS_DIR)), name="logs")
 
-UI_DIR = REPO_ROOT / "ui"
+UI_DIR = REPO_ROOT / "dashboard" / "ui"
 if UI_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
 

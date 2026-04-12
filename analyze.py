@@ -257,7 +257,7 @@ def main() -> None:
 
     if args.papers:
         try:
-            from tools.paper_registry import PaperRegistry
+            from paper_registry import PaperRegistry
             reg = PaperRegistry()
             reg.gap_table()
         except Exception as e:

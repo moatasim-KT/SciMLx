@@ -63,7 +63,7 @@ def _load_hypothesis():
     return HypothesisEngine()
 
 def _load_hpo(benchmark: str, model: str = "FNO"):
-    from tools.bayesian_hpo import BayesianHPO
+    from bayesian_hpo import BayesianHPO
     hpo = BayesianHPO(benchmark, model)
     hpo.load_history()
     return hpo

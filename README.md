@@ -52,13 +52,13 @@ uv run python -m data.prefetch_data
 uv run train.py --model FNO --hidden 128 --layers 8 --modes 24
 
 # See current state vs SOTA
-PYTHONPATH=. uv run python -m tools.analyze --papers
+PYTHONPATH=. uv run python -m analyze --papers
 
 # Run all pending priority-1 experiments autonomously
 uv run autorun.py --priority 1 --commit
 
 # Web dashboard
-PYTHONPATH=. uv run python -m apps.app
+PYTHONPATH=. uv run python -m dashboard.app
 # Open http://localhost:8000 in browser
 ```
 
@@ -72,12 +72,12 @@ A human or AI (Claude Code, Gemini) drives the loop manually:
 
 ```bash
 # 1. Understand current state vs SOTA
-PYTHONPATH=. uv run python -m tools.analyze --papers
+PYTHONPATH=. uv run python -m analyze --papers
 
 # 2. Get ranked next-step suggestions
-PYTHONPATH=. uv run python -m tools.auto_suggest --gaps
+PYTHONPATH=. uv run python -m auto_suggest --gaps
 
-# 3. Edit experiments.py / models/*.py
+# 3. Edit experiments.yaml / models/*.py
 
 # 4. Trigger runner
 uv run autorun.py --priority 1 --commit
@@ -88,9 +88,9 @@ uv run autorun.py --priority 1 --commit
 Fully automated: `HypothesisEngine` + `BayesianHPO` generate and run new configs without human input.
 
 ```bash
-PYTHONPATH=. uv run python -m tools.agent_loop --dry-run   # preview only
-PYTHONPATH=. uv run python -m tools.agent_loop --top 5     # append top-5
-PYTHONPATH=. uv run python -m tools.agent_loop --run       # append + run top-3
+PYTHONPATH=. uv run python -m agent_loop --dry-run   # preview only
+PYTHONPATH=. uv run python -m agent_loop --top 5     # append top-5
+PYTHONPATH=. uv run python -m agent_loop --run       # append + run top-3
 ```
 
 ---
@@ -122,8 +122,6 @@ The repository is organized into a **minimalist root** structure to separate cor
 <!-- STRUCTURE_START -->
 ```text
 autoresearch-mlx/
-├── apps/
-│   └── app.py
 ├── core/
 │   ├── __init__.py
 │   ├── diagnostics.py
@@ -133,6 +131,10 @@ autoresearch-mlx/
 │   ├── tracker.py
 │   ├── trainer.py
 │   └── utils.py
+├── dashboard/
+│   ├── ui/
+│   │   └── dashboard.html
+│   └── app.py
 ├── data/
 │   ├── simulations/
 │   │   ├── AGENTS.md
@@ -209,28 +211,24 @@ autoresearch-mlx/
 │   └── wno.py
 ├── notebooks/
 │   └── colab_experiments.ipynb
-├── scratch/
-│   └── migrate_ns.py
-├── tools/
-│   ├── agent_loop.py
-│   ├── analyze.py
-│   ├── auto_suggest.py
-│   ├── bayesian_hpo.py
-│   ├── model_scaffold.py
-│   ├── monitor.py
-│   ├── paper_registry.py
-│   ├── update_readme.py
-│   └── viz.py
-├── ui/
-│   └── dashboard.html
 ├── README.md
+├── agent_loop.py
+├── analyze.py
+├── auto_suggest.py
 ├── autorun.py
+├── bayesian_hpo.py
 ├── experiments.py
+├── experiments.yaml
+├── model_scaffold.py
+├── monitor.py
+├── paper_registry.py
 ├── pyproject.toml
 ├── results.json
 ├── results.tsv
 ├── train.py
-└── uv.lock
+├── update_readme.py
+├── uv.lock
+└── viz.py
 ```
 <!-- STRUCTURE_END -->
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-REPO_ROOT = Path(__file__).parent.parent
+REPO_ROOT = Path(__file__).parent
 README_PATH = REPO_ROOT / "README.md"
 
 IGNORE_DIRS = {
