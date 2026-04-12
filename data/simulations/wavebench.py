@@ -13,7 +13,7 @@ Here we release from rest, so u_t(0) = 0.
 import math
 import numpy as np
 
-from prepare import _random_ic_2d
+from data.prepare import _random_ic_2d
 
 C_SPEED = 2.0
 T_FINAL = 1.0

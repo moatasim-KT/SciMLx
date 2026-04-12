@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from typing import Dict, Any, Tuple, Optional, List
 
-from utils import FIGS_DIR
+from core.utils import FIGS_DIR
 
 def calculate_spectral_bias(pred: np.ndarray, truth: np.ndarray) -> Dict[str, float]:
     """Calculate error magnitude across Fourier modes."""

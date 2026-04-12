@@ -11,7 +11,7 @@ Output: [B, N, N, 2]
 
 import math
 import numpy as np
-from prepare import _random_ic_2d
+from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
 D1, D2 = 0.01, 0.05

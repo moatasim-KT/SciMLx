@@ -11,11 +11,17 @@ from typing import Optional
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
-REPO_ROOT    = Path(__file__).parent
-RESULTS_FILE = REPO_ROOT / "results.tsv"
-LOGS_DIR     = REPO_ROOT / "logs"
-FIGS_DIR     = REPO_ROOT / "figs"
-PAPERS_DIR   = REPO_ROOT / "papers"
+REPO_ROOT     = Path(__file__).parent.parent
+RESULTS_FILE  = REPO_ROOT / "results.json"  # results.tsv logic is now legacy or synced
+LOGS_DIR      = REPO_ROOT / "logs"
+TELEMETRY_DIR = LOGS_DIR / "telemetry"
+SENTINEL_DIR  = LOGS_DIR / "sentinels"
+FIGS_DIR      = REPO_ROOT / "figs"
+PAPERS_DIR    = REPO_ROOT / "docs" / "papers"
+
+# Ensure directories exist
+for d in [LOGS_DIR, TELEMETRY_DIR, SENTINEL_DIR, FIGS_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
 
 # ── SOTA targets ──────────────────────────────────────────────────────────────
 
@@ -38,24 +44,32 @@ SOTA: dict[str, float] = {
 # ── results.tsv helpers ───────────────────────────────────────────────────────
 
 def load_results(benchmark: Optional[str] = None) -> list[dict]:
-    """Return all rows from results.tsv, optionally filtered by benchmark.
-
+    """Return all rows from results.json, optionally filtered by benchmark.
+    
     Each row has val_l2_rel coerced to float (nan on parse failure).
     """
+    import json
     rows: list[dict] = []
     if not RESULTS_FILE.exists():
         return rows
-    with open(RESULTS_FILE) as f:
-        reader = csv.DictReader(f, delimiter="\t")
-        for row in reader:
-            try:
-                row["val_l2_rel"] = float(row["val_l2_rel"])
-            except (ValueError, KeyError):
-                row["val_l2_rel"] = float("nan")
-            if benchmark and row.get("benchmark") != benchmark:
-                continue
-            rows.append(row)
-    return rows
+    try:
+        with open(RESULTS_FILE) as f:
+            rows = json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load {RESULTS_FILE}: {e}")
+        return []
+
+    processed_rows = []
+    for row in rows:
+        try:
+            row["val_l2_rel"] = float(row.get("val_l2_rel", float("nan")))
+        except (ValueError, TypeError):
+            row["val_l2_rel"] = float("nan")
+        
+        if benchmark and row.get("benchmark") != benchmark:
+            continue
+        processed_rows.append(row)
+    return processed_rows
 
 
 def best_per_benchmark(rows: list[dict]) -> dict[str, float]:

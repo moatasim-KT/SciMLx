@@ -38,7 +38,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from scipy.stats import norm
 
-REPO_ROOT    = Path(__file__).parent
+from core.utils import REPO_ROOT
 RESULTS_JSON = REPO_ROOT / "results.json"
 
 # Default single-objective spec: (metric_name, weight, direction)

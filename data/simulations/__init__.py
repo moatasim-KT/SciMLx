@@ -23,17 +23,17 @@ from pathlib import Path
 import mlx.core as mx
 import numpy as np
 
-from prepare import GRID_SIZE, N_TRAIN, N_VAL, VAL_SEED, TRAIN_SEED, CACHE_DIR
+from data.prepare import GRID_SIZE, N_TRAIN, N_VAL, VAL_SEED, TRAIN_SEED, CACHE_DIR
 
-from simulations import euler1d
-from simulations import shallow_water
-from simulations import allen_cahn
-from simulations import ns_etdrk4
-from simulations import wavebench
-from simulations import multiphysics
-from simulations import pdebench
-from simulations import elasticity
-from simulations import radiative
+from data.simulations import euler1d
+from data.simulations import shallow_water
+from data.simulations import allen_cahn
+from data.simulations import ns_etdrk4
+from data.simulations import wavebench
+from data.simulations import multiphysics
+from data.simulations import pdebench
+from data.simulations import elasticity
+from data.simulations import radiative
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
+from core.utils import REPO_ROOT
 
 
 # ---------------------------------------------------------------------------
@@ -39,9 +40,11 @@ def _effective_config(exp: dict) -> dict:
 class HypothesisEngine:
     def __init__(
         self,
-        results_path: str = "results.json",
-        papers_dir: str = "papers",
+        results_path: str = None,
+        papers_dir: str = None,
     ):
+        if results_path is None: results_path = REPO_ROOT / "results.json"
+        if papers_dir is None: papers_dir = REPO_ROOT / "docs" / "papers"
         results_path = Path(results_path)
         self.experiments: list[dict] = []
         if results_path.exists():

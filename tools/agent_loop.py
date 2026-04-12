@@ -50,20 +50,20 @@ import textwrap
 from pathlib import Path
 from typing import Optional
 
-REPO_ROOT = Path(__file__).parent
+from core.utils import REPO_ROOT
 
 # ── Imports (lazy to avoid MLX startup cost when just planning) ───────────────
 
 def _load_tracker():
-    from tracker import Tracker
+    from core.tracker import Tracker
     return Tracker()
 
 def _load_hypothesis():
-    from hypothesis import HypothesisEngine
+    from core.hypothesis import HypothesisEngine
     return HypothesisEngine()
 
 def _load_hpo(benchmark: str, model: str = "FNO"):
-    from bayesian_hpo import BayesianHPO
+    from tools.bayesian_hpo import BayesianHPO
     hpo = BayesianHPO(benchmark, model)
     hpo.load_history()
     return hpo
@@ -76,7 +76,7 @@ def is_paused() -> bool:
 
 def current_sota_gaps() -> dict[str, float]:
     """Return ratio (our_best / sota) for each benchmark. <1 means we beat SOTA."""
-    from utils import SOTA, load_results, best_per_benchmark
+    from core.utils import SOTA, load_results, best_per_benchmark
     rows = load_results()
     best = best_per_benchmark(rows)
     gaps = {}
@@ -89,7 +89,7 @@ def current_sota_gaps() -> dict[str, float]:
 
 def pending_count() -> int:
     from experiments import get_experiments
-    from utils import done_names
+    from core.utils import done_names
     done = done_names()
     return sum(1 for e in get_experiments() if e.name not in done)
 
@@ -142,7 +142,7 @@ def _name_from_config(benchmark: str, model: str, cfg: dict) -> str:
 
 def generate_new_configs(state: dict, top_n: int = 5, no_hpo: bool = False) -> list[dict]:
     """Use Bayesian HPO + hypothesis interventions to propose new ExperimentConfigs."""
-    from utils import done_names
+    from core.utils import done_names
     done = done_names()
     configs = []
 
@@ -254,7 +254,7 @@ def append_configs_to_experiments(configs: list[dict]) -> int:
     content  = exp_path.read_text()
 
     # Validate: each config must have required fields and unique name
-    from utils import done_names
+    from core.utils import done_names
     done = done_names()
     to_add = []
     for cfg in configs:

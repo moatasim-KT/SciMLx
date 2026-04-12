@@ -7,6 +7,7 @@ import mlx.nn as nn
 from mlx.optimizers import AdamW
 from mlx.utils import tree_flatten, tree_map
 from typing import Callable, Any, Dict, Optional, Tuple
+from core.utils import TELEMETRY_DIR
 
 def clip_grad_norm(grads, max_norm: float) -> Tuple[Any, float]:
     """Clip gradient tree by global L2 norm. Returns (clipped_grads, norm)."""
@@ -49,7 +50,7 @@ class Trainer:
         # Per-experiment telemetry file: .vram_telemetry_<name> so parallel runs don't clobber each other
         from pathlib import Path as _Path
         _slug = exp_name.replace("/", "_").replace(" ", "_") if exp_name else ""
-        self._telemetry_path = _Path(__file__).resolve().parent / (
+        self._telemetry_path = TELEMETRY_DIR / (
             f".vram_telemetry_{_slug}" if _slug else ".vram_telemetry"
         )
 
@@ -201,7 +202,7 @@ class Trainer:
                     )
                     # Periodic checkpointing to disk for resumption
                     if self.exp_name:
-                        from utils import REPO_ROOT
+                        from core.utils import REPO_ROOT
                         ckpt_dir = REPO_ROOT / "checkpoints"
                         ckpt_dir.mkdir(exist_ok=True)
                         ckpt_path = ckpt_dir / f"{self.exp_name}_best.npz"

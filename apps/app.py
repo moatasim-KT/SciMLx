@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from utils import FIGS_DIR, LOGS_DIR, REPO_ROOT, SOTA
+from core.utils import FIGS_DIR, LOGS_DIR, REPO_ROOT, SOTA, TELEMETRY_DIR, SENTINEL_DIR
 
-PAUSE_FILE = REPO_ROOT / ".autorun_pause"
+PAUSE_FILE = SENTINEL_DIR / ".autorun_pause"
 
 app = FastAPI(title="SciML Command Center API")
 
@@ -42,7 +42,7 @@ def get_dashboard():
 
 def _tracker():
     """Always return a fresh Tracker so new results.json writes are reflected."""
-    from tracker import Tracker
+    from core.tracker import Tracker
     return Tracker()
 
 
@@ -98,7 +98,7 @@ def get_lineage():
     return {"nodes": nodes, "links": links}
 
 
-TELEMETRY_FILE = REPO_ROOT / ".vram_telemetry"
+TELEMETRY_FILE = TELEMETRY_DIR / ".vram_telemetry"
 
 def _read_telemetry_files() -> list[dict]:
     """Read all .vram_telemetry* files and return a list of live experiment dicts.
@@ -113,7 +113,7 @@ def _read_telemetry_files() -> list[dict]:
     seen_experiments = set()
 
     # Collect all telemetry files (named + legacy)
-    telemetry_files = sorted(REPO_ROOT.glob(".vram_telemetry*"))
+    telemetry_files = sorted(TELEMETRY_DIR.glob(".vram_telemetry*"))
 
     for path in telemetry_files:
         try:
@@ -173,7 +173,7 @@ def get_status():
 @app.get("/api/sota")
 def get_sota():
     """Return SOTA targets and our current best per benchmark."""
-    from utils import best_per_benchmark
+    from core.utils import best_per_benchmark
     exps = _tracker().get_lineage()
     our_best = best_per_benchmark(exps)
     result = {}
@@ -224,7 +224,7 @@ def list_logs():
 def get_queue():
     """Return pending experiments sorted by priority."""
     from experiments import get_experiments
-    from utils import done_names
+    from core.utils import done_names
     done = done_names()
     pending = [
         {
@@ -252,7 +252,7 @@ def get_active():
     active = []
     
     # Priority 1: Check for explicit signaling file
-    active_file = REPO_ROOT / ".active_experiment"
+    active_file = SENTINEL_DIR / ".active_experiment"
     if active_file.exists():
         try:
             name = active_file.read_text().strip()
@@ -281,7 +281,7 @@ def get_active():
 def kill_experiment(name: str):
     """Request termination of a running experiment by writing a sentinel file.
     autorun.py polls for this file every 2s and calls proc.terminate() when found."""
-    kill_file = REPO_ROOT / f".kill_{name}"
+    kill_file = SENTINEL_DIR / f".kill_{name}"
     kill_file.touch()
     return {"status": "kill_requested", "name": name,
             "message": "Sentinel written — experiment will stop within ~2s."}
@@ -313,7 +313,7 @@ class PriorityUpdate(BaseModel):
 
 @app.post("/api/priority")
 def update_priority(update: PriorityUpdate):
-    overrides_path = REPO_ROOT / ".priority_overrides.json"
+    overrides_path = SENTINEL_DIR / ".priority_overrides.json"
     overrides = json.loads(overrides_path.read_text()) if overrides_path.exists() else {}
     overrides[update.name] = update.priority
     overrides_path.write_text(json.dumps(overrides, indent=2))
@@ -333,7 +333,7 @@ class ExperimentInject(BaseModel):
 
 @app.post("/api/inject")
 def inject_experiment(exp: ExperimentInject):
-    injections_path = REPO_ROOT / ".injected_experiments.json"
+    injections_path = SENTINEL_DIR / ".injected_experiments.json"
     injections = json.loads(injections_path.read_text()) if injections_path.exists() else []
     injections.append(exp.dict())
     injections_path.write_text(json.dumps(injections, indent=2))

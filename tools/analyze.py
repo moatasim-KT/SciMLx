@@ -17,7 +17,7 @@ import math
 from collections import defaultdict
 from typing import Optional
 
-from utils import RESULTS_FILE, LOGS_DIR, FIGS_DIR, SOTA, load_results
+from core.utils import RESULTS_FILE, LOGS_DIR, FIGS_DIR, SOTA, load_results
 
 
 # ── Analysis helpers ──────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ def main() -> None:
 
     if args.papers:
         try:
-            from paper_registry import PaperRegistry
+            from tools.paper_registry import PaperRegistry
             reg = PaperRegistry()
             reg.gap_table()
         except Exception as e:

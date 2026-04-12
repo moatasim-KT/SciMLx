@@ -30,7 +30,7 @@ try:
 except ImportError:
     _HAS_YAML = False
 
-from utils import PAPERS_DIR, RESULTS_FILE, load_results as _load_rows
+from core.utils import PAPERS_DIR, RESULTS_FILE, load_results as _load_rows
 
 
 # ── YAML fallback (tiny parser for simple key: value files) ──────────────────
@@ -108,6 +108,8 @@ class PaperRegistry:
             try:
                 paper = _load_paper(path)
                 paper["_file"] = path.name
+                if "id" not in paper:
+                    paper["id"] = path.stem
                 self.papers.append(paper)
             except Exception as e:
                 print(f"Warning: could not load {path.name}: {e}")
@@ -139,7 +141,7 @@ class PaperRegistry:
     @staticmethod
     def _load_results() -> dict[str, float]:
         """Return best val_l2_rel per benchmark from results.tsv."""
-        from utils import best_per_benchmark
+        from core.utils import best_per_benchmark
         return best_per_benchmark(_load_rows())
 
     def gap_table(self) -> None:

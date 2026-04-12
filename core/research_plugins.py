@@ -117,8 +117,8 @@ BENCHMARK_REGISTRY = BenchmarkRegistry()
 # ── Populate registries from existing codebase ────────────────────────────────
 
 def _register_defaults():
-    from prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
-    from benchmarks_ext import (
+    from data.prepare import GRID_SIZE, make_dataloader, evaluate_l2_rel
+    from data.benchmarks_ext import (
         EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
     )
 
@@ -198,7 +198,7 @@ def _register_defaults():
         )
 
     # ── High-fidelity simulation benchmarks ───────────────────────────────────
-    from simulations import (
+    from data.simulations import (
         SIM_BENCHMARKS, SIM_SOTA, SIM_METADATA,
         make_sim_dataloader, evaluate_l2_rel_sim,
     )

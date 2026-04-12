@@ -9,7 +9,7 @@ Output: [B, N, N]
 
 import math
 import numpy as np
-from prepare import _random_ic_2d
+from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
 D = 0.02

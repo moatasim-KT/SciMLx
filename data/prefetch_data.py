@@ -34,7 +34,7 @@ def log(bm: str, msg: str):
 
 def prefetch_ext(benchmark: str) -> str:
     """Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy, ns_2d)."""
-    from benchmarks_ext import (
+    from data.benchmarks_ext import (
         _get_ext_train, _load_or_gen_ext_val,
         _get_ext_val_cache, _get_ext_train_cache_path, N_TRAIN,
     )
@@ -67,7 +67,7 @@ def prefetch_ext(benchmark: str) -> str:
 
 def prefetch_sim(benchmark: str) -> str:
     """Cache train+val for simulation benchmarks (euler_1d, swe_2d, allen_cahn_2d, ns_hre_2d)."""
-    from simulations import _load_or_generate, _cache_path
+    from data.simulations import _load_or_generate, _cache_path
 
     results = []
     for split in ("val", "train"):
@@ -87,7 +87,7 @@ def prefetch_sim(benchmark: str) -> str:
 
 def prefetch_burgers() -> str:
     """Cache burgers_1d train+val to disk (prepare.py only does in-memory caching)."""
-    from prepare import (
+    from data.prepare import (
         _generate_dataset, _load_or_gen_val, N_TRAIN, N_VAL, TRAIN_SEED, CACHE_DIR, GRID_SIZE
     )
 

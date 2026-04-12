@@ -14,19 +14,19 @@ import time
 import argparse
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent
+from core.utils import REPO_ROOT
 
 import mlx.core as mx
 import numpy as np
 import mlx.nn as nn
 from mlx.utils import tree_flatten
 
-from prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
-from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
-from simulations import SIM_BENCHMARKS, SIM_IS_MC, SIM_N_CHANNELS
-from losses import get_loss_fn
-from research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
-from trainer import Trainer, get_lr_schedule
+from data.prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
+from data.benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
+from data.simulations import SIM_BENCHMARKS, SIM_IS_MC, SIM_N_CHANNELS
+from core.losses import get_loss_fn
+from core.research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
+from core.trainer import Trainer, get_lr_schedule
 from mlx.optimizers import AdamW
 
 # ── Hyperparameters (module-level defaults) ───────────────────────────────────
@@ -249,7 +249,7 @@ print("Evaluating...")
 val_l2_rel = trainer.evaluate()
 t_eval     = time.time()
 
-from diagnostics import calculate_spectral_bias, generate_experiment_comparison
+from core.diagnostics import calculate_spectral_bias, generate_experiment_comparison
 
 peak_vram_mb = mx.get_peak_memory() / 1024 / 1024
 print("---")

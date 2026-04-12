@@ -45,7 +45,7 @@ import textwrap
 from pathlib import Path
 from typing import Optional
 
-REPO_ROOT = Path(__file__).parent
+from core.utils import REPO_ROOT
 
 # ── Stub templates ────────────────────────────────────────────────────────────
 
@@ -265,7 +265,7 @@ class ModelGate:
             print(f"  Added {name} export to models/__init__.py")
 
         # 3. Add to research_plugins.py MODEL_REGISTRY
-        plugins_path = REPO_ROOT / "research_plugins.py"
+        plugins_path = REPO_ROOT / "core" / "research_plugins.py"
         plugins_src  = plugins_path.read_text()
         reg_line     = f'    MODEL_REGISTRY.register_class("{name}", {name})\n'
         if reg_line.strip() not in plugins_src:
@@ -336,7 +336,7 @@ def main() -> None:
     args = p.parse_args()
 
     if args.list:
-        from research_plugins import MODEL_REGISTRY
+        from core.research_plugins import MODEL_REGISTRY
         print("Registered models:", MODEL_REGISTRY.available)
         return
 

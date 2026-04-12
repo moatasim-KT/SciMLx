@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 # ── Path Constants ────────────────────────────────────────────────────────────
-REPO_ROOT    = Path(__file__).parent
+from core.utils import REPO_ROOT
 RESULTS_JSON = REPO_ROOT / "results.json"
 RESULTS_TSV  = REPO_ROOT / "results.tsv"
 

@@ -25,7 +25,7 @@ References:
 
 import numpy as np
 
-from prepare import _random_ic_2d
+from data.prepare import _random_ic_2d
 
 # ── Physical constants ─────────────────────────────────────────────────────────
 

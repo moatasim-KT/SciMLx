@@ -28,10 +28,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from diagnostics import parse_log_file, check_early_stop_condition, get_fix_strategies
+from core.diagnostics import parse_log_file, check_early_stop_condition, get_fix_strategies
 from experiments import ExperimentConfig, get_experiments
-from utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, load_results, done_names, best_per_benchmark
-from tracker import Tracker
+from core.utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, SENTINEL_DIR, load_results, done_names, best_per_benchmark
+from core.tracker import Tracker
 
 TIMEOUT_S = 1500  # 25 min per experiment (20-min budget + data/compile overhead)
 
@@ -56,7 +56,9 @@ MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 BENCHMARKS_2D = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
 
 # File written by POST /api/inject — autorun polls this between experiments
-INJECTIONS_FILE = REPO_ROOT / ".injected_experiments.json"
+INJECTIONS_FILE = SENTINEL_DIR / ".injected_experiments.json"
+PAUSE_FILE      = SENTINEL_DIR / ".autorun_pause"
+ACTIVE_FILE     = SENTINEL_DIR / ".active_experiment"
 
 def estimate_memory_mb(exp: ExperimentConfig) -> int:
     """Estimate peak memory usage for an experiment."""
@@ -270,10 +272,9 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    active_file = REPO_ROOT / ".active_experiment"
     with _active_lock:
         _active_experiments.add(exp.name)
-        active_file.write_text(", ".join(sorted(_active_experiments)))
+        ACTIVE_FILE.write_text(", ".join(sorted(_active_experiments)))
     try:
         t0 = time.time()
         try:
@@ -285,7 +286,7 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
                     cwd=REPO_ROOT,
                 )
             try:
-                kill_file = REPO_ROOT / f".kill_{exp.name}"
+                kill_file = SENTINEL_DIR / f".kill_{exp.name}"
                 deadline = time.time() + TIMEOUT_S
                 last_size = 0
                 while time.time() < deadline:
@@ -581,7 +582,7 @@ def main() -> None:
                 f"— querying HypothesisEngine for adaptive config..."
             )
             try:
-                from hypothesis import HypothesisEngine
+                from core.hypothesis import HypothesisEngine
                 _engine = HypothesisEngine()
                 _diag = results.get("diag") or {}
                 _suggestion = _engine.suggest_intervention(exp.benchmark, val, _diag)
@@ -693,6 +694,12 @@ def main() -> None:
                 n_crashed += 1
             elif status == "keep":
                 n_improved += 1
+            
+            # Check for pause
+            while PAUSE_FILE.exists():
+                print("\n  [pause] .autorun_pause found — waiting…", end="\r")
+                time.sleep(5)
+            
             # Check for newly injected experiments before moving on
             pending = poll_injections(pending, load_done_names())
             i += 1

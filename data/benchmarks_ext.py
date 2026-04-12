@@ -33,7 +33,7 @@ import time
 import mlx.core as mx
 import numpy as np
 
-from prepare import (
+from data.prepare import (
     GRID_SIZE, TIME_BUDGET, N_TRAIN, N_VAL, VAL_SEED, TRAIN_SEED,
     CACHE_DIR,
     solve_kdv_batch, solve_wave_batch, _random_ic, _random_ic_2d,

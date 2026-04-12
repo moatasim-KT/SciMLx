@@ -29,7 +29,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Optional
 
-from utils import PAPERS_DIR, SOTA as _SOTA_TARGETS, load_results, best_per_benchmark as _best_per_bm, done_names as _done_names_fn
+from core.utils import PAPERS_DIR, SOTA as _SOTA_TARGETS, load_results, best_per_benchmark as _best_per_bm, done_names as _done_names_fn
 
 # Related benchmark groups for cross-benchmark transfer
 # When a config wins on benchmark A, also suggest it on its relatives
@@ -150,7 +150,7 @@ _known_wins_cache: dict | None = None
 
 def _compute_known_wins() -> dict:
     """Build KNOWN_WINS from actual results.json, merging with hardcoded fallback."""
-    from utils import REPO_ROOT
+    from core.utils import REPO_ROOT
     results_path = REPO_ROOT / "results.json"
     computed: dict = {}
     if results_path.exists():
@@ -355,7 +355,8 @@ def _load_diag_from_results() -> dict[str, dict]:
 
     Returns: {exp_name_prefix: {"diag_high_freq_error": float, ...}}
     """
-    results_path = Path(__file__).parent / "results.json"
+    from core.utils import REPO_ROOT
+    results_path = REPO_ROOT / "results.json"
     diag_map: dict[str, dict] = {}
     if not results_path.exists():
         return diag_map
