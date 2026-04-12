@@ -153,6 +153,15 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("UDE", "neural_ode", "UniversalDE1d")
     MODEL_REGISTRY.register_lazy("LatentODE", "neural_ode", "LatentODE1d")
     MODEL_REGISTRY.register_lazy("PACMANN", "pacmann", "PACMANN")
+    
+    # ── Novel Hybrid Models ───────────────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("HybridDecoderDeepONet2D", "hybrid_decoder_deeponet", "HybridDecoderDeepONet2d")
+    MODEL_REGISTRY.register_lazy("AttentionEnhancedFNO2D", "attention_fno", "AttentionEnhancedFNO2d")
+    MODEL_REGISTRY.register_lazy("HybridFNODeepONet2D", "hybrid_fno_deeponet", "HybridFNODeepONet2d")
+    MODEL_REGISTRY.register_lazy("FEDONet2D", "fedonet", "FEDONet2d")
+    MODEL_REGISTRY.register_lazy("HANO2D", "hano", "HANO2d")
+    MODEL_REGISTRY.register_lazy("SNO2D", "sno", "SNO2d")
+    MODEL_REGISTRY.register_lazy("VSMNO2D", "vsmno", "VSMNO2d")
 
     @MODEL_REGISTRY.register("FNO")
     def _make_fno(n_modes=16, hidden_dim=64, n_layers=4, **kw):

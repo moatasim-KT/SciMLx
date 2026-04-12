@@ -29,16 +29,26 @@ from simulations import euler1d
 from simulations import shallow_water
 from simulations import allen_cahn
 from simulations import ns_etdrk4
+from simulations import wavebench
+from simulations import multiphysics
+from simulations import pdebench
+from simulations import elasticity
+from simulations import radiative
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
-SIM_BENCHMARKS: set[str] = {"euler_1d", "swe_2d", "allen_cahn_2d", "ns_hre_2d"}
+SIM_BENCHMARKS: set[str] = {"euler_1d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "wavebench_2d", "multiphysics_2d", "pdebench_2d", "elasticity_2d", "radiative_2d"}
 
 SIM_SOTA: dict[str, float] = {
     "euler_1d":      0.015,   # smooth subsonic Euler; comparable to Burgers
     "swe_2d":        0.002,   # linear dispersive waves; FNO near-exact
     "allen_cahn_2d": 0.020,   # phase-field coarsening; Geneva & Zabaras 2022
     "ns_hre_2d":     0.070,   # Li et al. 2020, Re=1000 (FNO Table 4)
+    "wavebench_2d":  0.010,
+    "multiphysics_2d": 0.020,
+    "pdebench_2d":   0.030,
+    "elasticity_2d": 0.040,
+    "radiative_2d":  0.050,
 }
 
 # Metadata exposed for documentation / paper_registry
@@ -47,6 +57,11 @@ SIM_METADATA: dict[str, dict] = {
     "swe_2d":        shallow_water.METADATA,
     "allen_cahn_2d": allen_cahn.METADATA,
     "ns_hre_2d":     ns_etdrk4.METADATA,
+    "wavebench_2d":  wavebench.METADATA,
+    "multiphysics_2d": multiphysics.METADATA,
+    "pdebench_2d":   pdebench.METADATA,
+    "elasticity_2d": elasticity.METADATA,
+    "radiative_2d":  radiative.METADATA,
 }
 
 # Whether the benchmark has multi-channel inputs/outputs
@@ -55,6 +70,11 @@ SIM_IS_MC: dict[str, bool] = {
     "swe_2d":        False,  # [B, N, N]
     "allen_cahn_2d": False,  # [B, N, N]
     "ns_hre_2d":     False,  # [B, N, N]
+    "wavebench_2d":  False,  # [B, N, N]
+    "multiphysics_2d": True,   # [B, N, N, 2]
+    "pdebench_2d":   False,  # [B, N, N]
+    "elasticity_2d": True,   # [B, N, N, 2]
+    "radiative_2d":  False,  # [B, N, N]
 }
 
 SIM_N_CHANNELS: dict[str, int] = {
@@ -62,6 +82,11 @@ SIM_N_CHANNELS: dict[str, int] = {
     "swe_2d":        1,
     "allen_cahn_2d": 1,
     "ns_hre_2d":     1,
+    "wavebench_2d":  1,
+    "multiphysics_2d": 2,
+    "pdebench_2d":   1,
+    "elasticity_2d": 2,
+    "radiative_2d":  1,
 }
 
 
@@ -78,6 +103,16 @@ def _generate_sim_dataset(benchmark: str, n: int, seed: int) -> tuple:
         return allen_cahn.make_dataset(n, seed, N)
     if benchmark == "ns_hre_2d":
         return ns_etdrk4.make_dataset(n, seed, N)
+    if benchmark == "wavebench_2d":
+        return wavebench.make_dataset(n, seed, N)
+    if benchmark == "multiphysics_2d":
+        return multiphysics.make_dataset(n, seed, N)
+    if benchmark == "pdebench_2d":
+        return pdebench.make_dataset(n, seed, N)
+    if benchmark == "elasticity_2d":
+        return elasticity.make_dataset(n, seed, N)
+    if benchmark == "radiative_2d":
+        return radiative.make_dataset(n, seed, N)
     raise ValueError(f"Unknown sim benchmark: {benchmark!r}")
 
 

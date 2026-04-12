@@ -206,24 +206,35 @@ class FNOBlock2d(nn.Module):
 
 class FNO2d(nn.Module):
     """Fourier Neural Operator for 2-D operator learning."""
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_ch: int = 3):
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
         super().__init__()
-        self.lift   = nn.Linear(in_ch, hidden_dim)
+        # Internal lifting dimension: data channels + 2 spatial grids
+        self.lift   = nn.Linear(in_channels + 2, hidden_dim)
         self.blocks = [FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+        self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
 
-    def __call__(self, u0: mx.array) -> mx.array:
-        # u0 : [B, N1, N2]
-        B, N1, N2 = u0.shape
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1), (B, N1, N2))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2), (B, N1, N2))
-        x     = mx.stack([u0, grid1, grid2], axis=-1)  # [B, N1, N2, 3]
+    def __call__(self, x: mx.array) -> mx.array:
+        # x : [B, N1, N2] or [B, N1, N2, C]
+        if x.ndim == 3:
+            B, N1, N2 = x.shape
+            x = x[..., None]
+        else:
+            B, N1, N2, _ = x.shape
+            
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
+        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
+        
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
         x     = nn.gelu(self.proj1(x))
-        return self.proj2(x)[:, :, :, 0]
+        out   = self.proj2(x)
+        
+        if out.shape[-1] == 1:
+            return out[:, :, :, 0]
+        return out
 
 
 class FNOBlockResidual2d(nn.Module):
@@ -241,25 +252,35 @@ class FNOBlockResidual2d(nn.Module):
 
 class RFNO2d(nn.Module):
     """Residual Fourier Neural Operator for 2-D operator learning."""
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_ch: int = 3):
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
         super().__init__()
-        self.lift   = nn.Linear(in_ch, hidden_dim)
+        self.lift   = nn.Linear(in_channels + 2, hidden_dim)
         self.blocks = [FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+        self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
 
-    def __call__(self, u0: mx.array) -> mx.array:
-        # u0 : [B, N1, N2]
-        B, N1, N2 = u0.shape
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1), (B, N1, N2))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2), (B, N1, N2))
-        x     = mx.stack([u0, grid1, grid2], axis=-1)  # [B, N1, N2, 3]
+    def __call__(self, x: mx.array) -> mx.array:
+        # x : [B, N1, N2] or [B, N1, N2, C]
+        if x.ndim == 3:
+            B, N1, N2 = x.shape
+            x = x[..., None]
+        else:
+            B, N1, N2, _ = x.shape
+
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
+        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
+
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
         x     = nn.gelu(self.proj1(self.norm(x)))
-        return self.proj2(x)[:, :, :, 0]
+        out   = self.proj2(x)
+
+        if out.shape[-1] == 1:
+            return out[:, :, :, 0]
+        return out
 
 
 # ── U-shaped Neural Operator (UNO) ────────────────────────────────────────────

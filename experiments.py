@@ -2227,6 +2227,323 @@ ExperimentConfig(
     rationale="Auto-generated baseline for PACMANN on burgers_1d",
 ),
 
+    # ── Phase 3 Expansion: 7 Hybrids x 5 Benchmarks ──
+    ExperimentConfig(
+        name="hybriddecoderdeeponet_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="HybridDecoderDeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="attentionenhancedfno_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="AttentionEnhancedFNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybridfnodeeponet_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="HybridFNODeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="fedonet_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="FEDONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hano_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="HANO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="sno_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="SNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="vsmno_wavebench_2d_h32_l2_m8",
+        benchmark="wavebench_2d",
+        model="VSMNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybriddecoderdeeponet_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="HybridDecoderDeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="attentionenhancedfno_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="AttentionEnhancedFNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybridfnodeeponet_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="HybridFNODeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="fedonet_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="FEDONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hano_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="HANO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="sno_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="SNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="vsmno_multiphysics_2d_h32_l2_m8",
+        benchmark="multiphysics_2d",
+        model="VSMNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybriddecoderdeeponet_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="HybridDecoderDeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="attentionenhancedfno_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="AttentionEnhancedFNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybridfnodeeponet_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="HybridFNODeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="fedonet_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="FEDONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hano_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="HANO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="sno_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="SNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="vsmno_pdebench_2d_h32_l2_m8",
+        benchmark="pdebench_2d",
+        model="VSMNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybriddecoderdeeponet_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="HybridDecoderDeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="attentionenhancedfno_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="AttentionEnhancedFNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybridfnodeeponet_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="HybridFNODeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="fedonet_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="FEDONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hano_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="HANO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="sno_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="SNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="vsmno_elasticity_2d_h32_l2_m8",
+        benchmark="elasticity_2d",
+        model="VSMNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybriddecoderdeeponet_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="HybridDecoderDeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="attentionenhancedfno_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="AttentionEnhancedFNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hybridfnodeeponet_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="HybridFNODeepONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="fedonet_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="FEDONet2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="hano_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="HANO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="sno_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="SNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+    ExperimentConfig(
+        name="vsmno_radiative_2d_h32_l2_m8",
+        benchmark="radiative_2d",
+        model="VSMNO2D",
+        hidden_dim=32, n_layers=2, n_modes=8,
+        budget_s=480,
+        priority=1,
+        rationale="Phase 3 Full Sweep"
+    ),
+
 ]
 
 

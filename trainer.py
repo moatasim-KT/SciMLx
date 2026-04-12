@@ -78,7 +78,7 @@ class Trainer:
             elapsed = t_now - t_start
             if elapsed > self.time_budget:
                 # Dynamic budget extension: if loss is decreasing well at the end, add 20% more time
-                if extensions_count < MAX_EXTENSIONS and initial_loss and loss_at_50:
+                if extensions_count < MAX_EXTENSIONS and initial_loss and loss_at_50 and len(self._loss_history) > 0:
                     # Heuristic: loss has dropped significantly from start and is still dropping from mid-point
                     if self._loss_history[-1][1] < 0.8 * initial_loss and \
                        self._loss_history[-1][1] < 0.9 * loss_at_50:

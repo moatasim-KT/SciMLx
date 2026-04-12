@@ -261,12 +261,12 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
         targets = solve_wave_batch(u0, ut0, c=WAVE_C, T=WAVE_T, n_steps=WAVE_NSTEPS)
     elif benchmark == "darcy_2d":
         a, f    = _darcy_fix_ic(n, GRID_SIZE, rng)
-        inputs  = a
-        targets = solve_darcy_2d_batch(a, f)
+        inputs  = a[..., None]
+        targets = solve_darcy_2d_batch(a, f)[..., None]
     elif benchmark == "ns_2d":
         w0      = _ns_fix_ic(n, GRID_SIZE, rng)
-        inputs  = w0
-        targets = solve_ns_2d_batch(w0)
+        inputs  = w0[..., None]
+        targets = solve_ns_2d_batch(w0)[..., None]
     else:
         raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
     return inputs, targets

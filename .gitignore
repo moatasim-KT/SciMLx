@@ -1,4 +1,4 @@
-# ── Python ────────────────────────────────────────────────────────────────────
+# ── Python & Environments ─────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
@@ -6,54 +6,71 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-
-# ── Virtual environment ───────────────────────────────────────────────────────
 .venv/
 venv/
 env/
+.ipynb_checkpoints/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
 
-# ── macOS ─────────────────────────────────────────────────────────────────────
+# ── macOS & OS Artefacts ──────────────────────────────────────────────────────
 .DS_Store
 .AppleDouble
+._*
+Desktop.ini
+Thumbs.db
 
-# ── Training logs (per-experiment, reproducible) ─────────────────────────────
+# ── Project Specific Logs ─────────────────────────────────────────────────────
 logs/
 *.log
+autorun_out.log
+server_startup.log
+server_uv.log
+test_log.txt
+test_bg.log
+manual_*.log
+*.tsv
 
-# ── Generated figures (reproduced by viz.py / train.py) ──────────────────────
+# ── Generated Output & Artefacts ──────────────────────────────────────────────
 figs/
-
-# ── Model checkpoints (large binaries) ───────────────────────────────────────
 checkpoints/
 *.npz
 *.npy
 *.safetensors
 *.pt
 *.pth
+scratch/
+implementation_plan.md
+walkthrough.md
+task.md
 
-# ── Runtime sentinel / telemetry files ───────────────────────────────────────
+# ── Telemetry & Sentinels ─────────────────────────────────────────────────────
 .active_experiment
-.vram_telemetry
+.vram_telemetry*
 .autorun_pause
 .kill_*
 .priority_overrides.json
 .injected_experiments.json
 
-# ── Tool caches ───────────────────────────────────────────────────────────────
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.claude/
+.sysphus
+.omg/
 
-# ── Misc ephemeral artefacts ──────────────────────────────────────────────────
-test_log.txt
-server_startup.log
-server_uv.log
-surfaces.txt
+# ── Temporary Tests (AI & Scratch) ───────────────────────────────────────────
+test_p2_t*.py
+test_bg.py
+test_sims.py
+test_models.py
 surface-verify-prompt.md
 build-2-closeout.md
-
-# ── Claude Code internal state ────────────────────────────────────────────────
-.claude/
-
-# ── omg quota/watch state (ephemeral) ────────────────────────────────────────
-.omg/
+surfaces.txt
+manual_*.py
+cleanup_*.py
+insert_exps.py
+run_all.sh
+start_command_center.sh
+/Users/moatasimfarooque/.gemini/antigravity/brain/d9e4a9e9-cd38-488b-bed4-b7605cbe8dac/scratch/smoke_test_models.py
