@@ -8011,5 +8011,51 @@
       "diag_low_freq_error": 0.175232,
       "diag_high_freq_error": 0.380593
     }
+  },
+  {
+    "id": "radiative_2d_AttentionEnhancedFNO2D_1776086354_fe12d4",
+    "parent_id": null,
+    "timestamp": 1776086354,
+    "benchmark": "radiative_2d",
+    "model": "AttentionEnhancedFNO2D",
+    "val_l2_rel": 1.0,
+    "memory_gb": 4.0296875,
+    "status": "keep",
+    "description": "attentionenhancedfno_radiative_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
+    "commit": "eb082fb",
+    "config": {
+      "name": "attentionenhancedfno_radiative_2d_h32_l2_m8",
+      "benchmark": "radiative_2d",
+      "model": "AttentionEnhancedFNO2D",
+      "hidden_dim": 32,
+      "n_layers": 2,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "resume": false,
+      "resume_from": "",
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Phase 3 Full Sweep",
+      "expected": "",
+      "paper_ref": ""
+    },
+    "rationale": "Phase 3 Full Sweep",
+    "conclusion": "AttentionEnhancedFNO2D_radiative_2d_1776086351",
+    "diag": {
+      "diag_low_freq_error": 0.240112,
+      "diag_high_freq_error": 0.495142
+    }
   }
 ]
