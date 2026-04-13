@@ -58,9 +58,21 @@ PYTHONPATH=. uv run python -m analyze --papers
 uv run autorun.py --priority 1 --commit
 
 # Web dashboard
-PYTHONPATH=. uv run python -m dashboard.app
+python3 dashboard/app.py
 # Open http://localhost:8000 in browser
 ```
+
+---
+
+## 📚 Documentation & Wiki
+
+For deep technical dives, system architecture, and machine-readable indexing:
+
+- **[WIKI.md](./WIKI.md)**: The central hub for conceptual overviews, data structure schemas, and research protocols.
+- **[CODE_INDEX.json](./CODE_INDEX.json)**: A machine-readable (RAG-friendly) index of all modules, classes, and functions with their docstrings.
+- **[AGENTS.md](./AGENTS.md)**: Optimized field guide for external AI agents driving the research loop.
+- **[GEMINI.md](./GEMINI.md)**: Full setup, constraints, and reference guide.
+- **[program.md](./program.md)**: Paper registry and SOTA gap analysis.
 
 ---
 
@@ -125,16 +137,23 @@ autoresearch-mlx/
 ├── core/
 │   ├── __init__.py
 │   ├── diagnostics.py
+│   ├── hpo.py
 │   ├── hypothesis.py
+│   ├── loader.py
 │   ├── losses.py
+│   ├── paper_registry.py
+│   ├── readme_hook.py
 │   ├── research_plugins.py
+│   ├── scaffold.py
 │   ├── tracker.py
 │   ├── trainer.py
-│   └── utils.py
+│   ├── utils.py
+│   └── viz.py
 ├── dashboard/
 │   ├── ui/
 │   │   └── dashboard.html
-│   └── app.py
+│   ├── app.py
+│   └── monitor.py
 ├── data/
 │   ├── simulations/
 │   │   ├── AGENTS.md
@@ -153,7 +172,6 @@ autoresearch-mlx/
 │   └── prepare.py
 ├── docs/
 │   ├── papers/
-│   │   ├── AGENTS.md
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
 │   │   ├── curriculum_2009.yaml
@@ -165,6 +183,8 @@ autoresearch-mlx/
 │   │   ├── h1_loss.yaml
 │   │   ├── hnn_2019.yaml
 │   │   ├── inverse_pinn_2023.yaml
+│   │   ├── mambano_2024.yaml
+│   │   ├── memno_2025.yaml
 │   │   ├── mppde_2022.yaml
 │   │   ├── neural_ode_ude_2020.yaml
 │   │   ├── physicsnemo_2024.yaml
@@ -176,14 +196,10 @@ autoresearch-mlx/
 │   │   ├── transolver_2024.yaml
 │   │   ├── uno_2022.yaml
 │   │   └── wno_2022.yaml
-│   ├── AGENTS.md
-│   ├── CLAUDE.md
-│   ├── GEMINI.md
 │   ├── LICENSE
 │   ├── LITERATURE.md
 │   ├── SOTA.md
-│   ├── TERMINOLOGY.md
-│   └── program.md
+│   └── TERMINOLOGY.md
 ├── models/
 │   ├── AGENTS.md
 │   ├── __init__.py
@@ -198,6 +214,8 @@ autoresearch-mlx/
 │   ├── hnn.py
 │   ├── hybrid_decoder_deeponet.py
 │   ├── hybrid_fno_deeponet.py
+│   ├── mamba_no.py
+│   ├── mem_no.py
 │   ├── neural_ode.py
 │   ├── pacmann.py
 │   ├── pinn.py
@@ -211,24 +229,23 @@ autoresearch-mlx/
 │   └── wno.py
 ├── notebooks/
 │   └── colab_experiments.ipynb
+├── AGENTS.md
+├── CLAUDE.md
+├── CODE_INDEX.json
+├── GEMINI.md
 ├── README.md
+├── WIKI.md
 ├── agent_loop.py
 ├── analyze.py
 ├── auto_suggest.py
 ├── autorun.py
-├── bayesian_hpo.py
-├── experiments.py
 ├── experiments.yaml
-├── model_scaffold.py
-├── monitor.py
-├── paper_registry.py
+├── model_architectures.md
+├── program.md
 ├── pyproject.toml
 ├── results.json
-├── results.tsv
 ├── train.py
-├── update_readme.py
-├── uv.lock
-└── viz.py
+└── uv.lock
 ```
 <!-- STRUCTURE_END -->
 
