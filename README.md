@@ -1,35 +1,15 @@
 # autoresearch-sciml-mlx
 
-Autonomous AI-driven research loop for **Scientific Machine Learning (SciML)** on Apple Silicon, built on [MLX](https://github.com/ml-explore/mlx) — no PyTorch, no CUDA.
+Autonomous AI-driven research loop for **Scientific Machine Learning (SciML)**
+on Apple Silicon, built on [MLX](https://github.com/ml-explore/mlx) — no
+PyTorch, no CUDA.
 
-The agent explores PDE solver architectures (Neural Operators, PINNs, Neural ODEs) within a fixed 5-minute training budget per experiment, keeps improvements, discards regressions, and tracks everything in a reproducible `results.json` DAG.
+The system trains neural PDE solvers within a fixed 5-minute budget per
+experiment, logs every result to a lineage-aware DAG, and iterates toward
+published SOTA. A human or AI agent drives the loop by reading current state,
+forming hypotheses, queuing experiments, and analyzing outcomes.
 
 Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
-
----
-
-## Results vs SOTA (184+ experiments completed)
-
-### Benchmarks that beat SOTA
-
-| Benchmark | SOTA | Our Best | Ratio | Model | Note |
-|---|---|---|---|---|---|
-| `kdv_1d` | 0.0100 | **0.002023** | **5.0× better** | RFNO h=128 l=8 m=24 | Pre-LN residual stabilizes soliton dynamics |
-| `wave_1d` | 0.0050 | **0.000992** | **5.0× better** | FNO h=64 l=4 m=16 | Smaller model = more steps in budget |
-| `euler_1d` | 0.0150 | **0.002413** | **6.2× better** | FNO h=64 l=4 m=16 | FNO highly efficient on compressible Euler |
-
-### Benchmarks in progress
-
-| Benchmark | SOTA | Our Best | Gap | Priority |
-|---|---|---|---|---|
-| `burgers_1d` | 0.0031 | 0.1468 (FNO+aug) | 47.3× | **CRITICAL** — 135 experiments, gap remains huge |
-| `darcy_2d` | 0.0041 | 0.1041 (FNO) | 25.4× | **HIGH** — 2D models need h≤32 l≤4 constraint |
-| `ns_2d` | 0.0128 | 0.01428 (FNO 600s) | 1.12× | Medium — near SOTA, budget=600 key |
-| `allen_cahn_2d` | 0.0200 | 0.0628 (FNO) | 3.14× | Medium — FNO h=64 l=4 is current best |
-| `swe_2d` | 0.0020 | 0.0107 (FNO2D) | 5.36× | Medium — FNO2D h=32 l=4 is current best |
-| `ns_hre_2d` | 0.0700 | — | — | Blocked — first-run ~70 min |
-
-> SOTA targets are derived from `papers/*.yaml` (e.g., GNOT-2023 for Burgers/Darcy).
 
 ---
 
@@ -38,98 +18,118 @@ Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
 **Requirements:** Apple Silicon Mac, Python 3.10+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
-# Install uv if needed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies
 uv sync
+uv run data/prefetch_data.py --skip-slow   # cache PDE datasets (~2 min)
 
-# Pre-generate and disk-cache ALL PDE datasets
-# (one-time, ~20 min — dominated by ns_hre_2d)
-uv run python -m data.prefetch_data
+uv run analyze.py --papers                  # current results vs SOTA
+uv run auto_suggest.py                      # ranked next actions
 
-# Run a single 5-minute experiment
-uv run train.py --model FNO --hidden 128 --layers 8 --modes 24
-
-# See current state vs SOTA
-PYTHONPATH=. uv run python -m analyze --papers
-
-# Run all pending priority-1 experiments autonomously
+# edit experiments.yaml, then run the queue
 uv run autorun.py --priority 1 --commit
+```
 
-# Web dashboard
+For a continuous automated run:
+```bash
+uv run autorun.py --auto --commit --max-auto-experiments 20 --max-auto-time 10800
+```
+
+---
+
+## Documentation
+
+| File | Purpose |
+|------|---------|
+| [`program.md`](./program.md) | Full operational guide — the loop, tools, constraints, scaffold workflow |
+| [`CLAUDE.md`](./CLAUDE.md) | Entry point for Claude Code agents |
+| [`GEMINI.md`](./GEMINI.md) | Entry point for Gemini and other external agents |
+| [`docs/SOTA.md`](./docs/SOTA.md) | SOTA targets per benchmark |
+| [`docs/papers/*.yaml`](./docs/papers/) | Paper registry with suggested experiments |
+| [`WIKI.md`](./WIKI.md) | Architecture diagrams and system overview |
+
+---
+
+## Repository Layout
+
+```
+autoresearch-mlx/
+├── train.py               # training harness — routes benchmark → model → trainer
+├── autorun.py             # queue runner with crash recovery and git integration
+├── agent_loop.py          # automated Bayesian HPO loop (optional)
+├── analyze.py             # results analyzer and SOTA gap reporter
+├── auto_suggest.py        # ranked next-experiment suggester
+├── experiments.yaml       # declarative experiment queue
+├── results.json           # SSoT — lineage DAG of all completed runs
+├── core/
+│   ├── trainer.py         # MLX JIT training loop + AdamW
+│   ├── tracker.py         # write API for results.json
+│   ├── hypothesis.py      # failure pattern detection
+│   ├── hpo.py             # Gaussian Process Bayesian HPO
+│   ├── scaffold.py        # gated model registration
+│   ├── losses.py          # l2_rel, h1, spectral, l1_rel
+│   └── research_plugins.py  # model + benchmark registry
+├── models/                # 27 model implementations
+├── data/
+│   ├── prepare.py         # READ-ONLY ground-truth evaluator
+│   ├── prefetch_data.py   # one-time dataset cache
+│   ├── benchmarks_ext.py  # extended benchmark definitions
+│   └── simulations/       # high-fidelity PDE solvers
+├── dashboard/
+│   ├── app.py             # FastAPI backend
+│   └── ui/dashboard.html  # live dashboard
+├── docs/
+│   ├── papers/*.yaml      # paper registry
+│   └── SOTA.md            # SOTA targets
+└── logs/
+    ├── trajectories.jsonl # RL replay buffer — agent reasoning log
+    └── <name>.log         # per-experiment training logs
+```
+
+---
+
+## Current Results
+
+To see the latest benchmark results and SOTA gaps:
+
+```bash
+uv run analyze.py --papers
+```
+
+To see what to run next:
+
+```bash
+uv run auto_suggest.py
+```
+
+---
+
+## Dashboard
+
+```bash
 python3 dashboard/app.py
-# Open http://localhost:8000 in browser
+# open dashboard/ui/dashboard.html in a browser
 ```
 
----
-
-## 📚 Documentation & Wiki
-
-For deep technical dives, system architecture, and machine-readable indexing:
-
-- **[WIKI.md](./WIKI.md)**: The central hub for conceptual overviews, data structure schemas, and research protocols.
-- **[CODE_INDEX.json](./CODE_INDEX.json)**: A machine-readable (RAG-friendly) index of all modules, classes, and functions with their docstrings.
-- **[AGENTS.md](./AGENTS.md)**: Optimized field guide for external AI agents driving the research loop.
-- **[GEMINI.md](./GEMINI.md)**: Full setup, constraints, and reference guide.
-- **[program.md](./program.md)**: Paper registry and SOTA gap analysis.
+Live training progress, VRAM usage, lineage DAG, per-experiment log tails,
+and kill controls.
 
 ---
 
-## Orchestration Modes
+## Hard Constraints
 
-### Mode A — External Agent (default)
+- `data/prepare.py` is read-only — it defines the ground-truth metric
+- `results.json` is never hand-edited — use `core/tracker.py`
+- 2D benchmarks require `hidden_dim ≤ 32`, `n_layers ≤ 4`, `budget_s ≥ 480`
+- RFNO is 1D-only; PINO is broken — never queue either on 2D benchmarks
 
-A human or AI (Claude Code, Gemini) drives the loop manually:
-
-```bash
-# 1. Understand current state vs SOTA
-PYTHONPATH=. uv run python -m analyze --papers
-
-# 2. Get ranked next-step suggestions
-PYTHONPATH=. uv run python -m auto_suggest --gaps
-
-# 3. Edit experiments.yaml / models/*.py
-
-# 4. Trigger runner
-uv run autorun.py --priority 1 --commit
-```
-
-### Mode B — Automated In-Process Loop
-
-Fully automated: `HypothesisEngine` + `BayesianHPO` generate and run new configs without human input.
-
-```bash
-PYTHONPATH=. uv run python -m agent_loop --dry-run   # preview only
-PYTHONPATH=. uv run python -m agent_loop --top 5     # append top-5
-PYTHONPATH=. uv run python -m agent_loop --run       # append + run top-3
-```
+Full constraint table with reasons in [`program.md`](./program.md).
 
 ---
 
-## Model Zoo
+## Acknowledgments
 
-| Category | Model Tags | Key Idea | Status |
-|---|---|---|---|
-| **Fourier Neural Operators** | `FNO`, `RFNO`, `FFNO`, `FNO2D`, `FNO_MC` | Global spectral conv; RFNO adds pre-LN residuals for stability at depth | ✓ |
-| **Tensor-Factorized FNO** | `TFNO`, `RTFNO`, `CPFNO` | Tucker / CP decomposition to reduce spectral param count | ✓ |
-| **U-Net Operator** | `UNO` | Encoder-decoder with FNO layers; good for multiscale | ✓ |
-| **Attention-based** | `Transolver`, `Transolver2D`, `GNOT`, `GNOT2D`, `AFNO` | Physics Attention; Graph Neural Operator Transformer; Block-diagonal Fourier MLP | ✓/⚠ |
-| **DeepONet Family** | `DeepONet`, `PODDeepONet`, `TimeDeepONet`, `DualDeepONet` | Branch/Trunk inner products; POD basis; time-marching variants | ✓ |
-| **State-Space** | `S4NO`, `SSNO` | S4 structured state-space; SSNO adds adaptive S4D damping + spectral conv dual-branch | ✓ |
-| **Physics-Biased** | `HNN`, `EnergyFNO`, `PINN` | Hamiltonian/Symplectic priors; soft energy conservation; PDE residual loss | ✓ |
-| **Differential Eq** | `NeuralODE`, `UDE`, `LatentODE` | Continuous-time integration; Universal Differential Equations | ✓ |
+- Andrej Karpathy for the autonomous research concept
+- [MLX](https://github.com/ml-explore/mlx) team at Apple
 
-> `PINO` is implemented but broken for endpoint-only formulations — never use.
-> `AFNO` has wrong spectral bias (0.50–0.72 on Burgers) — skip.
-> `Transolver2D` is unreliable on 2D benchmarks (stalls/crashes).
-> **RFNO is 1D-only** — crashes on 2D input.
-
----
-
-## File Structure
-
-The repository is organized into a **minimalist root** structure to separate core research logic from simulation data and dev tools.
 
 <!-- STRUCTURE_START -->
 ```text
@@ -251,52 +251,3 @@ autoresearch-mlx/
 └── uv.lock
 ```
 <!-- STRUCTURE_END -->
-
-## Empirical Findings (184 experiments)
-
-**KdV 1D** (best: 0.0020 — **5× better than SOTA**):
-- RFNO with pre-LN residuals stabilizes soliton dynamics; standard FNO diverges at depth ≥10
-
-**Wave 1D** (best: 0.000992 — **5× better than SOTA**):
-- Smaller/shallower models win (`h=64 l=4`): more gradient steps inside the 5-min budget dominate accuracy.
-
-**Euler 1D** (best: 0.0024 — **6× better than SOTA**):
-- FNO is highly efficient on compressible system dynamics.
-
-**Burgers 1D** (best: 0.1468 — 47× gap to GNOT SOTA):
-- `m=24` is the sweet spot; `h=128` wins over 64/256. Augmentation is critical.
-
-**NS 2D** (best: 0.01428 — 1.12× gap):
-- Extended budget (600s) is key. `n_modes=8` beats `n_modes=12`.
-
----
-
-## Infrastructure Features
-
-### 1. Unified REPO_ROOT
-All file paths (results, logs, papers) are resolved from a single source of truth in `core/utils.py`, allowing scripts to run from any depth.
-
-### 2. Bayesian HPO Auto-Loop
-`tools/agent_loop.py` uses Gaussian Process surrogates and Expected Improvement (EI) to autonomously explore hyperparameter space.
-
-### 3. Multi-Fix Crash Recovery
-`autorun.py` automatically detects crash reasons (OOM, NaN, Loss Spike) and applies composite fixes (e.g. `batch_size//2` + `lr//10`) in real-time.
-
-### 4. Interactive Dashboard
-FastAPI backend (`apps/app.py`) serves a live React-based diagnostic dashboard for lineage tracking and VRAM monitoring.
-
----
-
-## Hard Constraints
-
-- **Never modify `data/prepare.py`** — defines the ground-truth metric.
-- **`results.json` is SSoT** — never hand-edit; managed via `core/tracker.py`.
-- **2D benchmarks**: use `h≤32 l≤4` to avoid OOM on unified memory.
-- **Namespace consistency**: always import using `core.`, `data.`, or `tools.` prefixes.
-
----
-
-## Acknowledgments
-
-- Andrej Karpathy for the autonomous research concept
-- [MLX](https://github.com/ml-explore/mlx) team at Apple
