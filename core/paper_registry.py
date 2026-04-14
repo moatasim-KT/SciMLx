@@ -1,7 +1,7 @@
 """Paper registry — loads all papers/*.yaml files and provides query APIs.
 
 This module bridges the literature (papers/) with the experiment infrastructure
-(experiments.py, autorun.py, analyze.py) to make the research loop aware of:
+(experiments.yaml, autorun.py, analyze.py) to make the research loop aware of:
 
   1. What papers have been implemented and their expected improvements
   2. What our empirical results are vs paper claims
@@ -15,9 +15,9 @@ Usage:
     reg.gap_table()                # our results vs SOTA per benchmark
 
 CLI:
-    uv run paper_registry.py           # print full registry report
-    uv run paper_registry.py --gaps    # print SOTA gap table
-    uv run paper_registry.py --suggest # suggest next experiments
+    uv run -m core.paper_registry           # print full registry report
+    uv run -m core.paper_registry --gaps    # print SOTA gap table
+    uv run -m core.paper_registry --suggest # suggest next experiments
 """
 
 import argparse
@@ -30,7 +30,7 @@ try:
 except ImportError:
     _HAS_YAML = False
 
-from core.utils import PAPERS_DIR, RESULTS_FILE, load_results as _load_rows
+from .utils import PAPERS_DIR, RESULTS_FILE, load_results as _load_rows
 
 
 # ── YAML fallback (tiny parser for simple key: value files) ──────────────────
@@ -140,7 +140,7 @@ class PaperRegistry:
 
     @staticmethod
     def _load_results() -> dict[str, float]:
-        """Return best val_l2_rel per benchmark from results.tsv."""
+        """Return best val_l2_rel per benchmark from results.json."""
         from core.utils import best_per_benchmark
         return best_per_benchmark(_load_rows())
 
@@ -182,7 +182,7 @@ class PaperRegistry:
         for bm in sorted(sota_by_bm):
             sota, pid, mc = sota_by_bm[bm]
             ours = best.get(bm)
-            gap  = f"{ours / sota:.1f}×" if ours is not None else "N/A"
+            gap  = f"{ours / sota:.1f}x" if ours is not None else "N/A"
             ours_str = f"{ours:.6f}" if ours is not None else "N/A"
             print(f"  {bm:<20}  {sota:>12.4f}  {ours_str:>12}  {gap:>7}  {pid}")
 
@@ -217,7 +217,7 @@ class PaperRegistry:
                     rep_str  = f"{reported:.4f}" if isinstance(reported, (int, float)) else str(reported)
                     gap_str  = ""
                     if our_val and isinstance(reported, (int, float)) and reported > 0:
-                        gap_str = f"  ({our_val / reported:.1f}× from paper)"
+                        gap_str = f"  ({our_val / reported:.1f}x from paper)"
                     print(f"       {bm:<18}  paper={rep_str:<10}  ours={our_str}{gap_str}")
 
         print()
@@ -225,7 +225,7 @@ class PaperRegistry:
     def suggest_next(self, top_n: int = 8) -> list[str]:
         """Generate prioritised list of next experiments from paper registry.
 
-        Returns list of ExperimentConfig snippets ready to copy into experiments.py.
+        Returns list of ExperimentConfig snippets ready to copy into experiments.yaml.
         """
         best = self._load_results()
         suggestions = []
@@ -256,13 +256,13 @@ class PaperRegistry:
                     "name": "fno_h128_m24_l8_h1",
                     "rationale": f"H1 loss on best FNO config (current best {best_burgers:.4f}). "
                                  "U-FNO paper reports 10% improvement.",
-                    "expected": f"~{best_burgers * 0.9:.4f}–{best_burgers * 1.05:.4f}",
+                    "expected": f"~{best_burgers * 0.9:.4f}-{best_burgers * 1.05:.4f}",
                 })
             suggestions.append({
                 "paper": "h1-sobolev-loss",
                 "name": "afno_h128_m24_l8_h1",
                 "rationale": "AFNO + H1 loss — non-linear Fourier mixer + frequency-weighted error.",
-                "expected": "~0.12–0.14 if AFNO + H1 compound",
+                "expected": "~0.12-0.14 if AFNO + H1 compound",
             })
 
         # Print suggestions

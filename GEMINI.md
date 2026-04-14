@@ -4,7 +4,7 @@
 
 An autonomous research platform for **Scientific Machine Learning (SciML)** on Apple Silicon. The loop trains neural PDE solvers within a fixed 5-minute budget and logs whether each run improves `val_l2_rel` (relative L2 error — lower is better). You (the external agent) can drive experiments manually or let `agent_loop.py` propose and run them automatically.
 
-**Primary goal:** minimize `val_l2_rel` on fixed validation sets. The ground-truth evaluator lives in `prepare.py` — never modify it.
+**Primary goal:** minimize `val_l2_rel` on fixed validation sets. The ground-truth evaluator lives in `data/prepare.py` — never modify it.
 
 ---
 
@@ -12,8 +12,8 @@ An autonomous research platform for **Scientific Machine Learning (SciML)** on A
 
 ```bash
 uv sync                      # install all dependencies
-uv run prefetch_data.py      # one-time: pre-generate + disk-cache all PDE datasets (~20 min)
-uv run prefetch_data.py --skip-slow  # faster: skip ns_hre_2d (~2 min)
+uv run data/prefetch_data.py      # one-time: pre-generate + disk-cache all PDE datasets (~20 min)
+uv run data/prefetch_data.py --skip-slow  # faster: skip ns_hre_2d (~2 min)
 ```
 
 ---
@@ -25,7 +25,7 @@ uv run prefetch_data.py --skip-slow  # faster: skip ns_hre_2d (~2 min)
 ```bash
 uv run analyze.py --papers          # 1. understand current state vs SOTA
 uv run auto_suggest.py              # 2. get ranked suggestions with CLI commands
-# 3. edit experiments.py or models/*.py
+# 3. edit experiments.yaml or models/*.py
 uv run autorun.py --priority 1 --commit   # 4. run the new queue
 ```
 
@@ -71,23 +71,23 @@ curl -X POST http://localhost:8000/api/kill/<name>
 # Analysis
 uv run analyze.py --papers                       # results vs SOTA
 uv run auto_suggest.py                           # ranked next-step suggestions
-uv run auto_suggest.py --generate                # output ready-to-paste ExperimentConfig snippets
+uv run auto_suggest.py --generate                # output ready-to-paste YAML snippets
 uv run auto_suggest.py --gaps                    # SOTA gap table
-uv run paper_registry.py --pending               # unimplemented paper ideas
+uv run -m core.paper_registry --pending           # unimplemented paper ideas
 
 # Bayesian HPO (adaptive hyperparameter search)
-uv run bayesian_hpo.py --benchmark burgers_1d --top 5
-uv run bayesian_hpo.py --benchmark burgers_1d --multi --pareto  # acc + memory tradeoff
+uv run -m core.hpo --benchmark burgers_1d --top 5
+uv run -m core.hpo --benchmark burgers_1d --multi --pareto  # acc + memory tradeoff
 
 # Model scaffolding (gated: syntax → import → smoke test before registering)
-uv run model_scaffold.py --stub MyModel --base FNO
-uv run model_scaffold.py --register MyModel models/mymodel.py --benchmarks burgers_1d
+uv run -m core.scaffold --stub MyModel --base FNO
+uv run -m core.scaffold --register MyModel models/mymodel.py --benchmarks burgers_1d
 
 # Dashboard (open ui/dashboard.html after starting)
-uv run uvicorn app:app --reload --port 8000
+uv run dashboard/app.py
 
 # Visualization → figs/
-uv run viz.py --mode leaderboard
+uv run -m core.viz --mode leaderboard
 ```
 
 ---
@@ -96,26 +96,21 @@ uv run viz.py --mode leaderboard
 
 | File | Role |
 |------|------|
-| `prepare.py` | **READ-ONLY.** PDE data generation + ground-truth evaluator. |
-| `train.py` | Training harness. Routes benchmark → dataloader, enforces 5-min budget, emits `val_l2_rel`. `WARMDOWN_RATIO=0.2` (cosine decay starts at 80%). |
-| `trainer.py` | `AdamW`, `get_lr_schedule()` (warmup→flat→cosine), `Trainer` (JIT step). Writes rolling loss history to `.vram_telemetry`. |
-| `models/` | 13 model files, 28+ exports (FNO, RFNO, SSNO, AFNO, FFNO, UNO, WNO, DeepONet, S4NO, GNOT, PINN…). |
-| `losses.py` | `get_loss_fn(name)` — l2_rel, h1, h1_strong, h2, spectral, l1_rel, mse. |
-| `experiments.py` | 205+ `ExperimentConfig` entries (declarative queue). Fields: `name`, `benchmark`, `model`, `hidden_dim`, `n_layers`, `n_modes`, `budget_s` (default 300s, 480s for 2D), `priority`, `parent_name`, `rationale`. |
-| `results.json` | **SSoT.** DAG experiment tree. Never hand-edit — use `tracker.py`. IDs include UUID suffix to avoid collisions. |
-| `results.tsv` | Append-only legacy log, synced from results.json. |
-| `autorun.py` | Runs pending configs as subprocesses. Deduplicates, classifies crashes (OOM/NaN-Inf/ImportError/…), **multi-fix** retry (OOM+NaN → both `batch//2` AND `lr//10`), sentinel kill (`.kill_{name}`), `--max-auto-experiments`, `--max-auto-time` guards. `--commit` git-commits each kept result. |
-| `agent_loop.py` | Mode B orchestrator. HypothesisEngine + BayesianHPO → new ExperimentConfig entries. `--no-hpo` skips HPO. |
-| `bayesian_hpo.py` | GP surrogate (RBF kernel + EI). `BayesianHPO(bm, model, objectives=[...])`. Single-obj (`tell`/`ask`) or multi-obj (`tell_multi`/`pareto_front`). Seeds from results.json. |
-| `model_scaffold.py` | Gated code generation: 3-gate validation (syntax → import → smoke) before registering new models. |
-| `tracker.py` | `log_experiment(…, config={}, diag={}, parent_name="")`. UUID-stable IDs. `analyze_lineage()` for HP importance + trends. |
-| `hypothesis.py` | `HypothesisEngine.analyze_benchmark(bm)` + `suggest_intervention(bm, best_val)` → concrete config dict. |
-| `diagnostics.py` | `calculate_spectral_bias(pred, target)` → low/mid/high-freq error. PNG to `figs/inspect_{id}.png`. |
-| `auto_suggest.py` | Dynamic KNOWN_WINS (reads results.json at import). Ranked suggestions from empirical wins + paper ideas + spectral feedback + cross-benchmark transfer. |
-| `research_plugins.py` | `ModelRegistry` (28+ models) + `BenchmarkRegistry` (10 benchmarks). Add models/benchmarks here. |
-| `utils.py` | `REPO_ROOT`, `LOGS_DIR`, `FIGS_DIR`, `SOTA`, `load_results()`, `best_per_benchmark()`, `done_names()`. |
-| `app.py` | FastAPI. Re-loads results.json on every request. Endpoints: `/api/experiments`, `/api/sota`, `/api/queue`, `/api/logs/{name}`, `/api/status` (includes live `progress`, `loss`, `loss_history`), `/api/pause`, `/api/resume`, `/api/inject`, `/api/kill/{name}`. |
-| `ui/dashboard.html` | Standalone React dashboard. SOTA sidebar, Results + Queue + **Lineage DAG** tabs, right inspector with **parent comparison**, **SparkLine** in active strip, **Kill** button. 3s poll interval. |
+| `data/prepare.py` | **READ-ONLY.** PDE data generation + ground-truth evaluator. |
+| `train.py` | Training harness. Routes benchmark → dataloader, enforces 5-min budget, emits `val_l2_rel`. |
+| `core/trainer.py` | `AdamW`, `get_lr_schedule()`, `Trainer` (JIT step). |
+| `models/` | 13 model files, 28+ exports. |
+| `core/losses.py` | `get_loss_fn(name)` — l2_rel, h1, spectral, etc. |
+| `experiments.yaml` | 248+ YAML-based experiment entries (declarative queue). |
+| `results.json` | **SSoT.** DAG experiment tree. |
+| `autorun.py` | Runs pending configs as subprocesses. |
+| `agent_loop.py` | Mode B orchestrator. |
+| `core/hpo.py` | GP surrogate Bayesian HPO. |
+| `core/scaffold.py` | Gated model registration. |
+| `core/tracker.py` | `log_experiment()` API. |
+| `core/viz.py` | Visualization suite. |
+| `core/loader.py` | YAML loader / schema manager. |
+| `dashboard/app.py` | FastAPI dashboard backend. |
 | `benchmarks_ext.py` | KdV, Wave, Darcy-fix, NS-fix. |
 | `simulations/` | 4 high-fidelity solvers: euler1d, shallow_water, allen_cahn, ns_etdrk4. |
 | `papers/*.yaml` | 20 papers with key idea, reported results, our results, suggested experiments. |

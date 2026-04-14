@@ -21,7 +21,7 @@ class ModelRegistry:
 
     def build(self, name: str, benchmark: str = "", **kwargs) -> nn.Module:
         # Safety constraint: 2D benchmark model size limits
-        if benchmark in ["darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d"]:
+        if benchmark in ["darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d"]:
             hidden = kwargs.get("hidden_dim", 64)
             layers = kwargs.get("n_layers", 4)
             if hidden >= 64 or layers >= 8:
@@ -129,6 +129,10 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("FFNO", "afno", "FFNO1d")
     MODEL_REGISTRY.register_lazy("UNO", "fno", "UNO1d")
     MODEL_REGISTRY.register_lazy("WNO", "wno", "WNO1d")
+    MODEL_REGISTRY.register_lazy("WNO_GNOT", "wno", "WNO_GNOT")
+    MODEL_REGISTRY.register_lazy("KAN_FNO", "kan", "KAN_FNO")
+    MODEL_REGISTRY.register_lazy("ModifiedKAN_FNO", "kan", "ModifiedKAN_FNO")
+    MODEL_REGISTRY.register_lazy("cPIKAN_FNO", "chebyshev_kan", "cPIKAN_FNO")
     MODEL_REGISTRY.register_lazy("DeepONet", "deeponet", "DeepONet")
     MODEL_REGISTRY.register_lazy("PODDeepONet", "deeponet", "PODDeepONet")
     MODEL_REGISTRY.register_lazy("S4NO", "s4d", "S4NO1d")
@@ -138,6 +142,7 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
     MODEL_REGISTRY.register_lazy("FNO2D", "fno", "FNO2d")
     MODEL_REGISTRY.register_lazy("RFNO2D", "fno", "RFNO2d")
+    MODEL_REGISTRY.register_lazy("GNOT_FFNO", "gnot", "GNOT_FFNO")
     MODEL_REGISTRY.register_lazy("FNO_MC", "fno", "FNO1dMC")
     MODEL_REGISTRY.register_lazy("TFNO", "tfno", "TFNO1d")
     MODEL_REGISTRY.register_lazy("RTFNO", "tfno", "RTFNO1d")
@@ -153,6 +158,10 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("UDE", "neural_ode", "UniversalDE1d")
     MODEL_REGISTRY.register_lazy("LatentODE", "neural_ode", "LatentODE1d")
     MODEL_REGISTRY.register_lazy("PACMANN", "pacmann", "PACMANN")
+    
+    # ── 2024-2025 SOTA Models ────────────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("MambaNO", "mamba_no", "MambaNO1d")
+    MODEL_REGISTRY.register_lazy("MemNO", "mem_no", "MemNO1d")
     
     # ── Novel Hybrid Models ───────────────────────────────────────────────────
     MODEL_REGISTRY.register_lazy("HybridDecoderDeepONet2D", "hybrid_decoder_deeponet", "HybridDecoderDeepONet2d")
@@ -194,6 +203,10 @@ def _register_defaults():
                 "wave_1d":      "1D wave u_tt=c²u_xx",
                 "darcy_2d":     "2D Darcy -∇·(a∇u)=f (corrected solver)",
                 "ns_2d":        "2D NS vorticity (CFL-stable ICs)",
+                "ns_hre_2d":    "2D NS Re=1000 turbulence challenge",
+                "swe_2d":       "2D Shallow Water Equations",
+                "allen_cahn_2d": "2D Allen-Cahn phase separation",
+                "mhd_2d":        "2D Magnetohydrodynamics",
             }.get(bm, ""),
         )
 

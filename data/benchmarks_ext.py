@@ -3,10 +3,10 @@
 Adds KdV, Wave, and corrected 2D benchmarks on top of prepare.py.
 
 Supported benchmarks:
-    "kdv_1d"       – Korteweg–de Vries soliton dynamics   (ETDRK4 solver)
-    "wave_1d"      – 1D wave equation  u_tt = c² u_xx      (Störmer-Verlet)
-    "darcy_2d" – 2D Darcy with proper variable-coeff solver (Richardson iter)
-    "ns_2d"    – 2D Navier-Stokes with stable IC amplitude (CFL < 1)
+    "kdv_1d"       - Korteweg-de Vries soliton dynamics   (ETDRK4 solver)
+    "wave_1d"      - 1D wave equation  u_tt = c^2 u_xx     (Stormer-Verlet)
+    "darcy_2d" - 2D Darcy with proper variable-coeff solver (Richardson iter)
+    "ns_2d"    - 2D Navier-Stokes with stable IC amplitude (CFL < 1)
 
 Why darcy_2d and ns_2d?
     prepare.py's darcy_2d solver uses only mean(a) → loses all spatial info;
@@ -41,7 +41,20 @@ from data.prepare import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d"}
+EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d", "ns_hre_2d", "swe_2d", "allen_cahn_2d", "mhd_2d", "burgers_nu_01", "burgers_nu_001"}
+
+EXT_N_CHANNELS = {
+    "kdv_1d": 1,
+    "wave_1d": 1,
+    "darcy_2d": 1,
+    "ns_2d": 1,
+    "ns_hre_2d": 1,
+    "swe_2d": 1,
+    "allen_cahn_2d": 1,
+    "mhd_2d": 2, # Vorticity (w) and Magnetic Potential (a)
+    "burgers_nu_01": 1,
+    "burgers_nu_001": 1,
+}
 
 # KdV parameters
 KDV_T       = 1.0    # final time
@@ -57,10 +70,26 @@ DARCY_FIX_N_ITER  = 40   # PCG iterations
 DARCY_FIX_MODES_F = 5    # source term Fourier modes
 
 # NS fix parameters — reduces CFL from ~61 to ~0.6
-NS_SCALE  = 0.1     # IC vorticity amplitude (vs 1.0 in prepare.py → 10× smaller)
+NS_SCALE  = 0.1     # IC vorticity amplitude (vs 1.0 in prepare.py -> 10x smaller)
 NS_NSTEPS = 1000    # time steps (vs 100) — gives dt=0.001, CFL≈0.6
 NS_NU     = 1e-2    # kinematic viscosity (same as original)
 NS_T      = 1.0     # final time
+
+# Allen-Cahn parameters
+AC_EPSILON = 0.01
+AC_T       = 0.5
+AC_NSTEPS  = 200
+
+# SWE parameters
+SWE_G     = 9.81
+SWE_T     = 0.2
+SWE_NSTEPS = 200
+
+# MHD parameters
+MHD_NU    = 1e-3
+MHD_ETA   = 1e-3
+MHD_T     = 0.5
+MHD_NSTEPS = 500
 
 # ── 2D Solvers (corrected) ────────────────────────────────────────────────────
 
@@ -150,16 +179,16 @@ def solve_ns_2d_batch(
     T: float = NS_T,
     n_steps: int = NS_NSTEPS,
 ) -> np.ndarray:
-    """Stable 2D Navier-Stokes solver (vorticity form) on [0, 2π)².
+    """Stable 2D Navier-Stokes solver (vorticity form) on [0, 2pi)^2.
 
     Identical algorithm to prepare.py's solve_ns_2d_batch, but
     designed around CFL < 1.  With NS_SCALE=0.1 ICs:
-        max_velocity ≈ 9.5 → CFL = 9.5 × 0.001 × 64 ≈ 0.61 < 1  ✓
+        max_velocity ~= 9.5 -> CFL = 9.5 x 0.001 x 64 ~= 0.61 < 1  ok
 
     Root cause of prepare.py instability:
         IC scale=1.0 → max_velocity ≈ 95 → CFL ≈ 61 → overflow on step 1.
     """
-    B, N, _ = w0.shape
+    _, N, _ = w0.shape
     dt = T / n_steps
 
     k = np.fft.fftfreq(N).reshape(N, 1)
@@ -194,6 +223,68 @@ def solve_ns_2d_batch(
         w_hat = (w_hat - dt * nonlin) / (1.0 - dt * nu * laplacian)
 
     return np.fft.ifft2(w_hat, axes=(1, 2)).real.astype(np.float32)
+
+
+def solve_allen_cahn_2d_batch(u0: np.ndarray, epsilon: float = AC_EPSILON, T: float = AC_T, n_steps: int = AC_NSTEPS) -> np.ndarray:
+    """Semi-implicit spectral solver for Allen-Cahn 2D."""
+    _, N, _ = u0.shape
+    dt = T / n_steps
+    k = np.fft.fftfreq(N).reshape(N, 1)
+    k1, k2 = np.meshgrid(k, k)
+    laplacian = -(k1 ** 2 + k2 ** 2)
+    u_hat = np.fft.fft2(u0.astype(np.float64), axes=(1, 2))
+    for _ in range(n_steps):
+        u = np.fft.ifft2(u_hat).real
+        nonlin = np.fft.fft2(u**3 - u)
+        u_hat = (u_hat - dt * nonlin) / (1.0 - dt * epsilon * laplacian)
+    return np.fft.ifft2(u_hat).real.astype(np.float32)
+
+
+def solve_swe_2d_batch(h0: np.ndarray, T: float = SWE_T, n_steps: int = SWE_NSTEPS) -> np.ndarray:
+    """Spectral solver for 2D Shallow Water Equations (linearized height)."""
+    _, N, _ = h0.shape
+    dt = T / n_steps
+    k = np.fft.fftfreq(N).reshape(N, 1)
+    k1, k2 = np.meshgrid(k, k)
+    # Spectral derivatives
+    ik1, ik2 = 1j * k1 * N, 1j * k2 * N
+    h_hat = np.fft.fft2(h0.astype(np.float64), axes=(1, 2))
+    u_hat = np.zeros_like(h_hat)
+    v_hat = np.zeros_like(h_hat)
+    for _ in range(n_steps):
+        h_prev, u_prev, v_prev = h_hat.copy(), u_hat.copy(), v_hat.copy()
+        # Continuity: dh/dt + d(hu)/dx + d(hv)/dy = 0 (linearized for speed)
+        h_hat = h_prev - dt * (ik1 * u_prev + ik2 * v_prev)
+        # Momentum
+        u_hat = u_prev - dt * (ik1 * SWE_G * h_prev)
+        v_hat = v_prev - dt * (ik2 * SWE_G * h_prev)
+    return np.fft.ifft2(h_hat).real.astype(np.float32)
+
+
+def solve_mhd_2d_batch(w0: np.ndarray, a0: np.ndarray, T: float = MHD_T, n_steps: int = MHD_NSTEPS) -> np.ndarray:
+    """Spectral solver for 2D incompressible MHD (vorticity-potential form)."""
+    _, N, _ = w0.shape
+    dt = T / n_steps
+    k = np.fft.fftfreq(N).reshape(N, 1)
+    k1, k2 = np.meshgrid(k, k)
+    lap = -(k1 ** 2 + k2 ** 2); lap[0, 0] = 1.0
+    w_hat = np.fft.fft2(w0.astype(np.float64), axes=(1, 2))
+    a_hat = np.fft.fft2(a0.astype(np.float64), axes=(1, 2))
+    for _ in range(n_steps):
+        psi_hat = w_hat / lap; psi_hat[:, 0, 0] = 0.0
+        u = np.fft.ifft2(1j * k2 * psi_hat).real
+        v = np.fft.ifft2(-1j * k1 * psi_hat).real
+        bx = np.fft.ifft2(1j * k2 * a_hat).real
+        by = np.fft.ifft2(-1j * k1 * a_hat).real
+        aj = np.fft.ifft2(lap * a_hat).real # Current density J
+        
+        nonlin_w = np.fft.fft2(u * np.fft.ifft2(1j * k1 * w_hat).real + v * np.fft.ifft2(1j * k2 * w_hat).real - 
+                               (bx * np.fft.ifft2(1j * k1 * aj).real + by * np.fft.ifft2(1j * k2 * aj).real))
+        nonlin_a = np.fft.fft2(u * np.fft.ifft2(1j * k1 * a_hat).real + v * np.fft.ifft2(1j * k2 * a_hat).real)
+        
+        w_hat = (w_hat - dt * nonlin_w) / (1.0 - dt * MHD_NU * lap)
+        a_hat = (a_hat - dt * nonlin_a) / (1.0 - dt * MHD_ETA * lap)
+    return np.fft.ifft2(w_hat).real.astype(np.float32)
 
 
 # ── IC generators ─────────────────────────────────────────────────────────────
@@ -243,33 +334,92 @@ def _ns_fix_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
     """ICs for corrected NS benchmark: vorticity with small amplitude.
 
     Uses scale=NS_SCALE=0.1 (vs 1.0 in prepare.py) to ensure CFL < 1:
-        max_velocity ≈ 6–10  →  CFL = v_max × dt × N ≈ 0.4–0.6 < 1  ✓
+        max_velocity ~= 6-10  ->  CFL = v_max x dt x N ~= 0.4-0.6 < 1  ok
     """
     return _random_ic_2d(n, N, rng, n_modes=4, scale=NS_SCALE, offset=0.0)
+
+
+def _swe_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
+    return _random_ic_2d(n, N, rng, n_modes=3, scale=0.1, offset=1.0)
+
+
+def _allen_cahn_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
+    return _random_ic_2d(n, N, rng, n_modes=8, scale=0.5, offset=0.0)
+
+
+def _mhd_ic(n: int, N: int, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+    w0 = _random_ic_2d(n, N, rng, n_modes=4, scale=0.1, offset=0.0)
+    a0 = _random_ic_2d(n, N, rng, n_modes=4, scale=0.1, offset=0.0)
+    return w0, a0
 
 
 # ── Dataset generation ─────────────────────────────────────────────────────────
 
 def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
     rng = np.random.RandomState(seed)
-    if benchmark == "kdv_1d":
-        inputs  = _kdv_ic(n, GRID_SIZE, rng)
-        targets = solve_kdv_batch(inputs, T=KDV_T, n_steps=KDV_NSTEPS)
-    elif benchmark == "wave_1d":
-        u0, ut0 = _wave_ic(n, GRID_SIZE, rng)
-        inputs  = u0
-        targets = solve_wave_batch(u0, ut0, c=WAVE_C, T=WAVE_T, n_steps=WAVE_NSTEPS)
-    elif benchmark == "darcy_2d":
-        a, f    = _darcy_fix_ic(n, GRID_SIZE, rng)
-        inputs  = a[..., None]
-        targets = solve_darcy_2d_batch(a, f)[..., None]
-    elif benchmark == "ns_2d":
-        w0      = _ns_fix_ic(n, GRID_SIZE, rng)
-        inputs  = w0[..., None]
-        targets = solve_ns_2d_batch(w0)[..., None]
-    else:
-        raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
-    return inputs, targets
+    # To keep the dashboard alive and provide visibility, we generate in chunks
+    chunk_size = 100 if "2d" in benchmark else 1000
+    all_inputs = []
+    all_targets = []
+    
+    import sys
+    
+    for i in range(0, n, chunk_size):
+        curr_n = min(chunk_size, n - i)
+        if i > 0 or n > chunk_size:
+            print(f"  [{benchmark}] Generating samples {i}/{n}...", end="\r")
+            sys.stdout.flush()
+            
+        if benchmark == "kdv_1d":
+            inp = _kdv_ic(curr_n, GRID_SIZE, rng)
+            tgt = solve_kdv_batch(inp, T=KDV_T, n_steps=KDV_NSTEPS)
+        elif benchmark == "wave_1d":
+            u0, ut0 = _wave_ic(curr_n, GRID_SIZE, rng)
+            inp = u0
+            tgt = solve_wave_batch(u0, ut0, c=WAVE_C, T=WAVE_T, n_steps=WAVE_NSTEPS)
+        elif benchmark == "darcy_2d":
+            a, f = _darcy_fix_ic(curr_n, GRID_SIZE, rng)
+            inp = a[..., None]
+            tgt = solve_darcy_2d_batch(a, f)[..., None]
+        elif benchmark == "ns_2d":
+            w0 = _ns_fix_ic(curr_n, GRID_SIZE, rng)
+            inp = w0[..., None]
+            tgt = solve_ns_2d_batch(w0)[..., None]
+        elif benchmark == "ns_hre_2d":
+            w0 = _ns_fix_ic(curr_n, GRID_SIZE, rng)
+            inp = w0[..., None]
+            tgt = solve_ns_2d_batch(w0, nu=1e-3, n_steps=2000)[..., None]
+        elif benchmark == "swe_2d":
+            h0 = _swe_ic(curr_n, GRID_SIZE, rng)
+            inp = h0[..., None]
+            tgt = solve_swe_2d_batch(h0)[..., None]
+        elif benchmark == "allen_cahn_2d":
+            u0 = _allen_cahn_ic(curr_n, GRID_SIZE, rng)
+            inp = u0[..., None]
+            tgt = solve_allen_cahn_2d_batch(u0)[..., None]
+        elif benchmark == "mhd_2d":
+            w0, a0 = _mhd_ic(curr_n, GRID_SIZE, rng)
+            inp = np.stack([w0, a0], axis=-1)
+            tgt = solve_mhd_2d_batch(w0, a0)[..., None]
+        elif benchmark == "burgers_nu_01":
+            inp = _random_ic(curr_n, GRID_SIZE, rng)
+            from data.prepare import solve_burgers_batch
+            tgt = solve_burgers_batch(inp, nu=0.1)
+        elif benchmark == "burgers_nu_001":
+            inp = _random_ic(curr_n, GRID_SIZE, rng)
+            from data.prepare import solve_burgers_batch
+            tgt = solve_burgers_batch(inp, nu=0.01)
+        else:
+            raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
+            
+        all_inputs.append(inp)
+        all_targets.append(tgt)
+
+    if n > chunk_size:
+        print(f"  [{benchmark}] Generating samples {n}/{n}... Done.")
+        sys.stdout.flush()
+
+    return np.concatenate(all_inputs, axis=0), np.concatenate(all_targets, axis=0)
 
 
 def _get_ext_val_cache(benchmark: str) -> str:
@@ -369,7 +519,11 @@ EXT_SOTA = {
     "kdv_1d":       0.010,   # FNO on KdV, Tran et al. 2023
     "wave_1d":      0.005,   # Wave equation: easier than Burgers, FNO near-exact
     "darcy_2d": 0.0108,  # Li et al. 2020 FNO on Darcy (proper solver)
-    "ns_2d":    0.0128,  # Li et al. 2020 FNO on NS (T=1, ν=1e-2)
+    "ns_2d":    0.0128,  # Li et al. 2020 FNO on NS (T=1, nu=1e-2)
+    "ns_hre_2d": 0.0700, # Estimated SOTA for Re=1000
+    "swe_2d":    0.0020, # FNO on SWE
+    "allen_cahn_2d": 0.020, # SOTA near 0.02
+    "mhd_2d":    0.0350, # MHD targets from PhysicsNeMo
 }
 
 
@@ -410,7 +564,7 @@ EXT_BENCHMARK_INFO = {
             "f uses fixed seed=42 → u uncorrelated with model input a",
     },
     "ns_2d": {
-        "pde":        "ω_t + (u·∇)ω = ν Δω  (2D NS, vorticity form)",
+        "pde":        "w_t + (u*grad)w = nu * Laplacian(w)  (2D NS, vorticity form)",
         "domain":     "[0, 2π)², periodic",
         "ic_type":    "small-amplitude vorticity (scale=0.1) → CFL≈0.6 < 1",
         "solver":     "Semi-implicit Euler, 2/3-rule dealiasing, n_steps=1000",
@@ -421,6 +575,46 @@ EXT_BENCHMARK_INFO = {
         "known_issue_in_prepare_py":
             "solve_ns_2d_batch uses IC scale=1.0 → max_velocity≈95 → "
             "CFL≈61 → semi-implicit Euler explodes to NaN on step 1",
+    },
+    "ns_hre_2d": {
+        "pde": "2D NS with Re=1000 (nu=1e-3)",
+        "domain": "[0, 2pi)^2, periodic",
+        "ic_type": "scale=0.1 vorticity",
+        "solver": "Semi-implicit Euler, n_steps=2000",
+        "t_final": NS_T,
+        "n_steps": 2000,
+        "sota_model": "FNO",
+        "notes": "High Reynolds number challenge",
+    },
+    "swe_2d": {
+        "pde": "Shallow Water Equations (height-vorticity)",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "Random height bumps",
+        "solver": "Spectral continuity + momentum",
+        "t_final": SWE_T,
+        "n_steps": SWE_NSTEPS,
+        "sota_model": "MemNO",
+        "notes": "Tests multi-scale wave dynamics",
+    },
+    "allen_cahn_2d": {
+        "pde": "Allen-Cahn Phase Separation",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "High-frequency random noise",
+        "solver": "Semi-implicit spectral",
+        "t_final": AC_T,
+        "n_steps": AC_NSTEPS,
+        "sota_model": "FNO",
+        "notes": "Tests sharp interface capture",
+    },
+    "mhd_2d": {
+        "pde": "Magnetohydrodynamics (vorticity-potential)",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "Orszag-Tang inspired random fields",
+        "solver": "Dual-field spectral",
+        "t_final": MHD_T,
+        "n_steps": MHD_NSTEPS,
+        "sota_model": "TFNO",
+        "notes": "Coupled fluid-magnetic dynamics",
     },
 }
 

@@ -78,7 +78,7 @@ class S4DLayer(nn.Module):
         Returns:
             [B, L, H] output sequence
         """
-        B, L, H = x.shape
+        _, L, _ = x.shape
         
         # 1. Compute Kernel
         k = self._get_kernel(L) # [H, L]

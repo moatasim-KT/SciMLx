@@ -1,8 +1,8 @@
 """Autonomous next-experiment suggester for the SciML research loop.
 
 Combines three sources of information to generate prioritised experiment plans:
-  1. results.tsv   — what we've already tried and what worked
-  2. experiments.py — what's in the queue and what's pending
+  1. results.json  — what we've already tried and what worked
+  2. experiments.yaml — what's in the queue and what's pending
   3. papers/*.yaml  — what the literature says to try next
 
 Usage:
@@ -14,7 +14,7 @@ Usage:
 
 The output is actionable:
   - "Run now" suggestions with specific CLI commands
-  - ExperimentConfig snippets to paste into experiments.py
+  - ExperimentConfig snippets to paste into experiments.yaml
   - Literature-backed rationales for each suggestion
 
 Design principle: This tool should remove the need for human reasoning about
@@ -223,7 +223,7 @@ class Suggestion:
 
 def _generate_empirical_suggestions(rows: list[dict],
                                      benchmark: str) -> list[Suggestion]:
-    """Suggestions based purely on empirical findings in results.tsv."""
+    """Suggestions based purely on empirical findings in results.json."""
     done  = _done_names()
     best  = _best_per_benchmark(rows).get(benchmark, float("inf"))
     suggs = []
@@ -242,7 +242,7 @@ def _generate_empirical_suggestions(rows: list[dict],
                 cli=f"uv run train.py --model RFNO --hidden {bh} --layers {l} "
                     f"--modes {bm} --benchmark {benchmark}",
                 rationale=f"RFNO l={l}: Pre-LN residuals unlock depth > 8 (FNO degraded here)",
-                expected="~0.13–0.15",
+                expected="~0.13-0.15",
                 priority=1, source="empirical",
             ))
 
@@ -255,7 +255,7 @@ def _generate_empirical_suggestions(rows: list[dict],
                 cli=f"uv run train.py --model AFNO --hidden {bh} --layers {l} "
                     f"--modes {bm} --benchmark {benchmark}",
                 rationale=f"AFNO: non-linear Fourier mixing + softshrink sparsity (Guibas 2022)",
-                expected="~0.12–0.15",
+                expected="~0.12-0.15",
                 priority=1, source="paper:afno-2022",
             ))
 
@@ -267,7 +267,7 @@ def _generate_empirical_suggestions(rows: list[dict],
             cli=f"uv run train.py --model FNO --hidden {bh} --layers {bl} "
                 f"--modes {bm} --loss h1 --h1_alpha 0.1 --benchmark {benchmark}",
             rationale="H1 Sobolev loss: penalises gradient errors → targets shock fronts directly",
-            expected=f"~{best * 0.88:.4f}–{best * 1.02:.4f}",
+            expected=f"~{best * 0.88:.4f}-{best * 1.02:.4f}",
             priority=1, source="paper:h1-sobolev-loss",
         ))
 
@@ -279,7 +279,7 @@ def _generate_empirical_suggestions(rows: list[dict],
             cli=f"uv run train.py --model RFNO --hidden {bh} --layers 8 "
                 f"--modes {bm} --loss h1 --h1_alpha 0.1 --benchmark {benchmark}",
             rationale="RFNO + H1: compound architecture + loss improvements",
-            expected=f"~{best * 0.80:.4f}–{best * 0.92:.4f}",
+            expected=f"~{best * 0.80:.4f}-{best * 0.92:.4f}",
             priority=2, source="empirical+paper",
         ))
 
@@ -292,7 +292,7 @@ def _generate_empirical_suggestions(rows: list[dict],
                 cli=f"uv run train.py --model FNO --hidden 128 --layers 8 "
                     f"--modes 24 --benchmark kdv_1d",
                 rationale="Establish KdV baseline. New benchmark → immediate novel result.",
-                expected="~0.02–0.08",
+                expected="~0.02-0.08",
                 priority=2, source="paper:ffno-2023",
             ))
 
@@ -301,7 +301,8 @@ def _generate_empirical_suggestions(rows: list[dict],
 
 def _generate_paper_suggestions(rows: list[dict],
                                   benchmark: str) -> list[Suggestion]:
-    """Suggestions from paper registry (pending papers)."""
+    """Suggestions from core.paper_registry."""
+    from core.paper_registry import PaperRegistry
     suggs = []
     done  = _done_names()
 
@@ -479,7 +480,7 @@ def _sota_gap(rows: list[dict], benchmark: str) -> None:
     if sota and our:
         gap = our / sota
         print(f"\n  SOTA gap ({benchmark}):  "
-              f"our={our:.6f}  sota={sota:.4f}  gap={gap:.1f}×")
+              f"our={our:.6f}  sota={sota:.4f}  gap={gap:.1f}x")
         # Estimate experiments needed at 10% improvement/run
         improvements_needed = math.log(gap) / math.log(1 / 0.90)
         print(f"  At 10%/run → ~{improvements_needed:.0f} more successful experiments to SOTA")
@@ -538,7 +539,7 @@ def report(benchmark: Optional[str], top_n: int) -> None:
 
 
 def generate_config_snippets(benchmark: str, top_n: int = 5) -> None:
-    """Print ExperimentConfig Python snippets ready to paste into experiments.py."""
+    """Print ExperimentConfig snippets ready to paste into experiments.yaml."""
     rows  = _load_results(benchmark)
     done  = _done_names()
     wins  = (_get_known_wins()).get(benchmark, {})
@@ -567,7 +568,7 @@ def generate_config_snippets(benchmark: str, top_n: int = 5) -> None:
 
     for name, model, h, l, m, loss, alpha, pri, rat in configs[:top_n]:
         if name in done:
-            print(f"# SKIP: {name} — already in results.tsv")
+            print(f"# SKIP: {name} — already in results.json")
             continue
         loss_arg = f'loss_type="{loss}", h1_alpha={alpha},' if loss != "l2_rel" else ""
         print(f"    ExperimentConfig(")

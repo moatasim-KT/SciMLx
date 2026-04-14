@@ -63,7 +63,7 @@ def _load_hypothesis():
     return HypothesisEngine()
 
 def _load_hpo(benchmark: str, model: str = "FNO"):
-    from bayesian_hpo import BayesianHPO
+    from core.hpo import BayesianHPO
     hpo = BayesianHPO(benchmark, model)
     hpo.load_history()
     return hpo
@@ -88,7 +88,7 @@ def current_sota_gaps() -> dict[str, float]:
 
 
 def pending_count() -> int:
-    from experiments import get_experiments
+    from core.loader import get_experiments
     from core.utils import done_names
     done = done_names()
     return sum(1 for e in get_experiments() if e.name not in done)
@@ -306,13 +306,13 @@ def print_state_report(state: dict) -> None:
     for bm, gap in sorted(gaps.items(), key=lambda x: -x[1]):
         bar  = "█" * min(20, int(gap * 5)) if gap > 0.1 else ""
         flag = " ← BEATS SOTA" if gap < 1.0 else ""
-        print(f"    {bm:<25}  {gap:>6.2f}×  {bar}{flag}")
+        print(f"    {bm:<25}  {gap:>6.2f}x  {bar}{flag}")
 
     order = state.get("priority_order", [])
     if order:
         print(f"\n  Research priority order:")
         for i, (bm, gap, runs) in enumerate(order[:5], 1):
-            print(f"    {i}. {bm:<25}  gap={gap:.2f}×  runs={runs}")
+            print(f"    {i}. {bm:<25}  gap={gap:.2f}x  runs={runs}")
 
     interventions = state.get("interventions", {})
     if interventions:

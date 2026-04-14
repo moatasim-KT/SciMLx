@@ -3,7 +3,7 @@ from pathlib import Path
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent
 README_PATH = REPO_ROOT / "README.md"
 
 IGNORE_DIRS = {
@@ -44,7 +44,7 @@ def update_readme():
         return
 
     # Generate the new tree
-    tree_lines = ["```text", "autoresearch-mlx/"] + generate_tree(REPO_ROOT) + ["```"]
+    tree_lines = ["```text", "autoresearch-mlx/", *generate_tree(REPO_ROOT), "```"]
     new_structure = "\n".join(tree_lines)
 
     # Read current README

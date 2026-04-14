@@ -1,0 +1,22 @@
+title: "On the Benefits of Memory for Modeling Time-Dependent PDEs"
+short_id: memno_2025
+authors: "Buitrago Ruiz et al."
+year: 2025
+venue: "ICLR"
+key_idea: |
+  Introduces Memory Neural Operator (MemNO), integrating structured state space 
+  models (S4) into FNO to handle time-dependent PDEs. Especially robust to 
+  low-resolution and noisy observation data by effectively capturing temporal memory.
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.0052
+  ns_2d:
+    reported_val_l2_rel: 0.0150
+suggested_experiments:
+  - name: "memno_burgers_noisy_h128"
+    benchmark: "burgers_1d"
+    model: "MemNO"
+    hidden_dim: 128
+    loss: "l2_rel"
+    rationale: "Test robustness to discretization artifacts"
+status: pending

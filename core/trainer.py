@@ -33,6 +33,7 @@ class Trainer:
         max_vram_gb: float = 0.0,
         curriculum: bool = False,
         exp_name: str = "",
+        step_callback: Optional[Callable[[int, float], None]] = None,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -46,6 +47,7 @@ class Trainer:
         self.max_vram_gb = max_vram_gb
         self.curriculum = curriculum
         self.exp_name = exp_name
+        self.step_callback = step_callback
         self._loss_history: list = []   # rolling (step, loss) pairs for live telemetry
         # Per-experiment telemetry file: .vram_telemetry_<name> so parallel runs don't clobber each other
         from pathlib import Path as _Path
@@ -140,6 +142,9 @@ class Trainer:
 
             self.optimizer.update(self.model, grads)
             mx.eval(self.model.parameters(), self.optimizer.state)
+
+            if self.step_callback:
+                self.step_callback(total_steps, progress)
 
             total_train_time += (time.time() - t_step_start)
             total_steps += 1

@@ -4,7 +4,7 @@ Combines diagonal S4D state-space models with spectral convolutions.
 SSM captures long-range sequential patterns; spectral conv captures global modes.
 
 Reference: arXiv:2507.23428 — "State-Space Neural Operators"
-Key claims: 0.0070 on Burgers (vs SOTA 0.0149), ~200k params, 5× better than SOTA
+Key claims: 0.0070 on Burgers (vs SOTA 0.0149), ~200k params, 5x better than SOTA
 
 Key innovations over vanilla S4NO:
   - Adaptive damping: learnable per-channel damping coefficient (not fixed at -0.5)
@@ -80,7 +80,7 @@ class AdaptiveS4DLayer(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         """x: [B, L, H] → [B, L, H]"""
-        B, L, H = x.shape
+        _, L, _ = x.shape
         k = self._get_kernel(L)                             # [H, L]
 
         # FFT convolution
@@ -121,7 +121,7 @@ class SSNOBlock1d(nn.Module):
 
     def _spectral_conv(self, x: mx.array) -> mx.array:
         """x: [B, N, H] → [B, N, H]  (same API as FNO SpectralConv)"""
-        B, N, H = x.shape
+        _, N, _ = x.shape
         x_ft = mx.fft.rfft(x, axis=1)                       # [B, N//2+1, H]
         nm = min(self.n_modes, N // 2 + 1)
 

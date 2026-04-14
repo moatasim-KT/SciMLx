@@ -1,13 +1,13 @@
 """Tucker-Factorized FNO (TFNO) and CP-Factorized FNO (CPFNO).
 
 Inspired by PhysicsNeMo (NVIDIA Modulus) TFNO implementation and the paper:
-  "Factorized Fourier Neural Operators" – Kossaifi et al., ICLR 2024
+  "Factorized Fourier Neural Operators" - Kossaifi et al., ICLR 2024
   arXiv: https://arxiv.org/abs/2111.13802
 
 Key idea: factorize the spectral weight tensor W[n_modes, in_ch, out_ch] using
 Tucker or CP decompositions.
 
-Tucker: W = G ×1 Um ×2 Ui ×3 Uo
+Tucker: W = G x1 Um x2 Ui x3 Uo
   - core G[r_m, r_i, r_o] + factor matrices Um[n_modes, r_m], Ui[in_ch, r_i], Uo[out_ch, r_o]
   - fewer params, implicit low-rank regularization, generalize better
 
@@ -15,7 +15,7 @@ CP: W[m,i,o] ≈ Σ_r A[m,r] * B[i,r] * C[o,r]
   - even more compact; R*(n_modes + in_ch + out_ch) params vs n_modes*in_ch*out_ch
 
 Benefits over full FNO:
-  - ~2–4× fewer spectral params → can increase hidden_dim or n_layers at same memory
+  - ~2-4x fewer spectral params -> can increase hidden_dim or n_layers at same memory
   - Low-rank inductive bias reduces overfitting on small datasets (e.g. darcy_2d)
   - PhysicsNeMo shows TFNO matches or beats FNO on Darcy, NS, MHD benchmarks
 """
@@ -249,7 +249,7 @@ class CPFNO1d(nn.Module):
 
     With rank=8 and hidden_dim=128, n_modes=24:
       Full FNO spectral params:  2 * 24 * 128 * 128 = 786,432
-      CP-FNO spectral params:    2 * 8 * (24 + 128 + 128) = 4,480  (~175× reduction)
+      CP-FNO spectral params:    2 * 8 * (24 + 128 + 128) = 4,480  (~175x reduction)
 
     Useful for probing whether low-rank spectral operators can still learn well.
     """
@@ -319,7 +319,7 @@ class TuckerSpectralConv2d(nn.Module):
         return out_r, out_i
 
     def __call__(self, x: mx.array) -> mx.array:
-        B, N1, N2, C = x.shape
+        B, N1, N2, _ = x.shape
         x_ft = mx.fft.rfft2(x, axes=(1, 2))
         out_ft = mx.zeros([B, N1, N2 // 2 + 1, self.out_ch], dtype=mx.complex64)
 

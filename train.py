@@ -14,6 +14,7 @@ import time
 import argparse
 from pathlib import Path
 
+from core.loader import EXPERIMENTS
 from core.utils import REPO_ROOT
 
 import mlx.core as mx
@@ -22,7 +23,7 @@ import mlx.nn as nn
 from mlx.utils import tree_flatten
 
 from data.prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
-from data.benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader, evaluate_l2_rel_ext
+from data.benchmarks_ext import EXT_BENCHMARKS, EXT_N_CHANNELS, make_ext_dataloader, evaluate_l2_rel_ext
 from data.simulations import SIM_BENCHMARKS, SIM_IS_MC, SIM_N_CHANNELS
 from core.losses import get_loss_fn
 from core.research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
@@ -84,6 +85,10 @@ def _parse_args():
     p.add_argument("--resume_from", default="", help="Resume from specific checkpoint name/path")
     p.add_argument("--max_vram_gb", type=float, default=5.0,
                    help="Abort training if peak VRAM exceeds this (GB). 0=disabled.")
+    p.add_argument("--refine_grid", action="store_true",
+                   help="Phase 11: Enable Adaptive Grid Extension (doubling G at 30% and 60% budget)")
+    p.add_argument("--degree",      type=int,   default=5,
+                   help="Chebyshev polynomial degree for cPIKAN models.")
     return p.parse_args()
 
 args = _parse_args()
@@ -143,13 +148,15 @@ t_data         = time.time()
 print(f"Data ready in {t_data - t_start:.1f}s")
 
 is_1d  = BENCHMARK.endswith("_1d")
-is_mc  = SIM_IS_MC.get(BENCHMARK, False)   # multi-channel benchmark?
-n_ch   = SIM_N_CHANNELS.get(BENCHMARK, 1)  # number of physical channels
+is_mc  = SIM_IS_MC.get(BENCHMARK, False) or (BENCHMARK == "mhd_2d")
+n_ch   = SIM_N_CHANNELS.get(BENCHMARK, EXT_N_CHANNELS.get(BENCHMARK, 1))
 
 if MODEL_TYPE == "FNO" and is_mc:
     _model_key = "FNO_MC"
 elif MODEL_TYPE == "FNO" and not is_1d:
     _model_key = "FNO2D"
+elif MODEL_TYPE == "RFNO" and not is_1d:
+    _model_key = "RFNO2D"
 else:
     _model_key = MODEL_TYPE
 
@@ -157,8 +164,9 @@ model = MODEL_REGISTRY.build(
     _model_key,
     n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS, n_levels=N_LEVELS,
     n_head=N_HEAD, slice_num=SLICE_NUM,
-    sparsity=SPARSITY,
+    sparsity=SPARSITY, n_sensors=GRID_SIZE,
     in_channels=n_ch, out_channels=n_ch,   # absorbed by **kw for non-MC models
+    degree=args.degree,                    # For Chebyshev models
 )
 
 # Resumption logic: load best weights if available
@@ -224,6 +232,30 @@ def loss_fn(model, x, y):
         return data_loss + PINO_LAMBDA * phys_loss
     return data_loss
 
+# ── Phase 11: Adaptive Grid Hook ───────────────────────────────────────────
+
+def refine_grid_callback(step: int, progress: float):
+    # Only refine if flag is set and we're at key milestones
+    if not args.refine_grid:
+        return
+    
+    # Doubling milestones: 30% and 60%
+    milestones = [0.3, 0.6]
+    for m in milestones:
+        # Check if we just crossed the milestone
+        # Note: Progress is elapsed/budget
+        if progress >= m and progress < m + 0.01:
+            # Check if we already did this one (persistent state via model? No, just check current grid)
+            for _, mod in model.modules():
+                if hasattr(mod, "update_grid"):
+                    current_g = getattr(mod, "grid_size")
+                    # Crude check to avoid re-running same milestone: 
+                    # if we haven't doubled yet for this milestone
+                    target_g = 5 * (2 if m == 0.3 else 4)
+                    if current_g < target_g:
+                        mod.update_grid(target_g)
+                        mx.eval(model.parameters()) # ensure weights are materialized
+
 # ── Training ─────────────────────────────────────────────────────────────────
 
 lr_sch = get_lr_schedule(WARMUP_RATIO, WARMDOWN_RATIO, FINAL_LR_FRAC)
@@ -240,6 +272,7 @@ trainer = Trainer(
     max_vram_gb=MAX_VRAM_GB,
     curriculum=CURRICULUM,
     exp_name=EXP_NAME,
+    step_callback=refine_grid_callback,
 )
 
 print(f"Starting training (budget {TIME_BUDGET}s)...")

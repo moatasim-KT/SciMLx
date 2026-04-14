@@ -127,3 +127,69 @@ class GNOT2d(nn.Module):
         if out.shape[-1] == 1:
             return out[:, :, :, 0]
         return out
+
+class GNOT_FFNO_Block(nn.Module):
+    """Hybrid Spectral-Attention block for sharp gradient capture.
+    
+    Combines Transformer spatial attention with Factorized Fourier spectral filtering.
+    """
+    def __init__(self, dims: int, n_modes: int, n_heads: int = 4, mlp_ratio: int = 2):
+        super().__init__()
+        from models.afno import DiagSpectralConv1d
+        self.ln1 = nn.LayerNorm(dims)
+        self.attn = MultiHeadAttention(dims, n_heads)
+        self.spec = DiagSpectralConv1d(dims, n_modes)
+        
+        # Learnable gate for spectral vs spatial weighting
+        self.gate = mx.zeros([1, 1, dims]) 
+        
+        self.ln2 = nn.LayerNorm(dims)
+        self.mlp = nn.Sequential(
+            nn.Linear(dims, mlp_ratio * dims),
+            nn.GELU(),
+            nn.Linear(mlp_ratio * dims, dims),
+        )
+
+    def __call__(self, x: mx.array) -> mx.array:
+        h = self.ln1(x)
+        # Spatial path
+        x_attn = self.attn(h, h, h)
+        # Spectral path
+        x_spec = self.spec(h)
+        
+        # Gated fusion
+        g = mx.sigmoid(self.gate)
+        x = x + g * x_spec + (1 - g) * x_attn
+        
+        x = x + self.mlp(self.ln2(x))
+        return x
+
+class GNOT_FFNO(nn.Module):
+    """Burgers Breakthrough Hybrid Model (Phase 8)."""
+    def __init__(self, hidden_dim: int, n_layers: int, n_modes: int = 24, n_heads: int = 4, in_channels: int = 1):
+        super().__init__()
+        self.lift = nn.Linear(in_channels + 1, hidden_dim)
+        self.blocks = [GNOT_FFNO_Block(hidden_dim, n_modes, n_heads) for _ in range(n_layers)]
+        self.norm = nn.LayerNorm(hidden_dim)
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, in_channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        if x.ndim == 2:
+            B, N = x.shape
+            x = x[..., None]
+        else:
+            B, N, _ = x.shape
+            
+        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
+        x = mx.concatenate([x, grid], axis=-1)
+        
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        
+        x = nn.gelu(self.proj1(self.norm(x)))
+        out = self.proj2(x)
+        if out.shape[-1] == 1:
+            return out[:, :, 0]
+        return out

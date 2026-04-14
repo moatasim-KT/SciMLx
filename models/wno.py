@@ -3,7 +3,7 @@
 Unlike FNO (which uses global Fourier modes), WNO applies multi-resolution
 Haar wavelet decomposition.  This is better suited to:
   - Non-periodic boundary conditions (e.g., Darcy flow)
-  - Problems with localised shocks or sharp features (e.g., Burgers at low ν)
+  - Problems with localised shocks or sharp features (e.g., Burgers at low nu)
   - Multi-scale phenomena where both global and local features matter
 
 Reference:
@@ -23,13 +23,13 @@ def _haar_forward(x: mx.array, levels: int) -> tuple[list[mx.array], mx.array]:
     """Multi-level Haar forward transform.
 
     Args:
-        x      : [B, N, C] – spatial signal
+        x      : [B, N, C] - spatial signal
         levels : number of decomposition levels
 
     Returns:
         details : list of length `levels`, details[0] is finest scale
                   each entry is [B, N // 2^(k+1), C]
-        approx  : [B, N // 2^levels, C] – final low-pass approximation
+        approx  : [B, N // 2^levels, C] - final low-pass approximation
     """
     details: list[mx.array] = []
     approx = x
@@ -55,7 +55,7 @@ def _haar_inverse(details: list[mx.array], approx: mx.array) -> mx.array:
         approx  : coarsest approximation
 
     Returns:
-        [B, N, C] – reconstructed signal
+        [B, N, C] - reconstructed signal
     """
     x  = approx
     sq2 = math.sqrt(2)
@@ -138,3 +138,70 @@ class WNO1d(nn.Module):
             x = blk(x)
         x    = nn.gelu(self.proj1(x))
         return self.proj2(x)[:, :, 0]
+
+class WNO_GNOT_Block(nn.Module):
+    """Hybrid Wavelet-Attention block for multi-scale discontinuity capture.
+    
+    Combines Haar wavelet localization with Transformer spatial coordination.
+    """
+    def __init__(self, dims: int, n_levels: int, n_heads: int = 4, mlp_ratio: int = 2):
+        super().__init__()
+        # Import attention from gnot to reuse implementation
+        from models.gnot import MultiHeadAttention
+        self.ln1 = nn.LayerNorm(dims)
+        self.attn = MultiHeadAttention(dims, n_heads)
+        self.wav = WaveletConv1d(dims, dims, n_levels)
+        
+        # Learnable gate for wavelet vs spatial weighting
+        self.gate = mx.zeros([1, 1, dims]) 
+        
+        self.ln2 = nn.LayerNorm(dims)
+        self.mlp = nn.Sequential(
+            nn.Linear(dims, mlp_ratio * dims),
+            nn.GELU(),
+            nn.Linear(mlp_ratio * dims, dims),
+        )
+
+    def __call__(self, x: mx.array) -> mx.array:
+        h = self.ln1(x)
+        # Spatial Path (Transformer)
+        x_attn = self.attn(h, h, h)
+        # Multi-scale Path (Wavelet)
+        x_wav = self.wav(h)
+        
+        # Gated fusion
+        g = mx.sigmoid(self.gate)
+        x = x + g * x_wav + (1 - g) * x_attn
+        
+        x = x + self.mlp(self.ln2(x))
+        return x
+
+class WNO_GNOT(nn.Module):
+    """Wavelet-Transformer Hybrid Model (Phase 9 Breakthrough)."""
+    def __init__(self, hidden_dim: int, n_layers: int, n_levels: int = 3, n_heads: int = 4, in_channels: int = 1):
+        super().__init__()
+        self.lift = nn.Linear(in_channels + 1, hidden_dim)
+        self.blocks = [WNO_GNOT_Block(hidden_dim, n_levels, n_heads) for _ in range(n_layers)]
+        self.norm = nn.LayerNorm(hidden_dim)
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, in_channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        if x.ndim == 2:
+            B, N = x.shape
+            x = x[..., None]
+        else:
+            B, N, _ = x.shape
+            
+        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
+        x = mx.concatenate([x, grid], axis=-1)
+        
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        
+        x = nn.gelu(self.proj1(self.norm(x)))
+        out = self.proj2(x)
+        if out.shape[-1] == 1:
+            return out[:, :, 0]
+        return out

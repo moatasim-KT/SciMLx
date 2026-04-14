@@ -120,8 +120,8 @@ class RFNO1d(nn.Module):
 class FNO1dMC(nn.Module):
     """Multi-channel Fourier Neural Operator for 1-D operator learning.
 
-    Handles inputs of shape [B, N, C_in] → [B, N, C_out].
-    Extends FNO1d to multi-component PDEs (e.g., Euler: ρ,u,p → ρ,u,p).
+    Handles inputs of shape [B, N, C_in] -> [B, N, C_out].
+    Extends FNO1d to multi-component PDEs (e.g., Euler: rho,u,p -> rho,u,p).
     An appended spatial coordinate is used as an extra input channel.
     """
 
@@ -166,7 +166,7 @@ class SpectralConv2d(nn.Module):
 
     def __call__(self, x: mx.array) -> mx.array:
         # x : [B, N1, N2, C_in]
-        B, N1, N2, C = x.shape
+        B, N1, N2, _ = x.shape
         x_ft = mx.fft.rfft2(x, axes=(1, 2))  # [B, N1, N2//2+1, C] complex
 
         # Handle the two symmetric modes in the first dimension
@@ -354,3 +354,37 @@ class UNO1d(nn.Module):
 
         x    = nn.gelu(self.proj1(x))
         return self.proj2(x)[:, :, 0]
+
+class RFNO2d(nn.Module):
+    """Residual 2-D Fourier Neural Operator (RFNO).
+    
+    Uses Pre-LN residual blocks for improved stability at depth.
+    """
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
+        super().__init__()
+        self.lift   = nn.Linear(in_channels + 2, hidden_dim)
+        self.blocks = [FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
+        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        # x : [B, N1, N2] or [B, N1, N2, C]
+        if x.ndim == 3:
+            B, N1, N2 = x.shape
+            x = x[..., None]
+        else:
+            B, N1, N2, _ = x.shape
+            
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
+        x     = mx.concatenate([x, grid1, grid2], axis=-1)
+        
+        x     = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x     = nn.gelu(self.proj1(x))
+        out   = self.proj2(x)
+        
+        if out.shape[-1] == 1:
+            return out[:, :, :, 0]
+        return out

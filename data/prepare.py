@@ -328,6 +328,7 @@ if __name__ == "__main__":
                 elif b == "ns_2d":
                     w0 = _random_ic_2d(batch_size, GRID_SIZE, rng)
                     t0 = time.time()
+                    from data.benchmarks_ext import solve_ns_2d_batch
                     solve_ns_2d_batch(w0)
                 print(f"  Solver {b}  B={batch_size:4d}  → {(time.time()-t0)*1000:.1f} ms")
         print()

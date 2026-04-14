@@ -7,7 +7,7 @@ To add a new experiment, append it to 'experiments.yaml'.
 import yaml
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 # ── Config dataclass ──────────────────────────────────────────────────────────
 
@@ -39,6 +39,8 @@ class ExperimentConfig:
     rationale:   str  = ""        # why this experiment?
     expected:    str  = ""        # expected val_l2_rel range
     paper_ref:   str  = ""        # paper ID from papers/*.yaml
+    refine_grid: bool = False      # Phase 11: Adaptive grid refinement
+    cheb_degree: int  = 5         # Phase 11: Degree for Chebyshev KAN
 
     def to_cli_args(self) -> List[str]:
         args = [
@@ -70,6 +72,10 @@ class ExperimentConfig:
             args += ["--resume"]
         if self.resume_from:
             args += ["--resume_from", self.resume_from]
+        if self.refine_grid:
+            args += ["--refine_grid"]
+        if self.model == "cPIKAN_FNO":
+            args += ["--degree", str(self.cheb_degree)]
         args += ["--budget", str(self.budget_s)]
         return args
 
@@ -110,9 +116,20 @@ def load_experiments(yaml_path: Path) -> List[ExperimentConfig]:
     return [ExperimentConfig(**d) for d in data]
 
 # Load default set
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent
 YAML_PATH = REPO_ROOT / "experiments.yaml"
 EXPERIMENTS = load_experiments(YAML_PATH)
+
+def get_experiments(benchmark: Optional[str] = None, model: Optional[str] = None, priority: Optional[int] = None) -> List[ExperimentConfig]:
+    """Return the experiments list, optionally filtered by benchmark, model, or priority."""
+    queue = EXPERIMENTS
+    if benchmark:
+        queue = [e for e in queue if e.benchmark == benchmark]
+    if model:
+        queue = [e for e in queue if e.model == model]
+    if priority:
+        queue = [e for e in queue if e.priority == priority]
+    return queue
 
 if __name__ == "__main__":
     # Smoke test

@@ -1,7 +1,7 @@
 """Autonomous SciML experiment runner.
 
 Iterates through the experiment queue in experiments.py, skips anything
-already recorded in results.tsv, runs each via subprocess, and logs results.
+already recorded in results.json, runs each via subprocess, and logs results.
 
 Usage:
     uv run autorun.py                          # run all pending experiments
@@ -13,7 +13,7 @@ Usage:
     uv run autorun.py --commit                 # git-commit good results automatically
 
 Logs are written to logs/<name>.log.
-results.tsv is updated after every experiment.
+results.json is updated after every experiment.
 """
 
 import argparse
@@ -29,22 +29,22 @@ from pathlib import Path
 from typing import Optional
 
 from core.diagnostics import parse_log_file, check_early_stop_condition, get_fix_strategies
-from experiments import ExperimentConfig, get_experiments
+from core.loader import ExperimentConfig, get_experiments
 from core.utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, SENTINEL_DIR, load_results, done_names, best_per_benchmark
 from core.tracker import Tracker
 
-TIMEOUT_S = 1500  # 25 min per experiment (20-min budget + data/compile overhead)
+TIMEOUT_S = 7200  # 2 hours per experiment (accommodates heavy 2D data-gen)
 
 # Early-stop: kill if any mid-run val (logged by trainer every 10%) exceeds
-# baseline × this multiplier at ≥30% progress — catches disasters early.
+# baseline x this multiplier at >=30% progress - catches disasters early.
 EARLY_STOP_MULTIPLIER: float = 50.0
 
 # Max number of retry strategies to attempt before discarding an experiment.
 # Strategy r1 = smart crash fix, r2 = halve model, r3 = minimal viable config.
 MAX_RETRY_STRATEGIES: int = 3
 
-# Adaptive retry: if a completed run has val > baseline × this, the config is
-# clearly not working — query HypothesisEngine for a smarter config and retry once.
+# Adaptive retry: if a completed run has val > baseline x this, the config is
+# clearly not working - query HypothesisEngine for a smarter config and retry once.
 POOR_RESULT_MULTIPLIER: float = 3.0
 
 # Memory budget for parallel scheduling (M1 8GB unified memory)
@@ -261,11 +261,11 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
                    baseline: float = float("inf")) -> dict:
     """Run one experiment. Returns dict of results.
 
-    baseline: current best val_l2_rel for the benchmark.  If a mid-run
-    validation line in the log exceeds baseline × EARLY_STOP_MULTIPLIER at
-    ≥30% progress, the process is terminated early (crash_type='EarlyStop').
+    baseline: current best val_l2_rel for the benchmark. If a mid-run
+    validation line in the log exceeds baseline x EARLY_STOP_MULTIPLIER at
+    >=30% progress, the process is terminated early (crash_type='EarlyStop').
     """
-    cmd = ["uv", "run", "train.py"] + exp.to_cli_args()
+    cmd = ["uv", "run", "train.py", *exp.to_cli_args()]
 
     wprint(f"  CMD: {' '.join(cmd)}")
     wprint(f"  LOG: {log_path}")
@@ -279,11 +279,16 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
         t0 = time.time()
         try:
             with open(log_path, "w") as log_f:
+                import os
+                env = os.environ.copy()
+                env["PYTHONPATH"] = "."
+                env["PYTHONUNBUFFERED"] = "1"
                 proc = subprocess.Popen(
                     cmd,
                     stdout=log_f,
                     stderr=subprocess.STDOUT,
                     cwd=REPO_ROOT,
+                    env=env,
                 )
             try:
                 kill_file = SENTINEL_DIR / f".kill_{exp.name}"
@@ -325,7 +330,7 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
                         proc.wait()
                         thresh = baseline * EARLY_STOP_MULTIPLIER
                         wprint(f"  EARLY STOP: mid-run val={bad_val:.4f} "
-                               f"> {thresh:.4f} ({baseline:.4f}×{EARLY_STOP_MULTIPLIER})")
+                               f"> {thresh:.4f} ({baseline:.4f}x{EARLY_STOP_MULTIPLIER})")
                         wprint(f"  Saving compute — will retry with adjusted config.")
                         return {"val": None, "mem_mb": 0.0, "diag": {}, "inspect_id": None,
                                 "crash_type": "EarlyStop"}
@@ -363,22 +368,22 @@ def run_experiment(exp: ExperimentConfig, log_path: Path,
         with _active_lock:
             _active_experiments.discard(exp.name)
             if _active_experiments:
-                active_file.write_text(", ".join(sorted(_active_experiments)))
+                ACTIVE_FILE.write_text(", ".join(sorted(_active_experiments)))
             else:
-                active_file.unlink(missing_ok=True)
+                ACTIVE_FILE.unlink(missing_ok=True)
 
 
 # ── Git integration ───────────────────────────────────────────────────────────
 
 def git_commit_result(exp: ExperimentConfig, val: float) -> None:
-    """Stage results.tsv and create a commit noting the new best result."""
+    """Stage results.json and create a commit noting the new best result."""
     try:
-        subprocess.run(["git", "add", "results.tsv"], cwd=REPO_ROOT, check=True)
+        subprocess.run(["git", "add", "results.json"], cwd=REPO_ROOT, check=True)
         msg = (f"result: {exp.benchmark} {exp.model} val_l2_rel={val:.6f}\n\n"
                f"{exp.name}: {exp.short()}\n"
                f"Rationale: {exp.rationale}")
         subprocess.run(["git", "commit", "-m", msg], cwd=REPO_ROOT, check=True)
-        print(f"  Committed results.tsv")
+        print(f"  Committed results.json")
     except subprocess.CalledProcessError as e:
         print(f"  Git commit failed: {e}")
 
@@ -398,9 +403,9 @@ def main() -> None:
     p.add_argument("--dry-run",     action="store_true",
                    help="Print the plan without running anything")
     p.add_argument("--commit",      action="store_true",
-                   help="Git-commit results.tsv after each improved result")
+                   help="Git-commit results.json after each improved result")
     p.add_argument("--force",       action="store_true",
-                   help="Re-run experiments already in results.tsv")
+                   help="Re-run experiments already in results.json")
     p.add_argument("--auto",        action="store_true",
                    help="Fully autonomous mode: run all pending, then invoke "
                         "agent_loop to generate next experiments and loop")
@@ -459,12 +464,12 @@ def main() -> None:
         """Run one experiment + retries.  Returns (exp, results, val, mem_gb, status).
 
         Crash/early-stop retry chain (skipped for ImportError/Killed/incompatible):
-          r1  smart_fix()  — context-aware from crash log (lr, batch, modes)
-          r2  _build_r2()  — halve hidden_dim/n_layers/n_modes + lr×0.1
-          r3  _build_r3()  — minimal viable: h=32 l=2 m≤8 lr=1e-4
+          r1  smart_fix()  - context-aware from crash log (lr, batch, modes)
+          r2  _build_r2()  - halve hidden_dim/n_layers/n_modes + lr x 0.1
+          r3  _build_r3()  - minimal viable: h=32 l=2 m<=8 lr=1e-4
         Discards only after all three fail.
 
-        Poor-result adaptive retry (triggered when completed val > baseline × POOR_RESULT_MULTIPLIER):
+        Poor-result adaptive retry (triggered when completed val > baseline x POOR_RESULT_MULTIPLIER):
           _adapt  _build_adapt()  — HypothesisEngine.suggest_intervention() picks a
                                     better model/arch for the benchmark based on history.
           Skipped for experiments that are themselves retries (_r1/_r2/_r3/_adapt).
@@ -511,8 +516,8 @@ def main() -> None:
                 _strategies.append((_fix_desc, _r1_exp))  # already named _r1 by smart_fix
 
             _strategies.append((
-                f"half-model: h{exp.hidden_dim}→{max(16, exp.hidden_dim//2)} "
-                f"l{exp.n_layers}→{max(1, exp.n_layers//2)} lr×0.1",
+                f"half-model: h{exp.hidden_dim}->{max(16, exp.hidden_dim//2)} "
+                f"l{exp.n_layers}->{max(1, exp.n_layers//2)} lr x 0.1",
                 _build_r2(exp),
             ))
             _strategies.append((
@@ -578,8 +583,8 @@ def main() -> None:
         )
         if _is_poor:
             wprint(
-                f"  POOR RESULT: val={val:.4f} > {baseline_val:.4f}×{POOR_RESULT_MULTIPLIER:.0f} "
-                f"— querying HypothesisEngine for adaptive config..."
+                f"  POOR RESULT: val={val:.4f} > {baseline_val:.4f}x{POOR_RESULT_MULTIPLIER:.0f} "
+                f"- querying HypothesisEngine for adaptive config..."
             )
             try:
                 from core.hypothesis import HypothesisEngine
@@ -659,7 +664,7 @@ def main() -> None:
                 ),
                 diag=results.get("diag", {}),
             )
-        wprint(f"  Logged to results.json and results.tsv  [status={status}]")
+        wprint(f"  Logged to results.json [status={status}]")
 
         if args.commit and status == "keep":
             git_commit_result(exp, val)
@@ -689,7 +694,7 @@ def main() -> None:
         i = 1
         while i <= len(pending):
             exp = pending[i - 1]
-            _, results, val, mem_gb, status = run_one(i, exp)
+            _, _, _, _, status = run_one(i, exp)
             if status == "crash":
                 n_crashed += 1
             elif status == "keep":
@@ -710,7 +715,7 @@ def main() -> None:
             futures = {pool.submit(mem_aware_run, i, exp): exp
                        for i, exp in enumerate(pending, 1)}
             for fut in as_completed(futures):
-                _, results, val, mem_gb, status = fut.result()
+                _, _, _, _, status = fut.result()
                 if status == "crash":
                     n_crashed += 1
                 elif status == "keep":

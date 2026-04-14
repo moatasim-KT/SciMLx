@@ -1,6 +1,6 @@
 """SciML results analyzer and next-experiment suggester.
 
-Reads results.tsv and produces:
+Reads results.json and produces:
   1. Best-per-benchmark/model summary table
   2. Improvement trajectory over time
   3. Hyperparameter correlation hints
@@ -111,7 +111,7 @@ def print_report(rows: list[dict], benchmark_filter: Optional[str]) -> None:
             sorted_bests = sorted(bm_bests.items(), key=lambda x: x[1]["val_l2_rel"])
             for (_, model), row in sorted_bests:
                 val  = row["val_l2_rel"]
-                gap  = f"{val / sota:.1f}× from SOTA" if sota else ""
+                gap  = f"{val / sota:.1f}x from SOTA" if sota else ""
                 print(f"    {model:<12}  {val:.6f}   {gap}   "
                       f"[ {row.get('description','')[:50]} ]")
 
@@ -162,14 +162,14 @@ def _print_suggestions(rows: list[dict], benchmark: str,
     if sota:
         gap = best_val / sota
         if gap > 10:
-            print(f"    Still {gap:.1f}× from SOTA. Focus on architectural improvements.")
+            print(f"    Still {gap:.1f}x from SOTA. Focus on architectural improvements.")
             print(f"    → Try UNO (multi-scale) and PINO (physics loss) next.")
         elif gap > 3:
-            print(f"    Getting closer ({gap:.1f}× from SOTA). "
+            print(f"    Getting closer ({gap:.1f}x from SOTA). "
                   "Fine-tune hyperparameters.")
             print(f"    → Try LR sweep (3e-4, 3e-3) and tighter grad clip.")
         else:
-            print(f"    Near SOTA ({gap:.1f}× away). "
+            print(f"    Near SOTA ({gap:.1f}x away). "
                   "Consider ensembling or longer training.")
 
     # Check if any model type has not been tried
@@ -257,7 +257,7 @@ def main() -> None:
 
     if args.papers:
         try:
-            from paper_registry import PaperRegistry
+            from core.paper_registry import PaperRegistry
             reg = PaperRegistry()
             reg.gap_table()
         except Exception as e:

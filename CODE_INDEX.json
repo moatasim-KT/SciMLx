@@ -1,0 +1,1815 @@
+{
+  "core/research_plugins.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "ModelRegistry",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "register_lazy",
+          "register",
+          "build",
+          "register_class",
+          "available",
+          "__contains__"
+        ]
+      },
+      {
+        "name": "BenchmarkRegistry",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "register",
+          "make_loader",
+          "evaluate",
+          "sota",
+          "available",
+          "__contains__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_register_defaults",
+        "docstring": null
+      }
+    ]
+  },
+  "core/diagnostics.py": {
+    "docstring": "SciML Diagnostics \u2014 Advanced metrics and visualizations for scientific discovery.\n\nExtracts spectral bias, spatial error distribution, and generates comparison PNGs.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "calculate_spectral_bias",
+        "docstring": "Calculate error magnitude across Fourier modes."
+      },
+      {
+        "name": "parse_log_file",
+        "docstring": "Extract metrics, diagnostics, and crash type from a train.py log file."
+      },
+      {
+        "name": "classify_failure",
+        "docstring": "Detailed classification of log content into failure types."
+      },
+      {
+        "name": "check_early_stop_condition",
+        "docstring": "Scan log for early-stop conditions (val >> baseline)."
+      },
+      {
+        "name": "get_fix_strategies",
+        "docstring": "Map crash types to a list of potential configuration fixes (Cause-to-Fix Map).\n\nReturns a list of (description, field_overrides) tuples."
+      },
+      {
+        "name": "generate_experiment_comparison",
+        "docstring": "Generate side-by-side PNG for the Experiment Inspector."
+      }
+    ]
+  },
+  "core/readme_hook.py": {
+    "docstring": null,
+    "classes": [],
+    "functions": [
+      {
+        "name": "generate_tree",
+        "docstring": "Recursively build ASCII tree lines."
+      },
+      {
+        "name": "update_readme",
+        "docstring": null
+      }
+    ]
+  },
+  "core/hypothesis.py": {
+    "docstring": "Hypothesis Engine \u2014 Data-driven scientific reasoning for SciML experiment branching.\n\nReads results.json to identify failure patterns and suggests concrete interventions\nbacked by papers/*.yaml literature.",
+    "classes": [
+      {
+        "name": "HypothesisEngine",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "get_benchmark_history",
+          "detect_failure_mode",
+          "analyze_benchmark",
+          "_suggest_next",
+          "suggest_intervention",
+          "print_report"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_parse_config_from_description",
+        "docstring": "Extract h/l/m values from legacy description strings like 'FNO  h=128  l=8  m=24'."
+      },
+      {
+        "name": "_effective_config",
+        "docstring": "Return config dict, falling back to description parsing for legacy entries."
+      }
+    ]
+  },
+  "core/utils.py": {
+    "docstring": "Shared utilities for the SciML autoresearch loop.\n\nCentralises path constants, SOTA targets, and results.tsv helpers that were\npreviously duplicated across analyze.py, auto_suggest.py, autorun.py, and viz.py.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "load_results",
+        "docstring": "Return all rows from results.json, optionally filtered by benchmark.\n\nEach row has val_l2_rel coerced to float (nan on parse failure)."
+      },
+      {
+        "name": "best_per_benchmark",
+        "docstring": "Return lowest val_l2_rel among 'keep' rows, keyed by benchmark."
+      },
+      {
+        "name": "done_names",
+        "docstring": "Return set of experiment names already recorded in results.tsv."
+      }
+    ]
+  },
+  "core/loader.py": {
+    "docstring": "Declarative experiment registry for autonomous SciML research.\n\nThis module now loads experiment configurations from 'experiments.yaml'.\nTo add a new experiment, append it to 'experiments.yaml'.",
+    "classes": [
+      {
+        "name": "ExperimentConfig",
+        "docstring": null,
+        "methods": [
+          "to_cli_args",
+          "short"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "load_experiments",
+        "docstring": null
+      },
+      {
+        "name": "get_experiments",
+        "docstring": "Return the global experiments list."
+      }
+    ]
+  },
+  "core/paper_registry.py": {
+    "docstring": "Paper registry \u2014 loads all papers/*.yaml files and provides query APIs.\n\nThis module bridges the literature (papers/) with the experiment infrastructure\n(experiments.yaml, autorun.py, analyze.py) to make the research loop aware of:\n\n  1. What papers have been implemented and their expected improvements\n  2. What our empirical results are vs paper claims\n  3. What experiments to run next based on the literature\n\nUsage:\n    from paper_registry import PaperRegistry\n    reg = PaperRegistry()\n    reg.report()                   # full literature-vs-results report\n    reg.suggest_next(results_tsv)  # suggest experiments from pending papers\n    reg.gap_table()                # our results vs SOTA per benchmark\n\nCLI:\n    uv run -m core.paper_registry           # print full registry report\n    uv run -m core.paper_registry --gaps    # print SOTA gap table\n    uv run -m core.paper_registry --suggest # suggest next experiments",
+    "classes": [
+      {
+        "name": "PaperRegistry",
+        "docstring": "Loads papers/*.yaml and provides query APIs.",
+        "methods": [
+          "__init__",
+          "_load_all",
+          "by_status",
+          "by_model_class",
+          "pending",
+          "implemented",
+          "get",
+          "_load_results",
+          "gap_table",
+          "report",
+          "suggest_next"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_load_yaml_simple",
+        "docstring": "Minimal YAML loader \u2014 handles only what our paper files use.\nFalls back to this if PyYAML is not installed."
+      },
+      {
+        "name": "_load_paper",
+        "docstring": null
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "core/tracker.py": {
+    "docstring": "Discovery Engine Tracker \u2014 DAG-based experiment lineage for SciML autoresearch.\n\nManages results.json (the SSoT for lineage).\nTracks branching via parent_id and structured rationale/conclusions.",
+    "classes": [
+      {
+        "name": "Tracker",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "_load",
+          "_save",
+          "log_experiment",
+          "get_lineage",
+          "get_experiment",
+          "analyze_lineage",
+          "print_analysis"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "core/scaffold.py": {
+    "docstring": "Gated Model Code Generation for SciML AutoResearch.\n\nWave 3 \u00b7 Item 25: Allows agent_loop.py (or an external agent) to generate new\nmodel architecture stubs that are automatically validated before entering the\nexperiment queue.\n\nGate contract\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nA new model must pass three checks before being registered or queued:\n  1. Syntax  \u2014 the generated .py file parses without error\n  2. Import  \u2014 the class can be imported from its module\n  3. Smoke   \u2014 model(random_input) returns the correct output shape\n\nOnly after all three pass does the model get:\n  \u2022 registered in MODEL_REGISTRY (research_plugins.py)\n  \u2022 added to models/__init__.py exports\n  \u2022 given a priority-3 ExperimentConfig in experiments.yaml\n\nUsage (external agent or agent_loop.py):\n    from model_scaffold import ModelGate, generate_stub\n\n    # Generate a starter stub\n    code = generate_stub(\"MySuperFNO\", base=\"FNO\", notes=\"Add attention after each block\")\n    Path(\"models/my_super_fno.py\").write_text(code)\n    # ... edit the stub ...\n\n    # Validate and register\n    gate = ModelGate()\n    ok, report = gate.validate(\"MySuperFNO\", \"models/my_super_fno.py\")\n    if ok:\n        gate.register_and_queue(\"MySuperFNO\", \"models/my_super_fno.py\",\n                                benchmarks=[\"burgers_1d\", \"kdv_1d\"])\n\nCLI:\n    uv run -m core.scaffold --stub MySuperFNO --base FNO\n    uv run -m core.scaffold --validate MySuperFNO models/my_super_fno.py\n    uv run model_scaffold.py --list          # show registered models",
+    "classes": [
+      {
+        "name": "ModelGate",
+        "docstring": "Three-stage validation gate for new model code.",
+        "methods": [
+          "validate",
+          "register_and_queue"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "generate_stub",
+        "docstring": "Return Python source for a new model stub."
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "core/losses.py": {
+    "docstring": "Modular loss function library for SciML experiments.\n\nAll losses take (pred, y) as [B, N] (1D) or [B, N, N] (2D) tensors\nand return a scalar.  They are drop-in replacements for the default\nrelative-L2 loss in train.py.\n\nUsage in train.py:\n    from losses import get_loss_fn\n    loss_fn_core = get_loss_fn(LOSS_TYPE, **loss_kwargs)\n    # then: loss = loss_fn_core(pred, y)\n\nAvailable loss types:\n    \"l2_rel\"     \u2013 relative L2 (default, current baseline)\n    \"h1\"         \u2013 H1 Sobolev: L2 + \u03b1\u00b7L2(\u2202u/\u2202x)  (targets shock fronts)\n    \"h1_strong\"  \u2013 H1 with \u03b1=1.0\n    \"spectral\"   \u2013 frequency-weighted L2 (emphasises high-k errors)\n    \"l1_rel\"     \u2013 relative L1 (robust to outliers)\n    \"mse\"        \u2013 plain MSE (no normalisation \u2014 for debugging)\n\nReferences:\n    H1 loss: Wen et al. (2022) \"U-FNO: An enhanced FNO-based deep learning model\n        for multiphase flow\" arXiv:2109.03697.  Section 3.2.\n    Spectral loss: Guibas et al. (2022) AFNO, Section 4.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "_spectral_grad_1d",
+        "docstring": "1D spectral derivative \u2202u/\u2202x via FFT.  u: [B, N] \u2192 \u2202u/\u2202x: [B, N]."
+      },
+      {
+        "name": "_spectral_grad2_1d",
+        "docstring": "Second spectral derivative \u2202\u00b2u/\u2202x\u00b2.  u: [B, N] \u2192 [B, N]."
+      },
+      {
+        "name": "relative_l2",
+        "docstring": "Relative L2 loss (current default).\n\nmean_batch( \u2016pred \u2212 y\u2016\u2082 / \u2016y\u2016\u2082 )"
+      },
+      {
+        "name": "h1_loss",
+        "docstring": "H1 Sobolev loss: relative L2 + \u03b1 \u00b7 relative L2 of first derivative.\n\nPenalises high-frequency errors more than L2 alone.  Particularly useful\nwhen the target has sharp gradients (Burgers shock, KdV soliton).\n\nArgs:\n    pred:  [B, N]  model prediction\n    y:     [B, N]  ground truth\n    alpha: weight on the derivative term (default 0.1)"
+      },
+      {
+        "name": "h1_strong_loss",
+        "docstring": "H1 loss with \u03b1=1.0 \u2014 equal weighting of L2 and H1 terms."
+      },
+      {
+        "name": "h2_loss",
+        "docstring": "H2 Sobolev loss: L2 + \u03b1\u00b7H1 + \u03b2\u00b7H2.\n\nAdds a second-derivative penalty.  Smooths more aggressively."
+      },
+      {
+        "name": "spectral_loss",
+        "docstring": "Frequency-weighted L2 loss.\n\nWeights Fourier coefficients by k^high_freq_weight, emphasising\nhigh-frequency components.  Useful when the model under-predicts\nfine-scale structure (e.g., soliton tails in KdV).\n\nArgs:\n    high_freq_weight: exponent for frequency weighting (default 2.0)"
+      },
+      {
+        "name": "relative_l1",
+        "docstring": "Relative L1 loss.  Robust to outlier samples."
+      },
+      {
+        "name": "mse_loss",
+        "docstring": "Plain MSE \u2014 no normalisation.  Use for debugging only."
+      },
+      {
+        "name": "get_loss_fn",
+        "docstring": "Return loss function by name, binding any keyword arguments.\n\nExample:\n    loss_fn = get_loss_fn(\"h1\", alpha=0.2)\n    loss_fn = get_loss_fn(\"l2_rel\")"
+      },
+      {
+        "name": "list_losses",
+        "docstring": null
+      }
+    ]
+  },
+  "core/trainer.py": {
+    "docstring": "Unified Trainer for SciML experiments on Apple Silicon (MLX).",
+    "classes": [
+      {
+        "name": "Trainer",
+        "docstring": "Encapsulates training loop, evaluation, and metrics.",
+        "methods": [
+          "__init__",
+          "train",
+          "evaluate"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "clip_grad_norm",
+        "docstring": "Clip gradient tree by global L2 norm. Returns (clipped_grads, norm)."
+      },
+      {
+        "name": "get_lr_schedule",
+        "docstring": null
+      }
+    ]
+  },
+  "core/viz.py": {
+    "docstring": "Comprehensive visualization module for SciML autoresearch results.\n\nGenerates plots for:\n  leaderboard   - results.json bar charts + model comparison per benchmark\n  training      - loss / grad-norm curves from .log files\n  data          - sample input\u2192output pairs for each benchmark\n  validation    - solver accuracy vs analytical solutions (wave, KdV soliton)\n  spectral      - Fourier spectrum of inputs/outputs (motivates mode count)\n  concerns      - automated concern report (flags anomalies + regressions)\n  all           - all of the above (default)\n\nUsage:\n    uv run -m core.viz                                 # all modes, save to figs/\n    uv run -m core.viz --mode leaderboard              # results comparison only\n    uv run viz.py --mode training                 # all logs\n    uv run viz.py --mode training --log <path>    # single log\n    uv run viz.py --mode data --benchmark kdv_1d  # data samples\n    uv run viz.py --mode validation               # solver accuracy\n    uv run viz.py --mode spectral                 # frequency analysis\n    uv run viz.py --mode concerns                 # concern dashboard\n    uv run -m core.viz --mode arch --benchmark burgers_1d --model FNO  # arch sanity check\n    uv run viz.py --show                          # display (don't save)",
+    "classes": [],
+    "functions": [
+      {
+        "name": "_save",
+        "docstring": null
+      },
+      {
+        "name": "load_results",
+        "docstring": null
+      },
+      {
+        "name": "parse_log",
+        "docstring": "Extract step timeseries, final result, and metadata from a .log file."
+      },
+      {
+        "name": "plot_leaderboard",
+        "docstring": "Bar chart of best-per-model per benchmark vs SOTA."
+      },
+      {
+        "name": "plot_experiment_timeline",
+        "docstring": "Scatter of all experiments, coloured by keep/discard/crash, with running best."
+      },
+      {
+        "name": "_pick_logs",
+        "docstring": "Return list of log paths to plot."
+      },
+      {
+        "name": "plot_training_curves",
+        "docstring": "Loss + LR + step-time subplots for top logs."
+      },
+      {
+        "name": "plot_step_time_comparison",
+        "docstring": "Bar chart: median step time per model architecture."
+      },
+      {
+        "name": "_get_data_samples",
+        "docstring": "Load a few samples from the benchmark data generators."
+      },
+      {
+        "name": "plot_data_samples",
+        "docstring": "Show sample input/output pairs for each benchmark."
+      },
+      {
+        "name": "plot_solver_validation",
+        "docstring": "Compare numerical solvers against analytical solutions.\n\nWave equation (ut0=0): d'Alembert \u2192 u(x,t) = [u0(x+ct) + u0(x-ct)] / 2\nKdV:  compare single-soliton numerical vs analytical"
+      },
+      {
+        "name": "plot_spectral_analysis",
+        "docstring": "Plot mean Fourier power spectrum of inputs and outputs per benchmark."
+      },
+      {
+        "name": "_check_concerns",
+        "docstring": "Automatically scan results for known problem patterns.\nReturns list of concern dicts with severity, label, message."
+      },
+      {
+        "name": "plot_concern_dashboard",
+        "docstring": "Visual concern report: severity table + per-benchmark health bars."
+      },
+      {
+        "name": "plot_architecture_comparison",
+        "docstring": "Radar chart comparing architectures across: accuracy, speed, stability."
+      },
+      {
+        "name": "plot_input_statistics",
+        "docstring": "Show distribution of input and target amplitudes, smoothness, and dynamic range."
+      },
+      {
+        "name": "plot_model_arch",
+        "docstring": "Run an untrained model forward pass and plot prediction vs ground truth.\n\nUseful for verifying shape compatibility before a full training run.\nSaves to figs/arch_<benchmark>_<model_type>.png."
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "core/hpo.py": {
+    "docstring": "Bayesian Hyperparameter Optimization for SciML experiments.\n\nReplaces the static grid in experiments.py with adaptive search using a\nGaussian Process surrogate with Expected Improvement acquisition.\n\nSupports multi-objective optimization via weighted scalarization and\nPareto-front extraction when secondary objectives are present.\n\nUsage (single-objective, original):\n    hpo = BayesianHPO(benchmark=\"burgers_1d\")\n    hpo.load_history()           # seed from results.json\n    config = hpo.ask()           # get next config to try\n    hpo.tell(config, val=0.15)   # report result\n    hpo.suggest_top(n=5)         # print top-N suggestions\n\nUsage (multi-objective: accuracy + memory):\n    hpo = BayesianHPO(\n        benchmark=\"burgers_1d\",\n        objectives=[\n            (\"val_l2_rel\", 1.0, \"minimize\"),   # primary \u2014 accuracy\n            (\"memory_gb\",  0.3, \"minimize\"),   # secondary \u2014 memory\n        ],\n    )\n    hpo.load_history()                         # loads val_l2_rel + memory_gb\n    config = hpo.ask()                         # EI on composite score\n    hpo.tell_multi(config, {\"val_l2_rel\": 0.15, \"memory_gb\": 0.12})\n    front = hpo.pareto_front()                 # Pareto-optimal (acc, mem) configs\n\n    uv run bayesian_hpo.py --benchmark burgers_1d --top 5\n    uv run bayesian_hpo.py --benchmark burgers_1d --multi --pareto",
+    "classes": [
+      {
+        "name": "BayesianHPO",
+        "docstring": "Per-benchmark Bayesian HPO study backed by results.json.\n\nWhen objectives contains more than one entry, the class operates in\nmulti-objective mode:\n  - `ask()` optimises a weighted composite score (scalarization)\n  - `tell_multi()` records per-metric observations\n  - `pareto_front()` returns the Pareto-optimal subset of observations\n\nSingle-objective mode is the default and fully backwards-compatible.",
+        "methods": [
+          "__init__",
+          "_scalarize",
+          "tell",
+          "tell_multi",
+          "load_history",
+          "ask",
+          "predict",
+          "suggest_top",
+          "pareto_front",
+          "print_pareto_front"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_normalize",
+        "docstring": "Config dict \u2192 normalized [0,1]^N vector."
+      },
+      {
+        "name": "_denormalize",
+        "docstring": "Normalized vector \u2192 config dict."
+      },
+      {
+        "name": "_rbf_kernel",
+        "docstring": "Squared-exponential (RBF) kernel: k(x,x') = \u03c3\u00b2 exp(-||x-x'||\u00b2/2l\u00b2)."
+      },
+      {
+        "name": "_gp_predict",
+        "docstring": "GP posterior mean and std at x_new (shape (d,))."
+      },
+      {
+        "name": "_expected_improvement",
+        "docstring": "Expected Improvement acquisition (minimization)."
+      }
+    ]
+  },
+  "models/hybrid_decoder_deeponet.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "HybridDecoderDeepONet2d",
+        "docstring": "Hybrid Decoder-DeepONet (FNO spatial encoder + DeepONet trunk).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/hnn.py": {
+    "docstring": "Hamiltonian Neural Network (HNN) and Hamiltonian Neural Operator.\n\nReference:\n  \"Hamiltonian Neural Networks\"\n  Sam Greydanus, Misko Dzamba, Jason Yosinski\n  NeurIPS 2019 \u2014 arXiv:1906.01563\n\nSource repo:\n  https://github.com/moatasim-KT/SciML-and-Physics-Informed-Machine-Learning-Examples\n  (matlab-deep-learning/Hamiltonian-Neural-Network)\n\nKey idea:\n  Instead of learning u(t) directly, learn the Hamiltonian H(q,p) of the system.\n  The time evolution is then governed by Hamilton's equations:\n    dq/dt =  \u2202H/\u2202p\n    dp/dt = -\u2202H/\u2202q\n\n  Training loss:\n    L_HNN = ||\u2202H/\u2202p - dq/dt||\u00b2 + ||\u2202H/\u2202q + dp/dt||\u00b2\n\n  This enforces exact energy conservation: H(q(t), p(t)) = const for all t.\n\nAdaptations for 1-D PDE operator learning:\n  - HamiltonianNet1d: standard HNN for (q,p) pairs \u2192 energy-conserving trajectories\n    For wave_1d: q = displacement u, p = velocity u_t\n    For kdv_1d:  q = wave amplitude, p = wave momentum\n    Trained with Hamiltonian loss (requires (q, p, dq/dt, dp/dt) pairs from solver)\n\n  - HamiltonianNO1d: Hamiltonian Neural Operator for operator learning\n    Adapts HNN to the IC \u2192 final state setting in our pipeline:\n    1. Encode IC u0 \u2192 (q, p) latent pair via MLP branch networks\n    2. Learn H(q, p) as a small MLP\n    3. Compute \u2202H/\u2202p, \u2202H/\u2202q via MLX autodiff\n    4. Output: u_pred = q + alpha*(\u2202H/\u2202p) (one \"Hamiltonian step\" from IC)\n    This gives the model an energy-conserving inductive bias without needing\n    time-derivative labels \u2014 useful for wave_1d and kdv_1d where energy is conserved.\n\n  - EnergyConservingFNO1d: FNO + soft energy conservation loss\n    Regular FNO with an auxiliary energy loss ||H(pred) - H(target)||.\n    More flexible than strict HNN; can be applied to dissipative systems (Burgers)\n    with a lower energy penalty weight.",
+    "classes": [
+      {
+        "name": "HamiltonianMLP",
+        "docstring": "Small MLP that maps (q, p) \u2192 scalar H.\n\nParameters\n----------\ninput_dim : int\n    Dimensionality of q and p combined (2 * latent_dim).\nhidden_dim : int\n    Width of hidden layers.\nn_layers : int\n    Number of hidden layers.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "HamiltonianNet1d",
+        "docstring": "Hamiltonian Neural Network for 1-D conservative systems.\n\nLearns H(q, p) and predicts time derivatives via Hamilton's equations.\nRequires training data in (q, p, dq/dt, dp/dt) format.\n\nUse case in our pipeline:\n  For wave_1d where u = q (displacement), ut = p (velocity), we can\n  extract (q, p) pairs at intermediate time steps from the wave solver.\n\nTraining objective:\n  L = ||\u2202H/\u2202p - dq_dt||\u00b2 + ||\u2202H/\u2202q + dp_dt||\u00b2\n\nParameters\n----------\nstate_dim : int\n    Dimensionality of q or p (= N grid points for wave_1d, or 1 for ODE).\nhidden_dim : int\n    Hidden size of the Hamiltonian MLP.\nn_layers : int\n    Depth of Hamiltonian MLP.",
+        "methods": [
+          "__init__",
+          "hamiltonian",
+          "time_derivatives",
+          "__call__"
+        ]
+      },
+      {
+        "name": "HamiltonianNO1d",
+        "docstring": "Hamiltonian Neural Operator for 1-D PDE operator learning.\n\nAdapts HNN to the standard IC \u2192 final-state setting in our pipeline.\nNo time-derivative labels required.\n\nArchitecture:\n  1. q_enc: u0[N] \u2192 q[latent_dim]   (position branch)\n  2. p_enc: u0[N] \u2192 p[latent_dim]   (momentum branch \u2014 learns IC velocity)\n  3. H_net: (q, p) \u2192 H (scalar Hamiltonian)\n  4. Step:  dq = \u2202H/\u2202p,  dp = -\u2202H/\u2202q  (one symplectic step)\n  5. Trunk: x[N] \u2192 T[N, latent_dim]\n  6. Output: (q + dq) \u00b7 T  decoded back to grid\n\nInductive bias:\n  The Hamiltonian step (4) enforces symplectic structure \u2014 energy is approximately\n  conserved at inference time.  This is the core physics prior for wave_1d / kdv_1d.\n\nParameters\n----------\nn_sensors : int\n    Grid size N (= 64 for our standard benchmarks).\nhidden_dim : int\n    Width of encoder / trunk MLPs.\nlatent_dim : int\n    Latent (q, p) dimensionality. Default = hidden_dim.\nn_layers : int\n    Depth of encoder / trunk / Hamiltonian MLPs.\nn_modes : int\n    Accepted for API compatibility (unused).",
+        "methods": [
+          "__init__",
+          "_hamiltonian_step",
+          "__call__"
+        ]
+      },
+      {
+        "name": "EnergyConservingFNO1d",
+        "docstring": "FNO with auxiliary energy conservation scoring.\n\nComputes a scalar \"energy\" E(u) = sum(u\u00b2)/N for both u0 and u_pred,\nand makes the energy ratio accessible for a soft conservation loss.\n\nThis is more flexible than strict HNN: it can be applied to dissipative\nsystems (Burgers, Darcy) by setting energy_weight \u2192 0.\n\nUsage in training:\n  pred = model(u0)\n  recon_loss = l2_rel(pred, target)\n  # model.energy_loss available after forward pass\n  total_loss = recon_loss + energy_weight * model.energy_loss\n\nParameters\n----------\nn_modes, hidden_dim, n_layers : same as FNO1d.",
+        "methods": [
+          "__init__",
+          "energy",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/gnot.py": {
+    "docstring": "General Neural Operator Transformer (GNOT) for SciML benchmarks.\n\nSimplified implementation for 1-D and 2-D regular grids using self-attention\nover spatial tokens, with coordinate-based positional encoding.\n\nReference:\n  Hao et al. (2023) \"GNOT: A General Neural Operator Transformer\" (ICML 2023)\n  arXiv:2302.14376",
+    "classes": [
+      {
+        "name": "MultiHeadAttention",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TransformerBlock",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "GNOT1d",
+        "docstring": "Simplified GNOT for 1-D problems.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "GNOT2d",
+        "docstring": "Simplified GNOT for 2-D problems.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/neural_ode.py": {
+    "docstring": "Neural ODEs and Universal Differential Equations (UDEs) for 1-D PDEs.\n\nReferences:\n  1. \"Neural Ordinary Differential Equations\"\n     Ricky T. Q. Chen, Yulia Rubanova, Jesse Bettencourt, David Duvenaud\n     NeurIPS 2018 \u2014 arXiv:1806.07366\n\n  2. \"Universal Differential Equations for Scientific Machine Learning\"\n     Christopher Rackauckas et al.\n     arXiv:2001.04385\n\nSource repo:\n  https://github.com/moatasim-KT/SciML-and-Physics-Informed-Machine-Learning-Examples\n  (universal-differential-equations example)\n\nKey ideas:\n  Neural ODE:\n    Replace a discrete residual block with a continuous ODE:\n      dh/dt = f_\u03b8(h, t)\n    The output is the solution h(T) obtained by numerical integration.\n    Gradient computed via the adjoint method (or backprop through solver steps).\n\n  Universal Differential Equation (UDE):\n    Augment a KNOWN ODE/PDE with a neural network correction term:\n      du/dt = known_physics(u, x) + NN_\u03b8(u, x)\n    The NN only needs to learn the UNKNOWN or MISSING terms.\n    For Burgers: we know the nonlinear advection u*ux, but can discover nu*uxx.\n    For wave:    we know the wave operator, NN corrects for boundary imperfections.\n\n    Key benefit: far fewer parameters needed; NN is a correction, not the full model.\n\nImplementations:\n  NeuralODE1d      \u2014 Pure neural ODE: learn du/dt = F_\u03b8(u, x), integrate to u(T).\n                     n_steps Euler or RK4 steps during forward pass.\n                     Best for: wave_1d (smooth, conservative), kdv_1d.\n\n  UniversalDE1d    \u2014 UDE: du/dt = advection(u) + NN(u, x).\n                     advection(u) = -u * ux computed via FFT (known Burgers term).\n                     NN corrects the missing viscosity / higher-order terms.\n                     Best for: burgers_1d (we know advection, NN learns diffusion).\n\n  LatentODE1d      \u2014 Latent space ODE: encode u0 \u2192 z, integrate dz/dt = F_\u03b8(z),\n                     decode z(T) \u2192 u(T). Good for irregular time series / multiscale.",
+    "classes": [
+      {
+        "name": "DerivNet1d",
+        "docstring": "Neural network approximating the time derivative \u2202u/\u2202t.\n\nInput:  [u(x), x_grid]  concatenated \u2014 [B, N, 2]\nOutput: \u2202u/\u2202t(x)        \u2014 [B, N, 1]\n\nA sequence of FNO blocks captures long-range spatial coupling in the\nderivative (important for wave and KdV), while a final pointwise layer\nprojects to the scalar tendency.\n\nParameters\n----------\nhidden_dim : int\n    Width of the FNO blocks.\nn_modes : int\n    Fourier modes in the derivative network.\nn_layers : int\n    Number of FNO blocks.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "NeuralODE1d",
+        "docstring": "Neural ODE for 1-D PDE operator learning.\n\nLearns \u2202u/\u2202t = F_\u03b8(u, x) and integrates n_steps times from u(0) to u(T).\nIntegration uses a simple fixed-step RK4 scheme for accuracy.\n\nThis is an autoregressive operator: the same F_\u03b8 is applied repeatedly,\ngiving time-translation equivariance.\n\nParameters\n----------\nn_modes : int\n    Fourier modes in the derivative network.\nhidden_dim : int\n    Width of derivative network layers.\nn_layers : int\n    Depth of derivative network.\nn_steps : int\n    Number of integration steps from t=0 to t=T_final.\n    More steps \u2192 more accurate but slower; 20 is a good default.\n\nNotes\n-----\n- Grid is always the unit interval [0, 1] with N points.\n- dt = 1.0 / n_steps (normalised time horizon = 1).\n- Euler update: u_{k+1} = u_k + dt * F_\u03b8(u_k, x)\n- RK4 update applied for better accuracy.",
+        "methods": [
+          "__init__",
+          "_rk4_step",
+          "__call__"
+        ]
+      },
+      {
+        "name": "UniversalDE1d",
+        "docstring": "Universal Differential Equation for 1-D Burgers.\n\ndu/dt = -u * \u2202u/\u2202x + NN_\u03b8(u, x)\n         \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500   \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n         known term   unknown term (viscosity, higher-order corrections)\n\nThe known term is the nonlinear Burgers advection computed spectrally.\nThe NN only needs to learn the correction (viscous diffusion + model error).\n\nKey benefit: NN has far fewer parameters than a full neural operator since\nit only models the RESIDUAL of the known physics.\n\nParameters\n----------\nn_modes : int\n    Fourier modes in the correction network.\nhidden_dim : int\n    Width of correction network.\nn_layers : int\n    Depth of correction network.\nn_steps : int\n    Integration steps.\nnu : float\n    Optional known viscosity; if > 0, also adds explicit diffusion\n    (making the NN correction even smaller).",
+        "methods": [
+          "__init__",
+          "_spectral_advection",
+          "_spectral_diffusion",
+          "_tendency",
+          "__call__"
+        ]
+      },
+      {
+        "name": "LatentODE1d",
+        "docstring": "Latent Neural ODE for 1-D operator learning.\n\nEncode u0 into a latent vector z, integrate dz/dt = G_\u03b8(z), decode z(T) \u2192 u(T).\n\nThis is more memory-efficient than NeuralODE1d (the ODE runs in latent space,\nnot full-resolution grid) and handles multiscale / irregular features better.\n\nArchitecture:\n  encoder: u0[N] \u2192 z[latent_dim]   (MLP)\n  ode_fn:  z[latent_dim] \u2192 dz/dt    (small MLP, n_steps Euler steps)\n  decoder: z[latent_dim] + x[N] \u2192 u(T)[N]  (DeepONet-style: latent dot trunk)\n\nParameters\n----------\nn_sensors : int\n    Grid size N.\nhidden_dim : int\n    Encoder/decoder MLP width.\nlatent_dim : int\n    ODE state dimension. Default = hidden_dim // 2.\nn_layers : int\n    Encoder/decoder MLP depth.\nn_steps : int\n    Euler integration steps in latent space.\nn_modes : int\n    Accepted for API compatibility (unused).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/pinn.py": {
+    "docstring": "Physics-Informed Neural Network (PINN) for SciML.\n\nStandard PINN implementation: a coordinate-based MLP that maps spatial and \ntemporal coordinates (x, t) to the PDE solution u(x, t).\n\nReference:\n  Raissi, Perdikaris, & Karniadakis (2019) \"Physics-informed neural networks: \n  A deep learning framework for solving forward and inverse problems involving \n  nonlinear partial differential equations\" (Journal of Computational Physics)",
+    "classes": [
+      {
+        "name": "PINN",
+        "docstring": "Standard MLP-based PINN for mapping coordinates to solution.\n\nCan be used in two modes:\n  1. Function approximator: (x, t) -> u(x, t)\n  2. Operator surrogate: (u0, x, t) -> u(x, t) [DeepONet style]\n\nIn this project, we primarily focus on mapping the initial condition u0 \n(represented as sensor samples) to the solution field u(x).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "PINO1d",
+        "docstring": "Physics-Informed Neural Operator (MLP-surrogate).\n\nDeepONet-like structure but implemented as a single MLP taking\n(u0_sensors, x_coord) as input.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/afno.py": {
+    "docstring": "Adaptive Fourier Neural Operator (AFNO) for 1-D problems.\n\nImplements the block-diagonal MLP in Fourier space with softshrink sparsity\nfrom Guibas et al. (2022) \"Adaptive Fourier Neural Operators: Efficient Token\nMixers for Transformers\" (ICLR 2022).\n\nKey differences vs FNO:\n  - FNO: per-mode learned linear map W[m, in_c, out_c]\n  - AFNO: shared block-diagonal 2-layer MLP across all modes + softshrink\n\nCritical implementation note (v2 fix):\n  The MLP must receive [real; imag] concatenated (2C features) so it can\n  learn proper complex interactions.  Processing real and imaginary parts\n  independently breaks the spectral convolution theorem \u2014 out_r must depend\n  on both xr and xi (just like FNO: out_r = xr*wr - xi*wi).\n\nReference: arXiv:2111.13587",
+    "classes": [
+      {
+        "name": "BlockDiagMLP",
+        "docstring": "Block-diagonal 2-layer MLP applied independently to channel groups.\n\nDivides the channel dimension C into n_blocks = C // block_size groups.\nEach group is processed by the SAME small MLP (weight sharing across blocks).\nInput dim = C, output dim = C.\n\nFor AFNO usage, call with C = 2 * hidden_dim so that real and imaginary\nparts of the Fourier coefficients are processed jointly.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "AdaptiveSpectralMixer1d",
+        "docstring": "AFNO spectral mixing layer (v2 \u2014 correct complex coupling).\n\nThe MLP receives [real; imag] as a 2*channels vector so it can learn\nthe full complex transformation (not just independent real/imag maps).\n\nPipeline:\n    x [B,N,C] \u2192 rfft \u2192 concat [xr;xi] [B*m, 2C]\n              \u2192 BlockDiagMLP(2C) \u2192 split \u2192 softshrink\n              \u2192 irfft \u2192 [B,N,C]",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "AFNOBlock1d",
+        "docstring": "Pre-LN residual AFNO block: x = x + GELU(AFNO(LN(x)) + w(LN(x))).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "AFNO1d",
+        "docstring": "Adaptive Fourier Neural Operator (v2) for 1-D operator learning.\n\nUses shared block-diagonal MLP with joint real+imag processing for\ncorrect complex-valued Fourier mode mixing.\n\nHyperparameter guide:\n    n_modes    = 24    : same sweet spot as FNO\n    hidden_dim = 128   : same as best FNO\n    n_layers   = 8     : start here; Pre-LN residuals allow going deeper\n    block_size = 32    : channel block size (must divide 2*hidden_dim)\n    sparsity   = 0.01  : softshrink threshold",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "DiagSpectralConv1d",
+        "docstring": "Diagonal (factorized) spectral convolution.\n\nInstead of a full W[m, in_c, out_c] matrix per mode (O(m*C\u00b2) params),\nuses a per-mode per-channel diagonal scale (O(m*C) params - 128x cheaper\nfor C=128, m=24).\n\nCombined with the pointwise Linear 'w' in FNOBlock (which provides full\nchannel mixing), this achieves similar expressivity to full SpectralConv\nwith far fewer parameters - enabling much wider channels in the same budget.\n\nReference: inspired by Tran et al. (2023) Factorized FNO (arXiv:2111.13587)",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FFNOBlock1d",
+        "docstring": "Factorized FNO block: diagonal spectral conv + pointwise linear + GELU.\n\nSame structure as FNOBlock1d but with DiagSpectralConv1d (much cheaper).\nThe pointwise linear 'w' provides the full channel mixing that the\ndiagonal spectral conv lacks.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FFNO1d",
+        "docstring": "Factorized Fourier Neural Operator for 1-D operator learning.\n\nUses diagonal (per-mode per-channel) spectral weights instead of\nFNO's full (per-mode per-channel-pair) weight matrices.  128x fewer\nspectral parameters - can afford much wider channels (C=256/512) or\nmore modes (m=32/48) in the same 5-minute compute budget.\n\nKey insight: the per-mode expressiveness comes from the channel-mixing\nLinear 'w' in each FFNOBlock, not the spectral conv.  The diagonal\nspectral conv provides per-mode frequency gating only.\n\nHyperparameter guide:\n    n_modes    = 32    : can afford more modes (cheap diagonal weights)\n    hidden_dim = 256   : can afford wider channels (few spectral params)\n    n_layers   = 8     : same depth as FNO sweet spot",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_softshrink",
+        "docstring": null
+      }
+    ]
+  },
+  "models/deeponet.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "DeepONet",
+        "docstring": "Deep Operator Network (DeepONet).\n\nBranch net encodes the input function; Trunk net encodes evaluation\ncoordinates.  The operator output is their inner product + bias.\n\nReference: Lu et al. (2019) \"Learning nonlinear operators via DeepONet\"\n(arXiv:1910.03193)\n\nImprovements over naive baseline:\n- Deeper branch and trunk (4 hidden layers, 128 units by default)\n- LayerNorm after each hidden activation for training stability\n- Proper weight initialization (Xavier uniform)\n- Learnable scalar bias per output point",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "PODDeepONet",
+        "docstring": "Proper Orthogonal Decomposition DeepONet.\n\nUses a fixed set of POD basis functions as the trunk (learned offline from\ndata), so the branch only needs to predict basis coefficients.  In this\nimplementation the POD basis is learned end-to-end (as an embedding matrix)\nrather than computed offline, which keeps the file self-contained while\npreserving the structural benefit of a shared basis.\n\nReference: Lu et al. (2022) \"Comprehensive study of deeponet for solving\nPDEs\" - POD-DeepONet variant.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/time_deeponet.py": {
+    "docstring": "Time-Marching DeepONet (TimeDeepONet).\n\nInspired by:\n  \"Time-marching neural operator-FE coupling: AI-accelerated physics modeling\"\n  Wei Wang, Maryam Hakimzadeh, Haihui Ruan, Somdatta Goswami\n  Computer Methods in Applied Mechanics and Engineering, vol. 446, 2025\n  DOI: https://doi.org/10.1016/j.cma.2025.118319\n  arXiv: https://arxiv.org/abs/2504.11383\n\nOriginal paper key idea:\n  FE-NO coupling via domain decomposition.  A physics-informed DeepONet with TWO\n  branch networks replaces the fine-mesh FE subdomain:\n    \u2022 branch1: encodes displacement BC at the CURRENT time step\n    \u2022 branch2: encodes full displacement + velocity from the PREVIOUS time step\n    \u2022 trunk:   encodes spatial coordinates\n    \u2022 output = (branch1 \u2299 branch2) \u00b7 trunk  (element-wise product then dot with trunk)\n  Temporal integration via Newmark-\u03b2 method; spatial coupling via Schwarz alternating\n  method at the overlapping boundary.\n\nAdaptation to our 1-D benchmarks:\n  For wave_1d and ns_2d-type problems, we adapt the two-branch structure to\n  encode (a) the initial condition and (b) a time-aware context encoding, so the\n  model can be tested within our standard (IC \u2192 future state) training loop.\n\n  TimeDeepONet1d:\n    \u2022 branch1 (IC branch):   encodes u\u2080[N] \u2192 b1[p]           (global IC context)\n    \u2022 branch2 (time branch): encodes t \u2208 [0,1] \u2192 b2[p]       (temporal gating)\n    \u2022 trunk:                 encodes x[N] \u2208 [0,1]^N \u2192 T[N,p] (spatial basis)\n    \u2022 output[n] = \u03a3_p b1[p] * b2[p] * T[n,p]  + bias\n\n  This generalises standard DeepONet to be time-aware:\n    - b2(t) gates which IC features are active at time t\n    - recovers standard DeepONet when b2 is set to all-ones\n\n  DualBranchDeepONet1d:\n    For problems where two input fields are available (e.g., initial displacement\n    AND initial velocity), encodes both separately and combines:\n    \u2022 branch1: u0[N] \u2192 b1[p]\n    \u2022 branch2: v0[N] \u2192 b2[p]\n    \u2022 trunk:   x[N]  \u2192 T[N,p]\n    \u2022 output[n] = (b1[p] + b2[p]) \u00b7 T[n,p]\n\n    Useful for wave_1d (u and du/dt are both known at t=0).",
+    "classes": [
+      {
+        "name": "TimeDeepONet1d",
+        "docstring": "Time-aware DeepONet for 1-D temporal PDEs.\n\nbranch1 encodes the initial condition u0 (sensor values at N grid points).\nbranch2 encodes a scalar time t \u2208 [0, 1] expanded to a learnable embedding.\ntrunk   encodes query coordinates x \u2208 [0, 1].\n\nParameters\n----------\nn_sensors : int\n    Number of sensor / grid points in the IC (= N for 1-D).\nhidden_dim : int\n    Width of all MLP layers.\np : int\n    Latent basis dimension (output of each branch; also the trunk output width).\n    Larger p \u2192 more expressive decomposition.\nn_layers : int\n    Depth of each branch and trunk MLP.\ntime_embed_dim : int\n    Sinusoidal + learned embedding dim for the scalar time input.\n\nForward\n-------\nu0 : [B, N]   \u2014 initial condition\nt  : [B]      \u2014 query time (normalised to [0, 1])\n\nReturns\n-------\npred : [B, N] \u2014 predicted solution at time t on the same N-point grid",
+        "methods": [
+          "__init__",
+          "_time_embedding",
+          "__call__"
+        ]
+      },
+      {
+        "name": "DualBranchDeepONet1d",
+        "docstring": "Two-branch DeepONet for problems with two input fields.\n\nCaptures the structural idea of the Time-Marching paper (two branch networks\nencoding separate physical information) without requiring FE solver coupling.\n\nbranch1: encodes displacement IC u0[N]          \u2192 b1[p]\nbranch2: encodes velocity IC    v0[N] or BC[N]  \u2192 b2[p]\ntrunk:   encodes coordinates    x[N]            \u2192 T[N,p]\noutput:  (b1 + b2) \u00b7 T   (additive combination of two contexts)\n\nUseful for wave_1d where both u(x,0) and u_t(x,0) are given.\n\nParameters\n----------\nn_sensors : int\n    Number of sensor / grid points (= N).\nhidden_dim : int\n    MLP width for both branches and trunk.\np : int\n    Latent basis dimension.\nn_layers : int\n    MLP depth.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_mlp",
+        "docstring": "Build a simple MLP with GELU activations."
+      }
+    ]
+  },
+  "models/s4d.py": {
+    "docstring": "Diagonal State Space Model (S4D) for 1-D operator learning.\n\nS4D is a simplified variant of S4 that uses a diagonal state matrix A,\navoiding the complex low-rank corrections of the original S4 while\npreserving the O(N log N) FFT-based convolution property.\n\nReference:\n  Gupta, Gu, & R\u00e9 (2022) \"On the Parameterization and Initialization of \n  Diagonal State Space Models\" (arXiv:2206.11893)",
+    "classes": [
+      {
+        "name": "S4DLayer",
+        "docstring": "Diagonal S4 layer for 1D sequences.",
+        "methods": [
+          "__init__",
+          "_get_kernel",
+          "__call__"
+        ]
+      },
+      {
+        "name": "S4NO1d",
+        "docstring": "State Space Neural Operator (S4NO) for 1-D operator learning.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/wno.py": {
+    "docstring": "Wavelet Neural Operator (WNO) for 1-D problems.\n\nUnlike FNO (which uses global Fourier modes), WNO applies multi-resolution\nHaar wavelet decomposition.  This is better suited to:\n  - Non-periodic boundary conditions (e.g., Darcy flow)\n  - Problems with localised shocks or sharp features (e.g., Burgers at low nu)\n  - Multi-scale phenomena where both global and local features matter\n\nReference:\n  Tripura & Chakraborty (2022) \"Wavelet Neural Operator for solving parametric\n  partial differential equations in computational mechanics problems\"\n  arXiv:2205.02191",
+    "classes": [
+      {
+        "name": "WaveletConv1d",
+        "docstring": "Multi-level Haar wavelet convolution layer.\n\nDecomposes the input, applies independent learned linear projections at\neach scale, then reconstructs.  Analogous to SpectralConv1d but in wavelet\nspace.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "WNOBlock1d",
+        "docstring": "WNO layer: wavelet conv + pointwise linear + GELU residual.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "WNO1d",
+        "docstring": "Wavelet Neural Operator for 1-D operator learning.\n\nDrop-in replacement for FNO1d.  Uses N_LEVELS instead of N_MODES.\n\nHyperparameter guide:\n    n_levels = 3  : good default for N=64 (decompose to N//8=8 points)\n    hidden_dim    : same as FNO (32-128)\n    n_layers      : same as FNO (4-6)\n\nWorks well on:\n    - burgers_1d   (localised shock, benefits from multi-scale)\n    - Non-periodic domains (Haar wavelets have compact support)",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_haar_forward",
+        "docstring": "Multi-level Haar forward transform.\n\nArgs:\n    x      : [B, N, C] - spatial signal\n    levels : number of decomposition levels\n\nReturns:\n    details : list of length `levels`, details[0] is finest scale\n              each entry is [B, N // 2^(k+1), C]\n    approx  : [B, N // 2^levels, C] - final low-pass approximation"
+      },
+      {
+        "name": "_haar_inverse",
+        "docstring": "Multi-level Haar inverse transform.\n\nArgs:\n    details : list of detail coefficient arrays (finest last \u2192 coarsest\n              first in reversed order)\n    approx  : coarsest approximation\n\nReturns:\n    [B, N, C] - reconstructed signal"
+      }
+    ]
+  },
+  "models/attention_fno.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "AttentionEnhancedFNO2d",
+        "docstring": "Attention-Enhanced FNO: FNO + axial self-attention for global spatial awareness.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/pacmann.py": {
+    "docstring": "PACMANN \u2014 SciML Neural Operator\n\nAuto-generated stub by model_scaffold.py.\nBase architecture: PINN\nNotes: fill in architecture details\n\nEdit this file to implement the model, then validate with:\n    uv run model_scaffold.py --validate PACMANN models/pacmann.py",
+    "classes": [
+      {
+        "name": "PACMANN",
+        "docstring": "PACMANN: extend description here.\n\nArgs:\n    n_modes   : number of Fourier modes to keep\n    hidden_dim: channel width\n    n_layers  : number of operator blocks",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/hano.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "HANO2d",
+        "docstring": "Hierarchical Attention Neural Operator (Multi-scale self-attention + spectral conv).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/tfno.py": {
+    "docstring": "Tucker-Factorized FNO (TFNO) and CP-Factorized FNO (CPFNO).\n\nInspired by PhysicsNeMo (NVIDIA Modulus) TFNO implementation and the paper:\n  \"Factorized Fourier Neural Operators\" - Kossaifi et al., ICLR 2024\n  arXiv: https://arxiv.org/abs/2111.13802\n\nKey idea: factorize the spectral weight tensor W[n_modes, in_ch, out_ch] using\nTucker or CP decompositions.\n\nTucker: W = G x1 Um x2 Ui x3 Uo\n  - core G[r_m, r_i, r_o] + factor matrices Um[n_modes, r_m], Ui[in_ch, r_i], Uo[out_ch, r_o]\n  - fewer params, implicit low-rank regularization, generalize better\n\nCP: W[m,i,o] \u2248 \u03a3_r A[m,r] * B[i,r] * C[o,r]\n  - even more compact; R*(n_modes + in_ch + out_ch) params vs n_modes*in_ch*out_ch\n\nBenefits over full FNO:\n  - ~2-4x fewer spectral params -> can increase hidden_dim or n_layers at same memory\n  - Low-rank inductive bias reduces overfitting on small datasets (e.g. darcy_2d)\n  - PhysicsNeMo shows TFNO matches or beats FNO on Darcy, NS, MHD benchmarks",
+    "classes": [
+      {
+        "name": "TuckerSpectralConv1d",
+        "docstring": "Tucker-factorized 1-D Fourier spectral convolution.\n\nW[m, i, o] = \u03a3_{a,b,c} G[a,b,c] * Um[m,a] * Ui[i,b] * Uo[o,c]\n\nParameters\n----------\nin_ch, out_ch : int\n    Channel counts.\nn_modes : int\n    Number of Fourier modes kept.\nrank_ratio : float\n    Tucker rank as fraction of each dimension (default 0.5 \u2192 ~75% param reduction\n    for equal in/out channels; may be raised to 0.75 for wider models).",
+        "methods": [
+          "__init__",
+          "_reconstruct",
+          "__call__"
+        ]
+      },
+      {
+        "name": "CPSpectralConv1d",
+        "docstring": "CP-factorized 1-D Fourier spectral convolution.\n\nW[m, i, o] \u2248 \u03a3_r A[m,r] * B[i,r] * C[o,r]\n\nExtremely compact: R*(n_modes + in_ch + out_ch) params.",
+        "methods": [
+          "__init__",
+          "_reconstruct",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TFNOBlock1d",
+        "docstring": "1D TFNO layer: Tucker-spectral conv + pointwise linear + GELU.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TFNOBlockResidual1d",
+        "docstring": "Pre-LN residual TFNO block (Pre-LN + Tucker spectral conv).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TFNO1d",
+        "docstring": "Tucker-Factorized Fourier Neural Operator (1-D).\n\nDrop-in for FNO1d with Tucker-factorized spectral weights.\nHyperparameter guide: same as FNO1d; add rank_ratio (default 0.5).\nUse higher rank_ratio (0.75) for harder problems; lower (0.25) to stress-test\nlow-rank bias.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "RTFNO1d",
+        "docstring": "Residual Tucker-Factorized FNO (Pre-LN + Tucker spectral conv).\n\nCombines RFNO's pre-norm residual stability with TFNO's low-rank spectral\nweights \u2014 best of both for deep stacks on hard benchmarks.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "CPFNOBlock1d",
+        "docstring": "1D CP-FNO layer.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "CPFNO1d",
+        "docstring": "CP-Factorized FNO (1-D). Most compact spectral operator.\n\nWith rank=8 and hidden_dim=128, n_modes=24:\n  Full FNO spectral params:  2 * 24 * 128 * 128 = 786,432\n  CP-FNO spectral params:    2 * 8 * (24 + 128 + 128) = 4,480  (~175x reduction)\n\nUseful for probing whether low-rank spectral operators can still learn well.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TuckerSpectralConv2d",
+        "docstring": "Tucker-factorized 2-D Fourier spectral convolution.\n\nFactorizes both (modes1, modes2, in_ch, out_ch) weight tensors.\nTwo sets of weights needed for the rfft2 quadrant symmetry.",
+        "methods": [
+          "__init__",
+          "_reconstruct",
+          "_cmul2d",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TFNOBlock2d",
+        "docstring": "2D TFNO layer.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TFNO2d",
+        "docstring": "Tucker-Factorized FNO for 2-D operator learning.\n\nDrop-in for FNO2d with Tucker-factorized spectral weights.\nWell-suited for darcy_2d (low-rank permeability \u2192 pressure mapping)\nand ns_2d (vorticity \u2192 stream function).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/ssno.py": {
+    "docstring": "State-Space Neural Operator (SS-NO) for 1-D operator learning.\n\nCombines diagonal S4D state-space models with spectral convolutions.\nSSM captures long-range sequential patterns; spectral conv captures global modes.\n\nReference: arXiv:2507.23428 \u2014 \"State-Space Neural Operators\"\nKey claims: 0.0070 on Burgers (vs SOTA 0.0149), ~200k params, 5x better than SOTA\n\nKey innovations over vanilla S4NO:\n  - Adaptive damping: learnable per-channel damping coefficient (not fixed at -0.5)\n  - Frequency modulation: SSM imaginary frequencies scaled by learned gate\n  - Dual-branch block: SSM output + spectral conv output fused via learned gate",
+    "classes": [
+      {
+        "name": "AdaptiveS4DLayer",
+        "docstring": "S4D layer with adaptive (learnable) damping coefficient.",
+        "methods": [
+          "__init__",
+          "_get_kernel",
+          "__call__"
+        ]
+      },
+      {
+        "name": "SSNOBlock1d",
+        "docstring": "SS-NO block: SSM branch + spectral conv branch, fused via learned gate.\n\nThe SSM captures long-range dynamics; spectral conv captures global modes.\nBoth branches see the same normalised input; their outputs are gated-merged.",
+        "methods": [
+          "__init__",
+          "_spectral_conv",
+          "__call__"
+        ]
+      },
+      {
+        "name": "SSNO1d",
+        "docstring": "State-Space Neural Operator for 1-D PDE operator learning.\n\nArgs:\n    hidden_dim: channel width\n    n_layers:   number of SSNOBlock1d layers\n    n_modes:    spectral modes per block\n    d_state:    SSM state dimension (default 32 for memory efficiency)",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/transolver.py": {
+    "docstring": "Transolver: Transformer Solver with Physics Attention.\n\nAdapted from PhysicsNeMo (NVIDIA Modulus) Transolver implementation:\n  \"Transolver: A Fast Transformer Solver for PDEs on General Geometries\"\n  Haixu Wu, Huakun Luo, Haowen Wang et al. \u2014 NeurIPS 2024 / ICML 2024\n  arXiv: https://arxiv.org/abs/2402.02366\n\nKey idea \u2014 Physics Attention:\n  Instead of applying self-attention over all N grid points (O(N\u00b2) cost),\n  group the N points into S \"physics slices\" (physics tokens) via a learned\n  soft assignment.  Attention runs in O(S\u00b2) slice space, then broadcasts back.\n\n  1. Lift:   x[B, N] \u2192 h[B, N, D]\n  2. For each layer:\n     a. Slice assignment: A[B, N, H, S] = softmax(W_q(h))  (N\u2192S grouping)\n     b. Aggregate:  h_s[B, H, S, D/H] = A^T @ h           (grid \u2192 slices)\n     c. Attention:  h_s' = SelfAttn(h_s)                  (in slice space)\n     d. Broadcast:  h'[B, N, D] = A @ h_s'               (slices -> grid)\n     e. FFN:        h = h + FFN(LayerNorm(h'))\n  3. Project: h[B, N, D] \u2192 out[B, N, 1]\n\nBenefits:\n  - O(N\u00b7S + S\u00b2) vs O(N\u00b2) attention; S << N (e.g. S=32, N=1024)\n  - Grid-agnostic: works on irregular meshes and structured grids\n  - PhysicsNeMo shows Transolver matches FNO on Darcy, NS at lower cost\n  - Physics attention preserves locality: nearby points share slices",
+    "classes": [
+      {
+        "name": "PhysicsAttn1d",
+        "docstring": "Physics Attention over 1-D structured grids.\n\nParameters\n----------\ndim : int\n    Embedding dimension (must be divisible by n_head).\nn_head : int\n    Number of attention heads.\nslice_num : int\n    Number of physics slices S (analogous to tokens in ViT).\n    Typical values: 16-64.  Smaller -> faster; larger -> more expressive.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TransolverBlock1d",
+        "docstring": "One Transolver layer: PhysicsAttn + FFN with pre-norm.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "Transolver1d",
+        "docstring": "Transolver for 1-D structured grids.\n\nHyperparameter guide:\n    dim        = hidden_dim  (embedding dim; 64-256)\n    n_layers   = 4-8        (depth; attention is cheaper than spectral conv)\n    slice_num  = 16-64      (physics token count; 32 is a good default)\n    n_head     = 4-8        (attention heads; dim must be divisible)\n    mlp_ratio  = 2.0        (FFN hidden / dim)\n\nNotes:\n    - Appends a grid coordinate channel before lifting (like FNO).\n    - For burgers_1d / kdv_1d, slice_num=32 captures both smooth and\n      shock regions as distinct physics slices.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "PhysicsAttn2d",
+        "docstring": "Physics Attention over 2-D structured grids [B, N1, N2, D].\n\nFlattens spatial dims \u2192 applies 1-D PhysicsAttn \u2192 reshapes back.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "TransolverBlock2d",
+        "docstring": "One 2-D Transolver layer.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "Transolver2d",
+        "docstring": "Transolver for 2-D structured grids (darcy_2d, ns_2d).\n\nFlattens the grid, applies Physics Attention, reshapes output.\nFor darcy_2d (64x64 = 4096 points), slice_num=64 groups similar\npermeability regions into coherent physics tokens.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/axial_attention.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "AxialAttention2d",
+        "docstring": "Axial Attention for 2D grids. \nPerforms attention along height, then along width.\nMemory complexity: O(B * H * W * (H + W)) instead of O(B * (H*W)^2).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/hybrid_fno_deeponet.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "HybridFNODeepONet2d",
+        "docstring": "Hybrid FNO-DeepONet (FNO branch + DeepONet trunk).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/vsmno.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "VSMNO2d",
+        "docstring": "Variational Spectral Mixture Neural Operator (Mixture of spectral patterns).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/mamba_no.py": {
+    "docstring": "Alias-Free Mamba Neural Operator (MambaNO) for SciML.\n\nCombines the selective state-space modeling (SSM) of Mamba with \nthe spectral filtering of neural operators to maintain alias-free \napproximations of PDE operators.\n\nReference: Zheng et al. (2024) \"Alias-Free Mamba Neural Operator\" (NeurIPS)",
+    "classes": [
+      {
+        "name": "MambaBlock",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "MambaNO1d",
+        "docstring": "Alias-Free Mamba Neural Operator implementation.",
+        "methods": [
+          "__init__",
+          "_spectral_filter_layer",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "selective_scan_mlx",
+        "docstring": "Simplified selective scan in MLX.\nu: [B, L, D]\ndelta: [B, L, D]\nA: [D, N]\nB: [B, L, N]\nC: [B, L, N]\nD: [D] (optional)\n\nRecurrence:\nh[t] = A_bar * h[t-1] + B_bar * u[t]\ny[t] = C * h[t]"
+      }
+    ]
+  },
+  "models/fno.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "SpectralConv1d",
+        "docstring": "1-D Fourier spectral convolution.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNOBlock1d",
+        "docstring": "1D FNO layer: spectral conv + pointwise linear + GELU.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNO1d",
+        "docstring": "Fourier Neural Operator for 1-D operator learning.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNOBlockResidual1d",
+        "docstring": "Pre-LN residual FNO block: x = x + GELU(spec(LN(x)) + w(LN(x))).\n\nThe residual connection + pre-norm pattern (from Pre-LN Transformers) gives\nbetter gradient flow through deep stacks \u2014 same param count as FNOBlock1d.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "RFNO1d",
+        "docstring": "Residual Fourier Neural Operator for 1-D operator learning.\n\nDrop-in replacement for FNO1d that uses Pre-LN residual blocks.\nIntended to unlock deeper stacks (l \u2265 10) without gradient degradation.\n\nHyperparameter guide: same as FNO1d.  Start with n_modes=24, hidden=128,\nn_layers=10 or 12 \u2014 the residual connections should handle the extra depth.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNO1dMC",
+        "docstring": "Multi-channel Fourier Neural Operator for 1-D operator learning.\n\nHandles inputs of shape [B, N, C_in] -> [B, N, C_out].\nExtends FNO1d to multi-component PDEs (e.g., Euler: rho,u,p -> rho,u,p).\nAn appended spatial coordinate is used as an extra input channel.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "SpectralConv2d",
+        "docstring": "2-D Fourier spectral convolution.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNOBlock2d",
+        "docstring": "2D FNO layer: spectral conv + pointwise linear + GELU.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNO2d",
+        "docstring": "Fourier Neural Operator for 2-D operator learning.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "FNOBlockResidual2d",
+        "docstring": "Pre-LN residual FNO block for 2-D.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "RFNO2d",
+        "docstring": "Residual Fourier Neural Operator for 2-D operator learning.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      },
+      {
+        "name": "UNO1d",
+        "docstring": "U-shaped Neural Operator for 1-D problems.\n\nEncoder-decoder with FNO layers at each scale, skip connections between\nsymmetric levels, and spectral subsampling (slice every other point) for\ndownsampling.  Captures both global (low-freq) and local (high-freq)\nfeatures simultaneously.\n\nReference: Rahman et al. (2022) \"U-NO: U-shaped Neural Operators\"\n(arXiv:2204.11127)\n\nArchitecture (hidden_dim=h, N=64 default):\n    lift \u2192 enc0(N,h) \u2192 enc1(N/2,2h) \u2192 bottleneck(N/4,4h)\n         \u2193 skip0          \u2193 skip1\n    dec0(N,h) \u2190 dec1(N/2,2h) \u2190 upsample",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/sno.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "SNO2d",
+        "docstring": "Spectral Neural Operator (No continuous alias back-end, direct spectral mapper).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/fedonet.py": {
+    "docstring": null,
+    "classes": [
+      {
+        "name": "FEDONet2d",
+        "docstring": "Fourier-Enhanced DeepONet (Spectral conv within DeepONet branches).",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "models/mem_no.py": {
+    "docstring": "Memory Neural Operator (MemNO) for SciML.\n\nIntegrates structured state-space models (S4) into FNO architectures to \nprovide explicit temporal memory for modeling time-dependent PDEs.\n\nReference: Buitrago Ruiz et al. (2025) \"On the Benefits of Memory for \nModeling Time-Dependent PDEs\" (ICLR)",
+    "classes": [
+      {
+        "name": "MemNOBlock1d",
+        "docstring": "Hybrid FNO block with integrated S4 state-space memory.",
+        "methods": [
+          "__init__",
+          "_spectral_conv",
+          "__call__"
+        ]
+      },
+      {
+        "name": "MemNO1d",
+        "docstring": "Memory Neural Operator architecture.",
+        "methods": [
+          "__init__",
+          "__call__"
+        ]
+      }
+    ],
+    "functions": []
+  },
+  "data/prefetch_data.py": {
+    "docstring": "Pre-generate and disk-cache all PDE training datasets.\n\nRun once before starting experiments:\n    uv run prefetch_data.py\n\nThis eliminates per-experiment data generation overhead. Each benchmark\nis generated in a separate thread. Total time: dominated by ns_hre_2d\n(10-20 min). All others finish in under 5 min combined.\n\nAfter this script completes, every train.py subprocess will load data\nfrom disk in < 5s instead of regenerating from scratch.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "log",
+        "docstring": null
+      },
+      {
+        "name": "prefetch_ext",
+        "docstring": "Cache train+val for benchmarks_ext benchmarks (kdv, wave, darcy, ns_2d)."
+      },
+      {
+        "name": "prefetch_sim",
+        "docstring": "Cache train+val for simulation benchmarks (euler_1d, swe_2d, allen_cahn_2d, ns_hre_2d)."
+      },
+      {
+        "name": "prefetch_burgers",
+        "docstring": "Cache burgers_1d train+val to disk (prepare.py only does in-memory caching)."
+      }
+    ]
+  },
+  "data/benchmarks_ext.py": {
+    "docstring": "Extended benchmark definitions for SciML experiments.\n\nAdds KdV, Wave, and corrected 2D benchmarks on top of prepare.py.\n\nSupported benchmarks:\n    \"kdv_1d\"       - Korteweg-de Vries soliton dynamics   (ETDRK4 solver)\n    \"wave_1d\"      - 1D wave equation  u_tt = c^2 u_xx     (Stormer-Verlet)\n    \"darcy_2d\" - 2D Darcy with proper variable-coeff solver (Richardson iter)\n    \"ns_2d\"    - 2D Navier-Stokes with stable IC amplitude (CFL < 1)\n\nWhy darcy_2d and ns_2d?\n    prepare.py's darcy_2d solver uses only mean(a) \u2192 loses all spatial info;\n    source term f uses a FIXED seed independent of a \u2192 u is uncorrelated with a.\n    prepare.py's ns_2d solver uses IC scale=1.0 \u2192 CFL\u224861 \u2192 immediate NaN.\n    Both benchmarks are broken at the data level; prepare.py is read-only.\n    These fixed versions provide correct, learnable benchmarks.\n\nData interface is identical to prepare.py:\n    make_ext_dataloader(benchmark, split, batch_size)\n    evaluate_l2_rel_ext(benchmark, model)\n\nReferences:\n    KdV:  Tran et al. (2023) \"Factorized Fourier Neural Operators\"\n    Wave: Rahman et al. (2022) U-NO\n    Darcy fix: Li et al. (2020) FNO paper, original Darcy benchmark setup\n    NS fix: standard semi-implicit spectral NS with CFL-stable parameters",
+    "classes": [],
+    "functions": [
+      {
+        "name": "solve_darcy_2d_batch",
+        "docstring": "Solve -\u2207\u00b7(a(x,y)\u2207u) = f on [0,1]\u00b2 with periodic BCs.\n\nUses Preconditioned Conjugate Gradient (PCG) with the constant-coefficient\nPoisson operator P = a_mean\u00b7(-\u0394) as a preconditioner.\nPCG is much faster and more robust than Richardson iteration.\n\nFixes for prepare.py's broken solver:\n  1. Uses the full spatial field a(x,y), not just mean(a)\n  2. Source f is fixed and deterministic (passed in)\n  3. DC mode (mean u) is zeroed and handled via zero-mean projections"
+      },
+      {
+        "name": "solve_ns_2d_batch",
+        "docstring": "Stable 2D Navier-Stokes solver (vorticity form) on [0, 2pi)^2.\n\nIdentical algorithm to prepare.py's solve_ns_2d_batch, but\ndesigned around CFL < 1.  With NS_SCALE=0.1 ICs:\n    max_velocity ~= 9.5 -> CFL = 9.5 x 0.001 x 64 ~= 0.61 < 1  ok\n\nRoot cause of prepare.py instability:\n    IC scale=1.0 \u2192 max_velocity \u2248 95 \u2192 CFL \u2248 61 \u2192 overflow on step 1."
+      },
+      {
+        "name": "solve_allen_cahn_2d_batch",
+        "docstring": "Semi-implicit spectral solver for Allen-Cahn 2D."
+      },
+      {
+        "name": "solve_swe_2d_batch",
+        "docstring": "Spectral solver for 2D Shallow Water Equations (linearized height)."
+      },
+      {
+        "name": "solve_mhd_2d_batch",
+        "docstring": "Spectral solver for 2D incompressible MHD (vorticity-potential form)."
+      },
+      {
+        "name": "_kdv_ic",
+        "docstring": "Random smooth ICs for KdV \u2014 same Fourier-series generator as Burgers."
+      },
+      {
+        "name": "_wave_ic",
+        "docstring": "Random ICs for wave equation: (u0, \u2202u/\u2202t|\u2080).\n\nut0=0 (released from rest) makes the problem well-posed from u0 alone.\nWith random ut0 independent of u0, the model cannot learn the mapping\nsince the same u0 maps to different targets for each ut0 sample."
+      },
+      {
+        "name": "_darcy_fix_ic",
+        "docstring": "ICs for corrected Darcy benchmark.\n\nReturns:\n    a: log-normal permeability field (always positive)\n    f: FIXED source term with zero mean (required for periodic-BC Darcy).\n\nf is now fixed for the entire benchmark (deterministic), matching the\nstandard FNO paper setup. a uses exp(GRF) to ensure positivity, which\nis critical for the elliptic operator to be well-defined."
+      },
+      {
+        "name": "_ns_fix_ic",
+        "docstring": "ICs for corrected NS benchmark: vorticity with small amplitude.\n\nUses scale=NS_SCALE=0.1 (vs 1.0 in prepare.py) to ensure CFL < 1:\n    max_velocity ~= 6-10  ->  CFL = v_max x dt x N ~= 0.4-0.6 < 1  ok"
+      },
+      {
+        "name": "_swe_ic",
+        "docstring": null
+      },
+      {
+        "name": "_allen_cahn_ic",
+        "docstring": null
+      },
+      {
+        "name": "_mhd_ic",
+        "docstring": null
+      },
+      {
+        "name": "_generate_ext_dataset",
+        "docstring": null
+      },
+      {
+        "name": "_get_ext_val_cache",
+        "docstring": null
+      },
+      {
+        "name": "_load_or_gen_ext_val",
+        "docstring": null
+      },
+      {
+        "name": "_get_ext_train_cache_path",
+        "docstring": null
+      },
+      {
+        "name": "_get_ext_train",
+        "docstring": null
+      },
+      {
+        "name": "make_ext_dataloader",
+        "docstring": "Infinite generator yielding (inputs, targets) as MLX arrays.\n\nIdentical interface to prepare.make_dataloader."
+      },
+      {
+        "name": "evaluate_l2_rel_ext",
+        "docstring": "Mean relative L2 error on fixed val set.  Same metric as prepare.py."
+      }
+    ]
+  },
+  "data/prepare.py": {
+    "docstring": "SciML fixed evaluation harness \u2014 DO NOT MODIFY.\n\nSynthesizes parametric PDE datasets and defines the ground-truth metric.\nAll training baselines and experiments are evaluated against evaluate_l2_rel().\n\nUsage:\n    uv run prepare.py              # generate and cache validation data\n    uv run prepare.py --benchmark  # also print solver timing stats",
+    "classes": [],
+    "functions": [
+      {
+        "name": "_random_ic",
+        "docstring": "Smooth random initial conditions on [0, 2\u03c0) via truncated Fourier series.\nCoefficient amplitude decays as k^{-1.5} for C^1 smoothness.\nReturns float32 [n, N]."
+      },
+      {
+        "name": "solve_burgers_batch",
+        "docstring": "Batch pseudo-spectral IMEX solver for 1D viscous Burgers equation."
+      },
+      {
+        "name": "solve_wave_batch",
+        "docstring": "Spectral St\u00f6rmer-Verlet solver for 1D wave equation: u_tt = c\u00b2 u_xx.\n\nArgs:\n    u0:  [B, N] float32  initial displacement\n    ut0: [B, N] float32  initial velocity\n    c:   wave speed\n    T:   final time\nReturns:\n    [B, N] float32  displacement at time T"
+      },
+      {
+        "name": "solve_kdv_batch",
+        "docstring": "Spectral ETDRK4 solver for 1D Korteweg-de Vries equation.\n\n    \u2202u/\u2202t + u \u2202u/\u2202x + \u2202\u00b3u/\u2202x\u00b3 = 0    on [0, 2\u03c0),  periodic BCs.\n\nArgs:\n    u0:  [B, N] float32  initial conditions\nReturns:\n    [B, N] float32  solutions at time T"
+      },
+      {
+        "name": "_random_ic_2d",
+        "docstring": "Random smooth 2D field."
+      },
+      {
+        "name": "_generate_dataset",
+        "docstring": null
+      },
+      {
+        "name": "_get_val_cache_path",
+        "docstring": null
+      },
+      {
+        "name": "_load_or_gen_val",
+        "docstring": null
+      },
+      {
+        "name": "_get_train_data",
+        "docstring": null
+      },
+      {
+        "name": "make_dataloader",
+        "docstring": "Infinite generator yielding ``(inputs, targets)`` as MLX arrays."
+      },
+      {
+        "name": "evaluate_l2_rel",
+        "docstring": "Mean relative L2 error on the fixed validation set for a given benchmark."
+      }
+    ]
+  },
+  "data/simulations/wavebench.py": {
+    "docstring": "WaveBench \u2014 2D Wave propagation with high-frequency components.\n\nPDE on [0,2\u03c0)\u00b2, periodic:\n    u_tt = c^2 \u2207\u00b2u\n\nSimulates harmonic wave propagation to test spectral bias.\nExact Fourier-mode solution:\n    u_hat(k, T) = u_hat_0(k) * cos(c|k|T) + u_t_hat_0(k) * sin(c|k|T) / (c|k|)\n\nHere we release from rest, so u_t(0) = 0.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": "Random surface anomaly with higher mode frequencies."
+      },
+      {
+        "name": "solve_batch",
+        "docstring": null
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/allen_cahn.py": {
+    "docstring": "2D Allen-Cahn phase field equation \u2014 ETDRK2 spectral solver.\n\nPDE on [0, 1]\u00b2, periodic BCs:\n    \u03c6_t = \u03b5\u00b2\u00b7\u2207\u00b2\u03c6 + \u03c6 \u2212 \u03c6\u00b3,    \u03c6 \u2208 [\u22121, 1]\n\n    \u03b5 = 0.05  (interface width parameter; \u03b5/dx \u2248 3.2 cells at N=64)\n\nThe Ginzburg-Landau double-well potential F(\u03c6) = \u00bc(\u03c6\u00b2\u22121)\u00b2 drives phase\nseparation: \u03c6\u2192+1 (phase A) or \u03c6\u2192\u22121 (phase B) with diffuse interfaces of\nwidth ~\u03b5. This PDE models grain growth, solidification, and topology changes.\n\nScheme: ETDRK2 (Cox-Matthews exponential time differencing, 2nd order).\n  Split: u_t = L(u) + N(u)\n    L\u0302 = \u2212\u03b5\u00b2|k|\u00b2          (linear stiff diffusion, integrated exactly)\n    N(\u03c6) = \u03c6 \u2212 \u03c6\u00b3         (cubic nonlinearity, explicit)\n\n  Exact integrating factor avoids CFL constraint on the diffusion term.\n\nML interface: \u03c6\u2080(x,y) \u2192 \u03c6_T(x,y) as [B, N, N] float32 arrays.\n\nReferences:\n    Cox & Matthews (2002) \"Exponential Time Differencing for Stiff Systems\"\n    Allen & Cahn (1979) \"A microscopic theory for antiphase boundary motion\"",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": "Random mixed-phase initial conditions via tanh-smoothed GRF.\n\nA raw GRF mapped through tanh gives a field with diffuse \u00b11 regions\n(physical Allen-Cahn initial data: random droplets/domains).\nThe scale factor 2/\u03b5 stretches the GRF to create sharp but resolved\ninterfaces of width ~\u03b5 at the zero crossings."
+      },
+      {
+        "name": "_etdrk2_coeffs",
+        "docstring": "Precompute ETDRK2 (Cox-Matthews) integration coefficients.\n\nReturns E, c1, c2 arrays with L'H\u00f4pital limits applied at L\u21920."
+      },
+      {
+        "name": "solve_batch",
+        "docstring": "Evolve Allen-Cahn phase field from t=0 to T via ETDRK2.\n\nArgs:\n    phi0:    [B, N, N] float32 \u2014 initial phase field\n    T:       final time\n    n_steps: number of ETDRK2 steps (dt = T / n_steps)\n\nReturns:\n    [B, N, N] float32 \u2014 phase field at time T"
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/radiative.py": {
+    "docstring": "Radiative Transfer \u2014 Integro-differential scattering proxy.\n\nDomain is 1D space, 1D angle, wrapped into a [B, N, N] tensor.\n    u(x, \u03b8)\nThis module acts as a proxy for highly forward-peaked scattering.\n\nInput: [B, N, N]\nOutput: [B, N, N]",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": null
+      },
+      {
+        "name": "solve_batch",
+        "docstring": null
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/euler1d.py": {
+    "docstring": "Compressible Euler 1D \u2014 HLL finite volume solver.\n\nPDE (conservative form) on [0, 2\u03c0), periodic BCs:\n    \u03c1_t  + (\u03c1u)_x           = 0        (mass)\n    (\u03c1u)_t + (\u03c1u\u00b2 + p)_x   = 0        (momentum)\n    E_t  + ((E+p)u)_x       = 0        (energy)\n\n    E = p/(\u03b3\u22121) + \u00bd\u03c1u\u00b2,   \u03b3 = 1.4 (ideal gas)\n\nScheme: MUSCL linear reconstruction (minmod limiter) + HLL Riemann solver + SSP-RK2.\nML interface: (\u03c1\u2080, u\u2080, p\u2080) \u2192 (\u03c1_T, u_T, p_T) as [B, N, 3] float32 arrays.\n\nReferences:\n    Toro (2009) \"Riemann Solvers and Numerical Methods for Fluid Dynamics\" Ch.10\n    Shu & Osher (1988) \"Efficient implementation of essentially non-oscillatory schemes\"",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": "Generate random smooth ICs for compressible Euler on [0, 2\u03c0).\n\nReturns float32 array of shape [n, N, 3] with channels (\u03c1, u, p).\nAmplitudes chosen for smooth subsonic flow (no shocks at T=1)."
+      },
+      {
+        "name": "_prim2cons",
+        "docstring": "(\u03c1, u, p) \u2192 (\u03c1, \u03c1u, E).  prims: [..., 3]"
+      },
+      {
+        "name": "_cons2prim",
+        "docstring": "(\u03c1, \u03c1u, E) \u2192 (\u03c1, u, p).  cons: [..., 3]"
+      },
+      {
+        "name": "_flux",
+        "docstring": "Physical Euler flux F(U).  cons: [..., 3] \u2192 [..., 3]"
+      },
+      {
+        "name": "_hll_flux",
+        "docstring": "HLL numerical flux at cell interfaces.  UL, UR: [B, N, 3]"
+      },
+      {
+        "name": "_minmod2",
+        "docstring": null
+      },
+      {
+        "name": "_rhs",
+        "docstring": "Conservative finite-volume RHS: \u2212(F_{i+1/2} \u2212 F_{i\u22121/2}) / dx."
+      },
+      {
+        "name": "solve_batch",
+        "docstring": "Evolve Euler 1D from t=0 to T.\n\nArgs:\n    prims0: [B, N, 3] float32 \u2014 initial (\u03c1, u, p)\n    T:      final time\n    n_steps: number of SSP-RK2 steps (fixed dt = T / n_steps)\n\nReturns:\n    [B, N, 3] float32 \u2014 final (\u03c1, u, p)"
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/multiphysics.py": {
+    "docstring": "Multiphysics Bench \u2014 Coupled cross-field dependencies.\n\nSimulates a generic 2-component coupled system (e.g., thermal-mechanical or chemical).\nFor efficiency, we mock this as two coupled heat-like equations in Fourier space:\n    u_t = D1 \u2207\u00b2u - a*v\n    v_t = D2 \u2207\u00b2v + a*u\n\nInput: [B, N, N, 2]\nOutput: [B, N, N, 2]",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": null
+      },
+      {
+        "name": "solve_batch",
+        "docstring": null
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/ns_etdrk4.py": {
+    "docstring": "2D Navier-Stokes (vorticity form) \u2014 ETDRK4 pseudo-spectral solver.\n\nPDE on [0, 2\u03c0)\u00b2, periodic BCs:\n    \u03c9_t + (u\u00b7\u2207)\u03c9 = \u03bd\u00b7\u2207\u00b2\u03c9\n\n    u = (\u2202\u03c8/\u2202y, \u2212\u2202\u03c8/\u2202x),   \u2207\u00b2\u03c8 = \u03c9    (stream function)\n    \u03bd = 1\u00d710\u207b\u00b3             (10\u00d7 lower than ns_2d \u2192 Re \u2248 1000)\n\nScheme: ETDRK4 (Cox-Matthews exponential Runge-Kutta, 4th order in time).\n  Split: \u03c9_t = L\u0302\u03c9 + N(\u03c9)\n    L\u0302 = \u2212\u03bd|k|\u00b2    (linear diffusion, exact via exponential integrating factor)\n    N(\u03c9) = \u2212(u\u00b7\u2207)\u03c9 (nonlinear advection, evaluated pseudo-spectrally)\n\n  ETDRK4 removes the CFL constraint from diffusion entirely; only the\n  advective CFL bounds the time step.  2/3-rule dealiasing prevents aliasing\n  in the nonlinear convolution product u\u00b7\u2207\u03c9.\n\nvs ns_2d (benchmarks_ext.py):\n  - \u03bd: 1e-3 vs 1e-2  (10\u00d7 higher Re \u2192 richer turbulent cascade)\n  - T: 2.0 vs 1.0    (2\u00d7 longer prediction horizon)\n  - Scheme: ETDRK4 (4th order) vs semi-implicit Euler (1st order)\n\nML interface: \u03c9\u2080(x,y) \u2192 \u03c9_T(x,y) as [B, N, N] float32 arrays.\n\nWARNING: First-run dataset generation (4096 training samples) takes ~10\u221220 min.\n         Results are disk-cached; subsequent runs load in < 5 seconds.\n\nReferences:\n    Cox & Matthews (2002) \"Exponential Time Differencing for Stiff Systems\"\n    Kassam & Trefethen (2005) \"Fourth-Order Time-Stepping for Stiff PDEs\"\n    Li et al. (2020) FNO paper, Table 4 (Re=1000 benchmark)",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": "Small-amplitude smooth vorticity field (CFL-safe for dt=0.002).\n\nIC scale=0.05: max velocity \u2248 3 \u2192 advective CFL = 3\u00d70.002\u00d7N/(2\u03c0) \u2248 0.06 < 1."
+      },
+      {
+        "name": "solve_batch",
+        "docstring": "Evolve 2D NS vorticity field from t=0 to T via ETDRK4.\n\nArgs:\n    w0:      [B, N, N] float32 \u2014 initial vorticity\n    nu:      kinematic viscosity\n    T:       final time\n    n_steps: number of ETDRK4 steps (dt = T / n_steps)\n\nReturns:\n    [B, N, N] float32 \u2014 vorticity at time T"
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/pdebench.py": {
+    "docstring": "PDEBench \u2014 Broad PDE family (Advection-Diffusion-Reaction).\n\nPDE on [0,2\u03c0)\u00b2, periodic:\n    u_t = D \u2207\u00b2u - c_x u_x - c_y u_y + R u (1 - u)\n\nInput: [B, N, N]\nOutput: [B, N, N]",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": null
+      },
+      {
+        "name": "solve_batch",
+        "docstring": null
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/shallow_water.py": {
+    "docstring": "2D Linearized Shallow Water Equations \u2014 analytic spectral propagator.\n\nPDE (linearized around quiescent state H\u2080=1, u=v=0) on [0,2\u03c0)\u00b2, periodic:\n    h'_t + H\u2080(u_x + v_y) = 0\n    u_t  + g\u00b7h'_x = 0\n    v_t  + g\u00b7h'_y = 0\n\n    g = 9.81 m/s\u00b2,  H\u2080 = 1.0 m,  c = \u221a(gH\u2080) \u2248 3.13 m/s (gravity wave speed)\n\n\"Released from rest\" IC (u\u2080=v\u2080=0) reduces to a 2D dispersive wave equation:\n    h'_tt = gH\u2080 \u2207\u00b2h'\n\nwith exact Fourier-mode solution:\n    \u0125'(k, T) = \u0125'\u2080(k) \u00b7 cos(\u03c9_k \u00b7 T),    \u03c9_k = c\u00b7|k|\n\nThis is machine-precision \"exact\" \u2014 no time-stepping truncation error.\n\nML interface: h\u2080(x,y) \u2192 h_T(x,y) as [B, N, N] float32 arrays.\n\nReferences:\n    Pedlosky (1987) \"Geophysical Fluid Dynamics\" \u00a73.2\n    Vallis (2006) \"Atmospheric and Oceanic Fluid Dynamics\" \u00a73.3",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": "Random smooth surface height anomaly (zero mean).\n\nReturns float32 [n, N, N], values ~ [-0.3, 0.3] (amplitude \u226a H\u2080=1)."
+      },
+      {
+        "name": "solve_batch",
+        "docstring": "Propagate surface height h\u2080 to time T using exact Fourier solution.\n\nArgs:\n    h0: [B, N, N] float32 \u2014 initial surface height anomaly\n    T:  final time\n\nReturns:\n    [B, N, N] float32 \u2014 surface height at time T"
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "data/simulations/elasticity.py": {
+    "docstring": "Elasticity & Solid-Mechanics \u2014 Linear Elasticity proxy.\n\nSolves \u2207\u00b7\u03c3 + F = 0 for a given force field F.\nProduces 2-component displacement field U = (Ux, Uy).\n\nInput: [B, N, N, 2] (force field)\nOutput: [B, N, N, 2] (displacement)",
+    "classes": [],
+    "functions": [
+      {
+        "name": "make_ic",
+        "docstring": null
+      },
+      {
+        "name": "solve_batch",
+        "docstring": null
+      },
+      {
+        "name": "make_dataset",
+        "docstring": null
+      }
+    ]
+  },
+  "train.py": {
+    "docstring": "SciML experiment script \u2014 edit this file freely.\n\nBaseline: Fourier Neural Operator (FNO) for multiple SciML benchmarks.\nGoal: minimise val_l2_rel (lower is better) within the 5-minute budget.\n\nAvailable MODEL_TYPE values:\n  \"FNO\", \"RFNO\", \"AFNO\", \"FFNO\", \"UNO\", \"WNO\", \"DeepONet\", \"PODDeepONet\", \"S4NO\", \"GNOT\"",
+    "classes": [],
+    "functions": [
+      {
+        "name": "_parse_args",
+        "docstring": null
+      },
+      {
+        "name": "burgers_residual",
+        "docstring": null
+      },
+      {
+        "name": "_get_coords",
+        "docstring": null
+      },
+      {
+        "name": "_forward",
+        "docstring": null
+      },
+      {
+        "name": "loss_fn",
+        "docstring": null
+      }
+    ]
+  },
+  "autorun.py": {
+    "docstring": "Autonomous SciML experiment runner.\n\nIterates through the experiment queue in experiments.py, skips anything\nalready recorded in results.json, runs each via subprocess, and logs results.\n\nUsage:\n    uv run autorun.py                          # run all pending experiments\n    uv run autorun.py --max 5                  # stop after 5 experiments\n    uv run autorun.py --benchmark burgers_1d   # filter by benchmark\n    uv run autorun.py --model FNO              # filter by model type\n    uv run autorun.py --priority 3             # only experiments with priority \u2264 3\n    uv run autorun.py --dry-run                # print plan without running\n    uv run autorun.py --commit                 # git-commit good results automatically\n\nLogs are written to logs/<name>.log.\nresults.json is updated after every experiment.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "estimate_memory_mb",
+        "docstring": "Estimate peak memory usage for an experiment."
+      },
+      {
+        "name": "wprint",
+        "docstring": "Thread-safe print that prefixes output with the current worker's experiment name."
+      },
+      {
+        "name": "load_done_names",
+        "docstring": null
+      },
+      {
+        "name": "get_baselines",
+        "docstring": null
+      },
+      {
+        "name": "current_commit",
+        "docstring": null
+      },
+      {
+        "name": "is_arch_compatible",
+        "docstring": "Return True if two configs share the same architecture (can load weights)."
+      },
+      {
+        "name": "smart_fix",
+        "docstring": "Analyse crash log and compose ALL applicable fixes into a single retry config.\nUses centralized fix strategy logic from diagnostics.py."
+      },
+      {
+        "name": "_build_r2",
+        "docstring": "Strategy r2: halve model capacity + lr/10 + tighter clip."
+      },
+      {
+        "name": "_build_r3",
+        "docstring": "Strategy r3: minimal viable config \u2014 last resort before discarding."
+      },
+      {
+        "name": "_build_adapt",
+        "docstring": "Build an adaptive retry config from a HypothesisEngine suggestion dict.\n\nApplies model/arch fields from the suggestion while preserving benchmark,\nbudget_s, and other non-arch fields from the original experiment."
+      },
+      {
+        "name": "poll_injections",
+        "docstring": "Read .injected_experiments.json, prepend new experiments to pending, clear the file.\n\nCalled between experiments in the run loop so injected configs are picked up\nwithout restarting autorun. Returns a (possibly extended) pending list.\nReturns the original list unchanged if the file is absent or malformed."
+      },
+      {
+        "name": "run_experiment",
+        "docstring": "Run one experiment. Returns dict of results.\n\nbaseline: current best val_l2_rel for the benchmark. If a mid-run\nvalidation line in the log exceeds baseline x EARLY_STOP_MULTIPLIER at\n>=30% progress, the process is terminated early (crash_type='EarlyStop')."
+      },
+      {
+        "name": "git_commit_result",
+        "docstring": "Stage results.json and create a commit noting the new best result."
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "agent_loop.py": {
+    "docstring": "Autonomous Agent Orchestration Loop for SciML Research.\n\nThis is ONE of TWO supported orchestration modes \u2014 choose whichever fits your\nworkflow:\n\n  MODE A \u00b7 External agent (program.md)          \u2190 original, always supported\n  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  An external AI agent (Claude Code, GPT-4, etc.) reads program.md and drives\n  the research loop manually: edits train.py / experiments.py, calls autorun.py,\n  interprets results, forms hypotheses, and commits improvements.\n\n  Best for: interactive research, novel architecture ideas, steering by\n  intuition, or when you want full human-visible control over every decision.\n\n  MODE B \u00b7 agent_loop.py (this file)             \u2190 optional in-process loop\n  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  A fully automated in-process loop that replaces the need for an external\n  agent to interpret results. It reads tracker.analyze_lineage(), calls\n  HypothesisEngine, runs Bayesian HPO, and appends new ExperimentConfigs to\n  experiments.py \u2014 all without human intervention.\n\n  Best for: overnight runs, saturating the queue automatically after an\n  external agent session, or scaling up experiment throughput.\n\nBoth modes share the same infrastructure (experiments.py queue, results.json,\nautorun.py runner) and can be used interchangeably or together.\n\nSteps performed in Mode B:\n  1. Analyses current state via tracker.analyze_lineage()\n  2. Identifies failure patterns via hypothesis.HypothesisEngine\n  3. Generates next experiments via auto_suggest + bayesian_hpo\n  4. Writes new ExperimentConfig entries to experiments.py (gated)\n  5. Optionally triggers autorun.py for the next batch\n\nUsage:\n    uv run agent_loop.py --dry-run          # plan without writing\n    uv run agent_loop.py --benchmark kdv_1d # focus on one benchmark\n    uv run agent_loop.py --run              # generate + immediately run top-3\n    uv run agent_loop.py --top 5            # generate top-N new configs\n\nThe loop checks .autorun_pause before each action and respects it.\nSee program.md for the external-agent (Mode A) workflow.",
+    "classes": [],
+    "functions": [
+      {
+        "name": "_load_tracker",
+        "docstring": null
+      },
+      {
+        "name": "_load_hypothesis",
+        "docstring": null
+      },
+      {
+        "name": "_load_hpo",
+        "docstring": null
+      },
+      {
+        "name": "is_paused",
+        "docstring": null
+      },
+      {
+        "name": "current_sota_gaps",
+        "docstring": "Return ratio (our_best / sota) for each benchmark. <1 means we beat SOTA."
+      },
+      {
+        "name": "pending_count",
+        "docstring": null
+      },
+      {
+        "name": "analyse_state",
+        "docstring": "Full state analysis: lineage + hypothesis + SOTA gaps."
+      },
+      {
+        "name": "_name_from_config",
+        "docstring": null
+      },
+      {
+        "name": "generate_new_configs",
+        "docstring": "Use Bayesian HPO + hypothesis interventions to propose new ExperimentConfigs."
+      },
+      {
+        "name": "_config_to_code",
+        "docstring": "Render an ExperimentConfig(...) code block."
+      },
+      {
+        "name": "append_configs_to_experiments",
+        "docstring": "Append new ExperimentConfig entries to experiments.py (gated: smoke-test first)."
+      },
+      {
+        "name": "print_state_report",
+        "docstring": null
+      },
+      {
+        "name": "print_config_proposals",
+        "docstring": null
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "analyze.py": {
+    "docstring": "SciML results analyzer and next-experiment suggester.\n\nReads results.json and produces:\n  1. Best-per-benchmark/model summary table\n  2. Improvement trajectory over time\n  3. Hyperparameter correlation hints\n  4. Concrete suggestions for next experiments\n\nUsage:\n    uv run analyze.py                     # full report\n    uv run analyze.py --benchmark burgers_1d\n    uv run analyze.py --plot              # save convergence plot (requires matplotlib)",
+    "classes": [],
+    "functions": [
+      {
+        "name": "best_per_group",
+        "docstring": "Return best row per (benchmark, model) group."
+      },
+      {
+        "name": "improvement_series",
+        "docstring": "Return (index, val_l2_rel) for 'keep' rows in order, for one benchmark."
+      },
+      {
+        "name": "parse_config_from_desc",
+        "docstring": "Extract hyperparams embedded in description field (space-separated tokens)."
+      },
+      {
+        "name": "correlate_hyperparams",
+        "docstring": "Group val_l2_rel by hyperparameter value to spot trends."
+      },
+      {
+        "name": "print_report",
+        "docstring": null
+      },
+      {
+        "name": "_print_suggestions",
+        "docstring": "Simple heuristic-based suggestions from results."
+      },
+      {
+        "name": "plot_results",
+        "docstring": "Save val_l2_rel vs experiment index plot."
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  },
+  "auto_suggest.py": {
+    "docstring": "Autonomous next-experiment suggester for the SciML research loop.\n\nCombines three sources of information to generate prioritised experiment plans:\n  1. results.json  \u2014 what we've already tried and what worked\n  2. experiments.yaml \u2014 what's in the queue and what's pending\n  3. papers/*.yaml  \u2014 what the literature says to try next\n\nUsage:\n    uv run auto_suggest.py                    # full suggestion report\n    uv run auto_suggest.py --benchmark burgers_1d\n    uv run auto_suggest.py --top 10           # top N suggestions\n    uv run auto_suggest.py --generate         # output ready-to-run experiment configs\n    uv run auto_suggest.py --gaps             # SOTA gap analysis from papers\n\nThe output is actionable:\n  - \"Run now\" suggestions with specific CLI commands\n  - ExperimentConfig snippets to paste into experiments.yaml\n  - Literature-backed rationales for each suggestion\n\nDesign principle: This tool should remove the need for human reasoning about\nwhat to try next.  An agent can call `uv run auto_suggest.py` and immediately\nget the next experiments to run, drawn from both empirical findings and papers.",
+    "classes": [
+      {
+        "name": "Suggestion",
+        "docstring": null,
+        "methods": [
+          "__init__",
+          "__repr__"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "_compute_known_wins",
+        "docstring": "Build KNOWN_WINS from actual results.json, merging with hardcoded fallback."
+      },
+      {
+        "name": "_get_known_wins",
+        "docstring": "Return KNOWN_WINS, computing once per process and caching."
+      },
+      {
+        "name": "_refresh_known_wins",
+        "docstring": null
+      },
+      {
+        "name": "_generate_empirical_suggestions",
+        "docstring": "Suggestions based purely on empirical findings in results.json."
+      },
+      {
+        "name": "_generate_paper_suggestions",
+        "docstring": "Suggestions from core.paper_registry."
+      },
+      {
+        "name": "_load_diag_from_results",
+        "docstring": "Load spectral diagnostics from results.json diag fields.\n\nReturns: {exp_name_prefix: {\"diag_high_freq_error\": float, ...}}"
+      },
+      {
+        "name": "_generate_diagnostic_suggestions",
+        "docstring": "Suggest loss/mode changes based on spectral bias diagnostics."
+      },
+      {
+        "name": "_generate_transfer_suggestions",
+        "docstring": "When a config wins on a related benchmark, suggest it here too."
+      },
+      {
+        "name": "_rank_suggestions",
+        "docstring": "Sort by priority, then by estimated impact."
+      },
+      {
+        "name": "_print_findings",
+        "docstring": null
+      },
+      {
+        "name": "_sota_gap",
+        "docstring": null
+      },
+      {
+        "name": "report",
+        "docstring": null
+      },
+      {
+        "name": "generate_config_snippets",
+        "docstring": "Print ExperimentConfig snippets ready to paste into experiments.yaml."
+      },
+      {
+        "name": "main",
+        "docstring": null
+      }
+    ]
+  }
+}

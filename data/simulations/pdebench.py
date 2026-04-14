@@ -37,7 +37,7 @@ def solve_batch(u0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
     k_sq = kx**2 + ky**2
     
     u = u0.astype(np.float64)
-    steps = 100
+    steps = 500
     dt = T / steps
     
     for _ in range(steps):
@@ -58,5 +58,5 @@ def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray
     rng = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)
-    # Ensure [B, N, N, 1] shape
-    return inputs[..., None], targets[..., None]
+    # Ensure [B, N, N] shape (standard 2D convention)
+    return inputs.astype(np.float32), targets.astype(np.float32)

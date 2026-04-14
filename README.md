@@ -188,6 +188,7 @@ autoresearch-mlx/
 │   │   ├── mppde_2022.yaml
 │   │   ├── neural_ode_ude_2020.yaml
 │   │   ├── physicsnemo_2024.yaml
+│   │   ├── pikan_2025.yaml
 │   │   ├── pino_2021.yaml
 │   │   ├── rfno_2024.yaml
 │   │   ├── ssm_s4_2022.yaml
@@ -206,6 +207,7 @@ autoresearch-mlx/
 │   ├── afno.py
 │   ├── attention_fno.py
 │   ├── axial_attention.py
+│   ├── chebyshev_kan.py
 │   ├── deeponet.py
 │   ├── fedonet.py
 │   ├── fno.py
@@ -214,6 +216,7 @@ autoresearch-mlx/
 │   ├── hnn.py
 │   ├── hybrid_decoder_deeponet.py
 │   ├── hybrid_fno_deeponet.py
+│   ├── kan.py
 │   ├── mamba_no.py
 │   ├── mem_no.py
 │   ├── neural_ode.py

@@ -1,3 +1,69 @@
+- name: mambano_burgers_h128_l8
+  benchmark: burgers_1d
+  model: MambaNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: "Alias-Free MambaNO (2024) for Burgers efficiency"
+- name: memno_burgers_h128_l8
+  benchmark: burgers_1d
+  model: MemNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: "MemNO (2025) for temporal memory on Burgers"
+- name: mambano_ns_2d_h32_l4
+  benchmark: ns_2d
+  model: MambaNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "MambaNO on Navier-Stokes 2D"
+- name: memno_swe_2d_h32_l4
+  benchmark: swe_2d
+  model: MemNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 480
+  priority: 1
+  rationale: "MemNO on Shallow Water Equations 2D"
+- name: mambano_allen_cahn_h32_l4
+  benchmark: allen_cahn_2d
+  model: MambaNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 480
+  priority: 1
+  rationale: "MambaNO on Allen-Cahn phase transition"
+- name: fno_mhd_2d_h32_l4
+  benchmark: mhd_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "Baseline FNO for new MHD benchmark"
 - name: fno_swe2d_h32_l4_m8
   benchmark: swe_2d
   model: FNO
@@ -6572,3 +6638,362 @@
   rationale: Phase 3 Full Sweep
   expected: ''
   paper_ref: ''
+
+- name: gnot_burgers_h128_l6_aug
+  benchmark: burgers_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 6
+  n_head: 4
+  lr: 0.001
+  batch_size: 64
+  loss_type: l2_rel
+  augment: true
+  budget_s: 600
+  priority: 1
+  rationale: "GNOT Baseline + Augmentation (Priority 1 for Burgers Gap)"
+
+- name: transolver_burgers_h128_l6_s32_h1
+  benchmark: burgers_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 6
+  n_head: 4
+  slice_num: 32
+  lr: 0.001
+  batch_size: 64
+  loss_type: h1
+  h1_alpha: 0.1
+  augment: true
+  budget_s: 600
+  priority: 1
+  rationale: "Transolver + H1 Loss + Augmentation (NeurIPS 2024 SOTA logic)"
+
+- name: ssno_burgers_h128_l8_a01_aug
+  benchmark: burgers_1d
+  model: SSNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.0003
+  batch_size: 64
+  loss_type: h1
+  h1_alpha: 0.1
+  augment: true
+  budget_s: 600
+  priority: 1
+  rationale: "SSNO Dual-branch + H1 + Augmentation (Paper claims 0.007)"
+
+- name: fno_burgers_h128_l8_m24_h1_strong
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.0005
+  batch_size: 64
+  loss_type: h1_strong
+  h1_alpha: 1.0
+  augment: true
+  budget_s: 600
+  priority: 1
+  rationale: "Maximally regularized FNO baseline to isolate H1 impact"
+
+- name: hnn_kdv_stable_h64_l4
+  benchmark: kdv_1d
+  model: HNN
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: "Stable HNN with epsilon=0.1 and weight rescaling to fix KdV NaNs"
+
+- name: hnn_wave_stable_h128_l4
+  benchmark: wave_1d
+  model: HNN
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: "Stable HNN on Wave to verify performance impact of step-size scaling"
+
+- name: transolver2d_darcy_h64_l4_s64_h1
+  benchmark: darcy_2d
+  model: Transolver2D
+  hidden_dim: 64
+  n_layers: 4
+  n_head: 4
+  slice_num: 64
+  lr: 0.0005
+  batch_size: 32
+  loss_type: h1
+  h1_alpha: 0.1
+  budget_s: 1200
+  priority: 2
+  rationale: "Scaling Darcy with Transolver2D and H1 loss to close 25x SOTA gap"
+
+- name: fno2d_darcy_h48_l6_m12_aug
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 48
+  n_layers: 6
+  n_modes: 12
+  lr: 0.001
+  batch_size: 32
+  augment: true
+  budget_s: 1200
+  priority: 2
+  rationale: "Optimized FNO2D modes and augmentation for Darcy scaling"
+
+- name: fedonet2d_darcy_h64_l4
+  benchmark: darcy_2d
+  model: FEDONet2D
+  hidden_dim: 64
+  n_layers: 4
+  lr: 0.001
+  batch_size: 64
+  budget_s: 1200
+  priority: 2
+  rationale: "Hybrid FEDONet2D for Darcy steady-state performance"
+
+- name: rfno2d_ns2d_h32_l6_m8_h1
+  benchmark: ns_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  lr: 0.0005
+  batch_size: 32
+  loss_type: h1
+  h1_alpha: 0.01
+  budget_s: 600
+  priority: 3
+  rationale: "Residual FNO2D + H1 loss for turbulence gradients; closing the 1.1x gap to 0.0128"
+
+- name: fno2d_ns2d_h32_l4_m10_600s
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 10
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 3
+  rationale: "Increased spectral resolution sweep (m=10) for high-frequency vortex capture"
+
+- name: transolver2d_ns2d_h32_l4_s32
+  benchmark: ns_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  slice_num: 32
+  lr: 0.0005
+  batch_size: 32
+  budget_s: 600
+  priority: 3
+  rationale: "Transolver2D sliced attention for long-range turbulent spatial coupling"
+
+- name: transolver2d_swe_h64_l4_s64
+  benchmark: swe_2d
+  model: Transolver2D
+  hidden_dim: 64
+  n_layers: 4
+  slice_num: 64
+  lr: 0.0005
+  batch_size: 32
+  budget_s: 1200
+  priority: 4
+  rationale: "Physics attention with high slicing for multi-scale shallow water dynamics"
+
+- name: fno2d_allencahn_h48_l6_m8
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 48
+  n_layers: 6
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 1200
+  priority: 4
+  rationale: "Deeper spectral refinement for stabilizing Allen-Cahn phase interfaces"
+
+- name: fno2d_swe_h32_l4_m10_h1
+  benchmark: swe_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 10
+  lr: 0.001
+  batch_size: 64
+  loss_type: h1
+  h1_alpha: 0.05
+  budget_s: 1200
+  priority: 4
+  rationale: "Increased spectral resolution + H1 loss for height-vorticity gradients"
+
+- name: transolver_burgers_h128_l8_spec
+  benchmark: burgers_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 8
+  n_head: 4
+  slice_num: 64
+  lr: 0.0005
+  batch_size: 64
+  loss_type: l2_rel
+  budget_s: 600
+  priority: 1
+  rationale: "Transolver with deeper layers (l=8) and increased slicing to capture Burgers shocks better than GNOT baseline"
+
+- name: ssno_burgers_h64_l4_lowlr
+  benchmark: burgers_1d
+  model: SSNO
+  hidden_dim: 64
+  n_layers: 4
+  lr: 0.0001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "Stability-first SSNO attempt with lower learning rate to investigate paper's 0.007 claim on Burgers"
+
+- name: fno_mhd_2d_fix_h32_l4
+  benchmark: mhd_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "Remediation: Verified 2-channel input for MHD 2D after registry fix"
+
+- name: gnot_ffno_burgers_h128_l8
+  benchmark: burgers_1d
+  model: GNOT_FFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 900
+  priority: 1
+  rationale: "Phase 8: GNOT-FFNO Hybrid with learnable spectral-attention gating for shock capture"
+
+- name: fno_burgers_curriculum_step1
+  benchmark: burgers_nu_01
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: "Phase 8 Curriculum Stage 1: training on high-viscosity smooth Burgers"
+
+- name: fno_burgers_curriculum_step2
+  benchmark: burgers_nu_001
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 300
+  parent_name: "fno_burgers_curriculum_step1"
+  resume: true
+  priority: 1
+  rationale: "Phase 8 Curriculum Stage 2: refining on medium-viscosity Burgers"
+
+- name: fno_burgers_curriculum_step3
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 600
+  parent_name: "fno_burgers_curriculum_step2"
+  resume: true
+  priority: 1
+  rationale: "Phase 8 Curriculum Stage 3: final target viscosity shock capture"
+
+- name: wno_gnot_burgers_h96_l6
+  benchmark: burgers_1d
+  model: WNO_GNOT
+  hidden_dim: 96
+  n_layers: 6
+  n_levels: 4
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 900
+  priority: 1
+  rationale: "Phase 9: Multi-scale Wavelet-Transformer hybrid for Haar-localized shock capture"
+
+- name: wno_burgers_l8_nu0.01
+  benchmark: burgers_nu_001
+  model: WNO
+  hidden_dim: 128
+  n_layers: 8
+  n_levels: 4
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "Phase 9: Deep Wavelet baseline on curriculum visocity (nu=0.01)"
+
+- name: kan_fno_burgers_h64_l4
+  benchmark: burgers_1d
+  model: KAN_FNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: "Phase 10: Kolmogorov-Arnold Spectral Operator (KAN-FNO) for sharp shock capture (Springer 2025 PIKAN review implementation)"
+
+- name: kan_fno_burgers_adaptive_h64_l4
+  benchmark: burgers_1d
+  model: KAN_FNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  refine_grid: true
+  lr: 0.001
+  budget_s: 600
+  priority: 1
+  rationale: "Phase 11: Benchmark Adaptive Grid Extension. Starting coarse (G=5) and refining to G=10 and G=20."
+
+- name: cpikan_fno_burgers_h64_l4
+  benchmark: burgers_1d
+  model: cPIKAN_FNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  cheb_degree: 5
+  lr: 0.001
+  budget_s: 600
+  priority: 1
+  rationale: "Phase 11: Chebyshev PIKAN variant (robust recursive polynomial basis)."
+
+- name: modified_kan_fno_burgers_h64_l4
+  benchmark: burgers_1d
+  model: ModifiedKAN_FNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  budget_s: 600
+  priority: 1
+  rationale: "Phase 11: Modified KAN with input-projection encoders to mitigate spectral bias."

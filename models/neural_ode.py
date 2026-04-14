@@ -24,7 +24,7 @@ Key ideas:
     Augment a KNOWN ODE/PDE with a neural network correction term:
       du/dt = known_physics(u, x) + NN_θ(u, x)
     The NN only needs to learn the UNKNOWN or MISSING terms.
-    For Burgers: we know the nonlinear advection u*ux, but can discover ν*uxx.
+    For Burgers: we know the nonlinear advection u*ux, but can discover nu*uxx.
     For wave:    we know the wave operator, NN corrects for boundary imperfections.
 
     Key benefit: far fewer parameters needed; NN is a correction, not the full model.
@@ -190,7 +190,7 @@ class UniversalDE1d(nn.Module):
         ∂u/∂x = IFFT(ik * FFT(u)).  The 2/3 rule zeros the top third of modes
         before the nonlinear multiply to prevent aliasing-driven instability.
         """
-        B, N = u.shape
+        _, N = u.shape
         u_hat = mx.fft.rfft(u, axis=-1)          # [B, N//2+1] complex
         n_rfft = N // 2 + 1
         k = mx.arange(n_rfft, dtype=mx.float32)  # [n_rfft]
@@ -208,10 +208,10 @@ class UniversalDE1d(nn.Module):
         return -u * ux   # nonlinear advection
 
     def _spectral_diffusion(self, u: mx.array) -> mx.array:
-        """Compute ν * ∂²u/∂x² via spectral differentiation."""
+        """Compute nu * d^2u/dx^2 via spectral differentiation."""
         if self.nu == 0.0:
             return mx.zeros_like(u)
-        B, N = u.shape
+        _, N = u.shape
         u_hat  = mx.fft.rfft(u, axis=-1)
         n_rfft = N // 2 + 1
         k      = mx.arange(n_rfft, dtype=mx.float32)
@@ -302,9 +302,9 @@ class LatentODE1d(nn.Module):
         self.bias    = mx.zeros([1])
 
     def __call__(self, u0: mx.array) -> mx.array:
-        B, N = u0.shape
+        _, N = u0.shape
 
-        # Encode IC → latent state
+        # Encode IC -> latent state
         z = self.encoder(u0)   # [B, latent_dim]
 
         # Integrate in latent space (Euler)

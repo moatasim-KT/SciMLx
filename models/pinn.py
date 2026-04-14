@@ -41,9 +41,9 @@ class PINN(nn.Module):
     def __call__(self, x: mx.array) -> mx.array:
         """
         Args:
-            x: [B, ..., in_dim] – coordinates or (u0, coords) concat
+            x: [B, ..., in_dim] - coordinates or (u0, coords) concat
         Returns:
-            [...] – solution values
+            [...] - solution values
         """
         return self.net(x)
 

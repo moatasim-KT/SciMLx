@@ -1,0 +1,31 @@
+id: pikan-2025
+title: "From PINNs to PIKANs: recent advances in physics-informed machine learning"
+doi: "10.1007/s44379-025-00015-1"
+venue: "Machine Learning for Computational Science and Engineering"
+authors: ["N. Sukumar", "Anima Anandkumar", "et al."]
+year: 2025
+
+key_idea: >
+  Replaces standard MLPs and fixed activation functions with Kolmogorov-Arnold Networks (KANs).
+  KANs use learnable univariate spline functions on edges.  Offers higher expressive power
+  for localized features (shocks) and potentially better parameter efficiency.
+
+architecture: KAN_FNO
+model_class: KAN
+status: pending
+
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: null
+    notes: >
+      Targeting Burgers 1D shocks where KAN's localized spline basis should outperform 
+      standard MLP-based operator paths.
+
+key_hyperparams:
+  grid_size: 5
+  spline_order: 3
+  base_activation: base_silu
+
+suggested_experiments:
+  - name: kan_fno_burgers_h64_l4
+    rationale: "Initial KAN-FNO vs FNO comparison on shock capture"

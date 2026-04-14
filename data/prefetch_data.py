@@ -5,7 +5,7 @@ Run once before starting experiments:
 
 This eliminates per-experiment data generation overhead. Each benchmark
 is generated in a separate thread. Total time: dominated by ns_hre_2d
-(10–20 min). All others finish in under 5 min combined.
+(10-20 min). All others finish in under 5 min combined.
 
 After this script completes, every train.py subprocess will load data
 from disk in < 5s instead of regenerating from scratch.
@@ -122,11 +122,12 @@ TASKS = [
     ("kdv_1d",        prefetch_ext,            ("kdv_1d",)),
     ("wave_1d",       prefetch_ext,            ("wave_1d",)),
     ("darcy_2d",  prefetch_ext,            ("darcy_2d",)),
-    ("ns_2d",     prefetch_ext,            ("ns_2d",)),
+    ("ns_2d",         prefetch_ext,            ("ns_2d",)),
+    ("ns_hre_2d",     prefetch_ext,            ("ns_hre_2d",)),
+    ("swe_2d",        prefetch_ext,            ("swe_2d",)),
+    ("allen_cahn_2d", prefetch_ext,            ("allen_cahn_2d",)),
+    ("mhd_2d",        prefetch_ext,            ("mhd_2d",)),
     ("euler_1d",      prefetch_sim,            ("euler_1d",)),
-    ("swe_2d",        prefetch_sim,            ("swe_2d",)),
-    ("allen_cahn_2d", prefetch_sim,            ("allen_cahn_2d",)),
-    ("ns_hre_2d",     prefetch_sim,            ("ns_hre_2d",)),
 ]
 
 # ns_hre_2d takes 10-20 min and is CPU-bound; run it alone so it gets full CPU

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Live experiment monitor. Run: uv run monitor.py"""
+"""Live experiment monitor. Run: uv run -m dashboard.monitor"""
 
 import os
 import re
 import sys
 import time
 from pathlib import Path
-from utils import LOGS_DIR, load_results, done_names, SOTA
+from core.utils import LOGS_DIR, load_results, done_names, SOTA
 
 CLEAR = "\033[2J\033[H"
 BOLD  = "\033[1m"
@@ -27,7 +27,7 @@ def color_ratio(val, sota):
     if sota is None or val is None:
         return f"{val:.6f}"
     ratio = val / sota
-    s = f"{val:.6f} ({ratio:.2f}× SOTA)"
+    s = f"{val:.6f} ({ratio:.2f}x SOTA)"
     if ratio < 1.0:
         return GREEN + BOLD + s + RESET
     elif ratio < 2.0:
@@ -157,7 +157,7 @@ def render(log_path, log_info, board, n_done, n_pending):
         if bm in board:
             val, model = board[bm]
             ratio = val / s
-            tag = f"{ratio:.2f}×"
+            tag = f"{ratio:.2f}x"
             col = GREEN if ratio < 1 else (YELLOW if ratio < 3 else RED)
             lines.append(f"  {bm:<20} {val:>10.6f}  {model:<12}  {col}{tag}{RESET}")
         else:
@@ -169,7 +169,7 @@ def main():
     refresh = 3  # seconds
     n_pending_cache = "?"
     try:
-        from experiments import EXPERIMENTS
+        from core.loader import EXPERIMENTS
         n_pending_cache = sum(
             1 for e in EXPERIMENTS
             if e.name not in done_names() and e.benchmark != "burgers_1d"
@@ -186,8 +186,10 @@ def main():
             log_info = parse_log(log_path) if log_path else {}
             board    = leaderboard()
             n_done   = len(done_names())
+            
+            # Refresh pending count
             try:
-                from experiments import EXPERIMENTS
+                from core.loader import EXPERIMENTS
                 n_pending_cache = sum(
                     1 for e in EXPERIMENTS
                     if e.name not in done_names() and e.benchmark != "burgers_1d"
@@ -204,6 +206,7 @@ def main():
         except Exception as e:
             sys.stdout.write(f"\r[monitor error: {e}]")
             sys.stdout.flush()
+        
         time.sleep(refresh)
 
 if __name__ == "__main__":

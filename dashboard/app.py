@@ -223,7 +223,7 @@ def list_logs():
 @app.get("/api/queue")
 def get_queue():
     """Return pending experiments sorted by priority."""
-    from experiments import get_experiments
+    from core.loader import get_experiments
     from core.utils import done_names
     done = done_names()
     pending = [

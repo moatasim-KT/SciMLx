@@ -14,9 +14,9 @@ Key idea — Physics Attention:
   2. For each layer:
      a. Slice assignment: A[B, N, H, S] = softmax(W_q(h))  (N→S grouping)
      b. Aggregate:  h_s[B, H, S, D/H] = A^T @ h           (grid → slices)
-     c. Attention:  h_s′ = SelfAttn(h_s)                  (in slice space)
-     d. Broadcast:  h′[B, N, D] = A @ h_s′               (slices → grid)
-     e. FFN:        h = h + FFN(LayerNorm(h′))
+     c. Attention:  h_s' = SelfAttn(h_s)                  (in slice space)
+     d. Broadcast:  h'[B, N, D] = A @ h_s'               (slices -> grid)
+     e. FFN:        h = h + FFN(LayerNorm(h'))
   3. Project: h[B, N, D] → out[B, N, 1]
 
 Benefits:
@@ -44,7 +44,7 @@ class PhysicsAttn1d(nn.Module):
         Number of attention heads.
     slice_num : int
         Number of physics slices S (analogous to tokens in ViT).
-        Typical values: 16–64.  Smaller → faster; larger → more expressive.
+        Typical values: 16-64.  Smaller -> faster; larger -> more expressive.
     """
 
     def __init__(self, dim: int, n_head: int = 4, slice_num: int = 32):
@@ -138,10 +138,10 @@ class Transolver1d(nn.Module):
     """Transolver for 1-D structured grids.
 
     Hyperparameter guide:
-        dim        = hidden_dim  (embedding dim; 64–256)
-        n_layers   = 4–8        (depth; attention is cheaper than spectral conv)
-        slice_num  = 16–64      (physics token count; 32 is a good default)
-        n_head     = 4–8        (attention heads; dim must be divisible)
+        dim        = hidden_dim  (embedding dim; 64-256)
+        n_layers   = 4-8        (depth; attention is cheaper than spectral conv)
+        slice_num  = 16-64      (physics token count; 32 is a good default)
+        n_head     = 4-8        (attention heads; dim must be divisible)
         mlp_ratio  = 2.0        (FFN hidden / dim)
 
     Notes:
@@ -221,7 +221,7 @@ class Transolver2d(nn.Module):
     """Transolver for 2-D structured grids (darcy_2d, ns_2d).
 
     Flattens the grid, applies Physics Attention, reshapes output.
-    For darcy_2d (64×64 = 4096 points), slice_num=64 groups similar
+    For darcy_2d (64x64 = 4096 points), slice_num=64 groups similar
     permeability regions into coherent physics tokens.
     """
 

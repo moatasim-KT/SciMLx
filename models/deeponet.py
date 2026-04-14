@@ -40,10 +40,10 @@ class DeepONet(nn.Module):
     def __call__(self, u: mx.array, y: mx.array) -> mx.array:
         """
         Args:
-            u : [B, branch_dim]    – input function at sensor locations
-            y : [B, N, trunk_dim]  – evaluation coordinates
+            u : [B, branch_dim]    - input function at sensor locations
+            y : [B, N, trunk_dim]  - evaluation coordinates
         Returns:
-            [B, N] – operator output at query points
+            [B, N] - operator output at query points
         """
         b_out = self.branch(u)           # [B, out_dim]
         t_out = self.trunk(y)            # [B, N, out_dim]
@@ -60,7 +60,7 @@ class PODDeepONet(nn.Module):
     preserving the structural benefit of a shared basis.
 
     Reference: Lu et al. (2022) "Comprehensive study of deeponet for solving
-    PDEs" — POD-DeepONet variant.
+    PDEs" - POD-DeepONet variant.
     """
 
     def __init__(self, branch_dim: int, n_basis: int = 64,
@@ -77,7 +77,7 @@ class PODDeepONet(nn.Module):
         layers.append(nn.Linear(hidden_dim, n_basis))
         self.branch = nn.Sequential(*layers)
 
-        # Learnable POD basis: [n_basis, N] – each row is one basis function
+        # Learnable POD basis: [n_basis, N] - each row is one basis function
         # Initialised with small random values; will be learned from data.
         self.basis = mx.random.normal([n_basis, 64]) * 0.02
         self.bias  = mx.zeros([1])

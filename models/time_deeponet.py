@@ -1,14 +1,14 @@
 """Time-Marching DeepONet (TimeDeepONet).
 
 Inspired by:
-  "Time-marching neural operator–FE coupling: AI-accelerated physics modeling"
+  "Time-marching neural operator-FE coupling: AI-accelerated physics modeling"
   Wei Wang, Maryam Hakimzadeh, Haihui Ruan, Somdatta Goswami
   Computer Methods in Applied Mechanics and Engineering, vol. 446, 2025
   DOI: https://doi.org/10.1016/j.cma.2025.118319
   arXiv: https://arxiv.org/abs/2504.11383
 
 Original paper key idea:
-  FE–NO coupling via domain decomposition.  A physics-informed DeepONet with TWO
+  FE-NO coupling via domain decomposition.  A physics-informed DeepONet with TWO
   branch networks replaces the fine-mesh FE subdomain:
     • branch1: encodes displacement BC at the CURRENT time step
     • branch2: encodes full displacement + velocity from the PREVIOUS time step
@@ -185,7 +185,7 @@ class DualBranchDeepONet1d(nn.Module):
 
     def __call__(self, u0: mx.array,
                  v0: mx.array | None = None) -> mx.array:
-        B, N = u0.shape
+        _, N = u0.shape
         # If no second field provided, use a zero-velocity IC
         if v0 is None:
             v0 = mx.zeros_like(u0)

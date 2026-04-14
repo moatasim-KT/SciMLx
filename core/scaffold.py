@@ -14,7 +14,7 @@ A new model must pass three checks before being registered or queued:
 Only after all three pass does the model get:
   • registered in MODEL_REGISTRY (research_plugins.py)
   • added to models/__init__.py exports
-  • given a priority-3 ExperimentConfig in experiments.py
+  • given a priority-3 ExperimentConfig in experiments.yaml
 
 Usage (external agent or agent_loop.py):
     from model_scaffold import ModelGate, generate_stub
@@ -32,8 +32,8 @@ Usage (external agent or agent_loop.py):
                                 benchmarks=["burgers_1d", "kdv_1d"])
 
 CLI:
-    uv run model_scaffold.py --stub MySuperFNO --base FNO
-    uv run model_scaffold.py --validate MySuperFNO models/my_super_fno.py
+    uv run -m core.scaffold --stub MySuperFNO --base FNO
+    uv run -m core.scaffold --validate MySuperFNO models/my_super_fno.py
     uv run model_scaffold.py --list          # show registered models
 """
 
@@ -238,7 +238,7 @@ class ModelGate:
           1. Copy model file to models/ if not already there
           2. Add export to models/__init__.py
           3. Add MODEL_REGISTRY.register_class() call to research_plugins.py
-          4. Append ExperimentConfig entries to experiments.py
+          4. Append ExperimentConfig entries to experiments.yaml
         """
         model_path = Path(path)
         target     = REPO_ROOT / "models" / model_path.name
@@ -281,33 +281,42 @@ class ModelGate:
                 plugins_path.write_text(plugins_src)
                 print(f"  Registered {name} in MODEL_REGISTRY")
 
-        # 4. Append ExperimentConfigs
+        # 4. Append ExperimentConfigs to experiments.yaml
         bms = benchmarks or ["burgers_1d"]
-        exp_path = REPO_ROOT / "experiments.py"
-        exp_src  = exp_path.read_text()
-        block = f"\n    # ── {name} (auto-registered by model_scaffold.py) ──\n"
+        yaml_path = REPO_ROOT / "experiments.yaml"
+        
+        import yaml
+        if yaml_path.exists():
+            with open(yaml_path, "r") as f:
+                data = yaml.safe_load(f) or []
+        else:
+            data = []
+
+        existing_names = {exp["name"] for exp in data if "name" in exp}
+        
+        new_configs = []
         for bm in bms:
             exp_name = f"{name.lower()}_{bm[:5]}_baseline"
-            if f'name={exp_name!r}' in exp_src:
+            if exp_name in existing_names:
                 continue
             is_2d = "2d" in bm
-            block += textwrap.dedent(f"""\
-                ExperimentConfig(
-                    name={exp_name!r},
-                    benchmark={bm!r},
-                    model={name!r},
-                    hidden_dim=64, n_layers=4, n_modes=16,
-                    budget_s={480 if is_2d else 300},
-                    priority={priority},
-                    rationale="Auto-generated baseline for {name} on {bm}",
-                ),
-            """)
-        if block.strip():
-            insertion = exp_src.rfind("\n]")
-            if insertion != -1:
-                exp_path.write_text(
-                    exp_src[:insertion] + "\n" + block + exp_src[insertion:])
-                print(f"  Appended {len(bms)} ExperimentConfig(s) to experiments.py")
+            new_configs.append({
+                "name": exp_name,
+                "benchmark": bm,
+                "model": name,
+                "hidden_dim": 64,
+                "n_layers": 4,
+                "n_modes": 16,
+                "budget_s": 480 if is_2d else 300,
+                "priority": priority,
+                "rationale": f"Auto-generated baseline for {name} on {bm}",
+            })
+        
+        if new_configs:
+            data.extend(new_configs)
+            with open(yaml_path, "w") as f:
+                yaml.dump(data, f, sort_keys=False)
+            print(f"  Appended {len(new_configs)} ExperimentConfig(s) to experiments.yaml")
 
         return True
 

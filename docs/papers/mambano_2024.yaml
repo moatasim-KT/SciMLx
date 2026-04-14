@@ -1,0 +1,24 @@
+title: "Alias-Free Mamba Neural Operator"
+short_id: mambano_2024
+authors: "Zheng et al."
+year: 2024
+venue: "NeurIPS"
+key_idea: |
+  Combines global integration via Mamba (selective SSM) with local convolution. 
+  Proposes an alias-free design for neural operators to maintain spectral accuracy 
+  and prevent aliasing when using SSMs for PDE solving. Maintains O(N) complexity.
+benchmarks:
+  burgers_1d:
+    reported_val_l2_rel: 0.0045
+  darcy_2d:
+    reported_val_l2_rel: 0.0078
+  ns_2d:
+    reported_val_l2_rel: 0.0110
+suggested_experiments:
+  - name: "mambano_burgers_h128_l8"
+    benchmark: "burgers_1d"
+    model: "MambaNO"
+    hidden_dim: 128
+    n_layers: 8
+    rationale: "Evaluate O(N) scaling on 1D Burgers"
+status: pending

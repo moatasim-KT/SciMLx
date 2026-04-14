@@ -1,6 +1,6 @@
 """Discovery Engine Tracker — DAG-based experiment lineage for SciML autoresearch.
 
-Manages results.json (the SSoT for lineage) and results.tsv (legacy sync).
+Manages results.json (the SSoT for lineage).
 Tracks branching via parent_id and structured rationale/conclusions.
 """
 
@@ -14,91 +14,25 @@ from typing import Optional, Dict, Any, List
 # ── Path Constants ────────────────────────────────────────────────────────────
 from core.utils import REPO_ROOT
 RESULTS_JSON = REPO_ROOT / "results.json"
-RESULTS_TSV  = REPO_ROOT / "results.tsv"
 
 class Tracker:
-    def __init__(self, json_path: Path = RESULTS_JSON, tsv_path: Path = RESULTS_TSV):
+    def __init__(self, json_path: Path = RESULTS_JSON):
         self.json_path = json_path
-        self.tsv_path  = tsv_path
         self.experiments = []
         self._load()
 
     def _load(self):
-        """Load JSON lineage.  If missing, migrate from TSV."""
+        """Load JSON lineage."""
         if self.json_path.exists():
             with open(self.json_path, 'r') as f:
                 self.experiments = json.load(f)
-        elif self.tsv_path.exists():
-            self._migrate_from_tsv()
         else:
             self.experiments = []
 
     def _save(self):
-        """Save JSON lineage and sync to TSV."""
+        """Save JSON lineage."""
         with open(self.json_path, 'w') as f:
             json.dump(self.experiments, f, indent=2)
-        self._sync_to_tsv()
-
-    def _migrate_from_tsv(self):
-        """Import legacy TSV data into JSON DAG."""
-        import csv
-        exps = []
-        if not self.tsv_path.exists():
-            return
-        
-        with open(self.tsv_path, 'r') as f:
-            reader = csv.DictReader(f, delimiter='\t')
-            # Infer parentage linearly for migration
-            last_keep = {} # benchmark -> id
-            for i, row in enumerate(reader):
-                bm = row['benchmark']
-                exp_id = f"legacy_{i}_{row['commit']}"
-                parent = last_keep.get(bm)
-                
-                def safe_float(v, default=1.0):
-                    try:
-                        return float(v)
-                    except:
-                        return default
-
-                exp = {
-                    "id": exp_id,
-                    "parent_id": parent,
-                    "timestamp": int(time.time()) - (1000 * (100 - i)), # fake order
-                    "benchmark": bm,
-                    "model": row['model'],
-                    "val_l2_rel": safe_float(row['val_l2_rel']),
-                    "memory_gb": safe_float(row['memory_gb'], 0.0),
-                    "status": row['status'],
-                    "description": row['description'],
-                    "commit": row['commit'],
-                    "config": {}, # unknown for legacy
-                    "rationale": "Migrated from legacy results.tsv",
-                    "conclusion": ""
-                }
-                exps.append(exp)
-                if row['status'] == 'keep':
-                    last_keep[bm] = exp_id
-        
-        self.experiments = exps
-        self._save()
-
-    def _sync_to_tsv(self):
-        """Keep results.tsv updated for backwards compatibility with legacy tools."""
-        header = ["commit", "benchmark", "model", "val_l2_rel", "memory_gb", "status", "description"]
-        with open(self.tsv_path, 'w') as f:
-            f.write("\t".join(header) + "\n")
-            for e in self.experiments:
-                row = [
-                    str(e.get("commit", "none")),
-                    str(e["benchmark"]),
-                    str(e["model"]),
-                    f"{e['val_l2_rel']:.6f}",
-                    f"{e['memory_gb']:.2f}",
-                    str(e["status"]),
-                    str(e["description"])
-                ]
-                f.write("\t".join(row) + "\n")
 
     def log_experiment(self,
                        benchmark: str,

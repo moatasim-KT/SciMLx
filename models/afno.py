@@ -175,12 +175,12 @@ class DiagSpectralConv1d(nn.Module):
     """Diagonal (factorized) spectral convolution.
 
     Instead of a full W[m, in_c, out_c] matrix per mode (O(m*C²) params),
-    uses a per-mode per-channel diagonal scale (O(m*C) params — 128× cheaper
+    uses a per-mode per-channel diagonal scale (O(m*C) params - 128x cheaper
     for C=128, m=24).
 
     Combined with the pointwise Linear 'w' in FNOBlock (which provides full
     channel mixing), this achieves similar expressivity to full SpectralConv
-    with far fewer parameters — enabling much wider channels in the same budget.
+    with far fewer parameters - enabling much wider channels in the same budget.
 
     Reference: inspired by Tran et al. (2023) Factorized FNO (arXiv:2111.13587)
     """
@@ -235,8 +235,8 @@ class FFNO1d(nn.Module):
     """Factorized Fourier Neural Operator for 1-D operator learning.
 
     Uses diagonal (per-mode per-channel) spectral weights instead of
-    FNO's full (per-mode per-channel-pair) weight matrices.  128× fewer
-    spectral parameters → can afford much wider channels (C=256/512) or
+    FNO's full (per-mode per-channel-pair) weight matrices.  128x fewer
+    spectral parameters - can afford much wider channels (C=256/512) or
     more modes (m=32/48) in the same 5-minute compute budget.
 
     Key insight: the per-mode expressiveness comes from the channel-mixing

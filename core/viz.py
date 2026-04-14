@@ -2,7 +2,7 @@
 """Comprehensive visualization module for SciML autoresearch results.
 
 Generates plots for:
-  leaderboard   - results.tsv bar charts + model comparison per benchmark
+  leaderboard   - results.json bar charts + model comparison per benchmark
   training      - loss / grad-norm curves from .log files
   data          - sample input→output pairs for each benchmark
   validation    - solver accuracy vs analytical solutions (wave, KdV soliton)
@@ -11,15 +11,15 @@ Generates plots for:
   all           - all of the above (default)
 
 Usage:
-    uv run viz.py                                 # all modes, save to figs/
-    uv run viz.py --mode leaderboard              # results comparison only
+    uv run -m core.viz                                 # all modes, save to figs/
+    uv run -m core.viz --mode leaderboard              # results comparison only
     uv run viz.py --mode training                 # all logs
     uv run viz.py --mode training --log <path>    # single log
     uv run viz.py --mode data --benchmark kdv_1d  # data samples
     uv run viz.py --mode validation               # solver accuracy
     uv run viz.py --mode spectral                 # frequency analysis
     uv run viz.py --mode concerns                 # concern dashboard
-    uv run viz.py --mode arch --benchmark burgers_1d --model FNO  # arch sanity check
+    uv run -m core.viz --mode arch --benchmark burgers_1d --model FNO  # arch sanity check
     uv run viz.py --show                          # display (don't save)
 """
 
@@ -42,7 +42,7 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 from matplotlib.ticker import LogLocator, NullFormatter
 
-from utils import REPO_ROOT as REPO, FIGS_DIR as FIGS, LOGS_DIR as LOGS, RESULTS_FILE as RESULTS, SOTA, load_results as _load_rows
+from .utils import REPO_ROOT as REPO, FIGS_DIR as FIGS, LOGS_DIR as LOGS, RESULTS_FILE as RESULTS, SOTA, load_results as _load_rows
 
 BM_COLORS = {
     "burgers_1d": "#e74c3c",
@@ -129,7 +129,7 @@ def plot_leaderboard():
     """Bar chart of best-per-model per benchmark vs SOTA."""
     rows = load_results()
     if not rows:
-        print("  No results.tsv — skipping leaderboard.")
+        print("  No results.json - skipping leaderboard.")
         return
 
     benchmarks = sorted({r["benchmark"] for r in rows})
@@ -137,7 +137,7 @@ def plot_leaderboard():
                                figsize=(5.5 * len(benchmarks), 7))
     if len(benchmarks) == 1:
         axes = [axes]
-    fig.suptitle("SciML Leaderboard — Best per Model per Benchmark",
+    fig.suptitle("SciML Leaderboard - Best per Model per Benchmark",
                  fontsize=14, fontweight="bold", y=1.01)
 
     for ax, bm in zip(axes, benchmarks):
@@ -199,7 +199,7 @@ def plot_experiment_timeline():
                                figsize=(14, 4.5 * len(benchmarks)))
     if len(benchmarks) == 1:
         axes = [axes]
-    fig.suptitle("Experiment Timeline — All Runs", fontsize=14,
+    fig.suptitle("Experiment Timeline - All Runs", fontsize=14,
                  fontweight="bold")
 
     for ax, bm in zip(axes, benchmarks):
@@ -278,7 +278,7 @@ def plot_training_curves(log_arg: Optional[str] = None):
     """Loss + LR + step-time subplots for top logs."""
     paths = _pick_logs(log_arg)
     if not paths:
-        print("  No logs found — skipping training curves.")
+        print(f"  (i) Run `uv run -m core.viz --mode training` to view metrics.")
         return
 
     logs  = [parse_log(p) for p in paths]
@@ -290,7 +290,7 @@ def plot_training_curves(log_arg: Optional[str] = None):
     nrows = math.ceil(len(valid) / ncols)
     fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4 * nrows))
     axes = np.array(axes).flatten() if nrows * ncols > 1 else [axes]
-    fig.suptitle("Training Curves — Top Experiments by val_l2_rel",
+    fig.suptitle("Training Curves - Top Experiments by val_l2_rel",
                  fontsize=13, fontweight="bold")
 
     for ax, d in zip(axes, valid):
@@ -401,8 +401,8 @@ def _get_data_samples(benchmark: str, n: int = 6) -> tuple:
     """Load a few samples from the benchmark data generators."""
     try:
         sys.path.insert(0, str(REPO))
-        from prepare import GRID_SIZE, make_dataloader
-        from benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader
+        from data.prepare import GRID_SIZE, make_dataloader
+        from data.benchmarks_ext import EXT_BENCHMARKS, make_ext_dataloader
         import mlx.core as mx
 
         if benchmark in EXT_BENCHMARKS:
@@ -419,7 +419,7 @@ def _get_data_samples(benchmark: str, n: int = 6) -> tuple:
 def plot_data_samples(benchmark: Optional[str] = None):
     """Show sample input/output pairs for each benchmark."""
     try:
-        from prepare import GRID_SIZE
+        from data.prepare import GRID_SIZE
         grid = np.linspace(0, 1, GRID_SIZE)
     except Exception:
         GRID_SIZE = 64
@@ -434,7 +434,7 @@ def plot_data_samples(benchmark: Optional[str] = None):
             continue
 
         fig, axes = plt.subplots(2, n_samples, figsize=(4 * n_samples, 6))
-        fig.suptitle(f"{bm.replace('_', ' ')} — {n_samples} training samples",
+        fig.suptitle(f"{bm.replace('_', ' ')} - {n_samples} training samples",
                      fontsize=13, fontweight="bold")
         color = BM_COLORS.get(bm, "#333")
 
@@ -477,7 +477,7 @@ def plot_data_samples(benchmark: Optional[str] = None):
         try:
             side = int(inp.shape[1] ** 0.5)
             fig, axes = plt.subplots(2, 4, figsize=(16, 6))
-            fig.suptitle(f"{bm.replace('_', ' ')} — 4 samples", fontsize=13,
+            fig.suptitle(f"{bm.replace('_', ' ')} - 4 samples", fontsize=13,
                          fontweight="bold")
             for i in range(4):
                 im0 = axes[0, i].imshow(inp[i].reshape(side, side), cmap="viridis")
@@ -502,8 +502,8 @@ def plot_solver_validation():
     KdV:  compare single-soliton numerical vs analytical
     """
     try:
-        from prepare import GRID_SIZE, solve_wave_batch
-        from benchmarks_ext import WAVE_C, WAVE_T, WAVE_NSTEPS
+        from data.prepare import GRID_SIZE, solve_wave_batch
+        from data.benchmarks_ext import WAVE_C, WAVE_T, WAVE_NSTEPS
         import mlx.core as mx
     except Exception as e:
         print(f"  Solver validation unavailable: {e}")
@@ -563,7 +563,7 @@ def plot_solver_validation():
         axes[2].axhline(0, color="black", linewidth=0.5)
         axes[2].set_title(f"Pointwise error (max={float(np.max(np.abs(u_num-u_ana))):.2e})",
                           fontsize=10)
-        axes[2].set_ylabel("Numerical − Analytical")
+        axes[2].set_ylabel("Numerical - Analytical")
 
         for ax in axes:
             ax.set_xlabel("x"); ax.grid(alpha=0.3)
@@ -571,7 +571,7 @@ def plot_solver_validation():
 
         # Flag concern
         concern = err > 0.01
-        status  = "CONCERN — large solver error!" if concern else "OK — solver matches"
+        status  = "CONCERN - large solver error!" if concern else "OK - solver matches"
         fig.text(0.5, -0.02, f"Solver status: {status}  (rel-L2 = {err:.2e})",
                  ha="center", fontsize=11,
                  color="#e74c3c" if concern else "#27ae60",
@@ -587,13 +587,11 @@ def plot_solver_validation():
 
     # ── KdV conservation law validation ──────────────────────────────────────
     # KdV form: u_t + u·u_x + u_xxx = 0.  Conserved quantities:
-    #   I1 = ∫ u dx        (mass)
-    #   I2 = ∫ u² dx       (L2 norm / momentum)
-    #   I3 = ∫ (u³/3 - (∂u/∂x)²) dx  (Hamiltonian)
+    #   I1 = ∫ u dx,  I2 = ∫ u² dx,  I3 = ∫ (u³/3 - (∂u/∂x)²) dx  (Hamiltonian)
     # ETDRK4 is a Runge-Kutta exponential integrator that conserves these.
     try:
-        from prepare import solve_kdv_batch
-        from benchmarks_ext import KDV_T, KDV_NSTEPS
+        from data.prepare import solve_kdv_batch
+        from data.benchmarks_ext import KDV_T, KDV_NSTEPS
 
         rng = np.random.RandomState(7)
         n_samples = 8
@@ -618,7 +616,7 @@ def plot_solver_validation():
         rel_I2 = np.abs((I2_out - I2_in) / (np.abs(I2_in) + 1e-8))
 
         fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
-        fig.suptitle("KdV Solver Validation — Conservation Laws",
+        fig.suptitle("KdV Solver Validation - Conservation Laws",
                      fontsize=13, fontweight="bold")
 
         # Plot sample trajectory
@@ -652,7 +650,7 @@ def plot_solver_validation():
         max_I1_err = float(rel_I1.max())
         max_I2_err = float(rel_I2.max())
         concern = max_I1_err > 0.01 or max_I2_err > 0.05
-        status  = "⚠ CONCERN — conservation violated" if concern else "✓ OK — conservation holds"
+        status  = "⚠ CONCERN - conservation violated" if concern else "✓ OK - conservation holds"
         fig.text(0.5, -0.02,
                  f"KdV solver: {status}  "
                  f"(mass err={max_I1_err:.2e}, L2 err={max_I2_err:.2e})",
@@ -674,7 +672,7 @@ def plot_solver_validation():
 def plot_spectral_analysis():
     """Plot mean Fourier power spectrum of inputs and outputs per benchmark."""
     try:
-        from prepare import GRID_SIZE
+        from data.prepare import GRID_SIZE
     except Exception:
         GRID_SIZE = 64
     N = GRID_SIZE
@@ -684,7 +682,7 @@ def plot_spectral_analysis():
 
     fig, axes = plt.subplots(1, len(benchmarks),
                               figsize=(6 * len(benchmarks), 5))
-    fig.suptitle("Fourier Power Spectrum — Inputs vs Outputs",
+    fig.suptitle("Fourier Power Spectrum - Inputs vs Outputs",
                  fontsize=13, fontweight="bold")
 
     for ax, bm in zip(axes, benchmarks):
@@ -778,16 +776,16 @@ def _check_concerns(rows: list[dict]) -> list[dict]:
                 concerns.append({
                     "severity": "warning",
                     "benchmark": bm,
-                    "label": f"Far from SOTA ({best_val/sota:.1f}×)",
+                    "label": f"Far from SOTA ({best_val/sota:.1f}x)",
                     "message": f"{bm}: best={best_val:.4f}, SOTA={sota:.4f}. "
-                               f"Gap={best_val/sota:.1f}×.",
+                               f"Gap={best_val/sota:.1f}x.",
                 })
             elif sota and best_val < sota * 0.5:
                 concerns.append({
                     "severity": "note",
                     "benchmark": bm,
                     "label": "Beating SOTA",
-                    "message": f"{bm}: best={best_val:.4f} is {sota/best_val:.1f}× "
+                    "message": f"{bm}: best={best_val:.4f} is {sota/best_val:.1f}x "
                                f"better than SOTA={sota:.4f}. Validate solver accuracy.",
                 })
 
@@ -809,7 +807,7 @@ def _check_concerns(rows: list[dict]) -> list[dict]:
                 concerns.append({
                     "severity": "warning",
                     "benchmark": bm,
-                    "label": "Plateau — no recent improvement",
+                    "label": "Plateau - no recent improvement",
                     "message": f"{bm}: last 5 'keep' results show no improvement. "
                                "Consider new architectures or data augmentation.",
                 })
@@ -900,15 +898,15 @@ def plot_concern_dashboard():
         if best is None:
             health, health_color = "No data", "#7f8c8d"
         elif best > 0.9:
-            health, health_color = "CRITICAL — near-random", "#e74c3c"
+            health, health_color = "CRITICAL - near-random", "#e74c3c"
         elif gap and gap < 0.5:
-            health, health_color = "EXCELLENT — beats SOTA", "#27ae60"
+            health, health_color = "EXCELLENT - beats SOTA", "#27ae60"
         elif gap and gap < 2.0:
-            health, health_color = "GOOD — near SOTA", "#2ecc71"
+            health, health_color = "GOOD - near SOTA", "#2ecc71"
         elif gap and gap < 10.0:
-            health, health_color = f"FAIR — {gap:.1f}× from SOTA", "#f39c12"
+            health, health_color = f"FAIR - {gap:.1f}x from SOTA", "#f39c12"
         else:
-            health, health_color = f"POOR — {gap:.0f}× from SOTA", "#e74c3c"
+            health, health_color = f"POOR - {gap:.0f}x from SOTA", "#e74c3c"
 
         row_bg = "#f8f9fa" if row_i % 2 == 0 else "#ecf0f1"
         ax1.add_patch(FancyBboxPatch((0, y_top), 1, cell_h,
@@ -920,9 +918,9 @@ def plot_concern_dashboard():
             str(info["total"]),
             str(info["kept"]),
             str(info["crashed"]) if info["crashed"] > 0 else "0",
-            f"{best:.4f}" if best else "—",
-            f"{sota:.4f}" if sota else "—",
-            f"{gap:.1f}×" if gap else "—",
+            f"{best:.4f}" if best else "-",
+            f"{sota:.4f}" if sota else "-",
+            f"{gap:.1f}x" if gap else "-",
             health,
         ]
         for col_i, (x, v) in enumerate(zip(xs, vals_row)):
@@ -941,7 +939,7 @@ def plot_concern_dashboard():
     severity_colors = {
         "critical": "#e74c3c", "warning": "#f39c12", "note": "#3498db",
     }
-    severity_icons  = {"critical": "🔴", "warning": "⚠️", "note": "ℹ️"}
+    severity_icons  = {"critical": "red_circle", "warning": "warning", "note": "info"}
 
     if not concerns:
         ax2.text(0.5, 0.5, "No concerns detected ✓",
@@ -970,9 +968,11 @@ def plot_concern_dashboard():
     print(f"  {'='*60}")
     sev_order = {"critical": 0, "warning": 1, "note": 2}
     for c in sorted(concerns, key=lambda x: sev_order.get(x["severity"], 3)):
-        icon = {"critical": "🔴", "warning": "⚠️", "note": "ℹ️"}.get(c["severity"],"  ")
+        icon = {"critical": "(crit)", "warning": "(warn)", "note": "(info)"}.get(c["severity"],"  ")
         print(f"  {icon}  [{c['severity'].upper():8s}] {c['label']}")
         print(f"          {c['message']}")
+    print(f"  {'Benchmark':<18}  {'Resolution':<12}  {'Samples':<8}  {'Input x Output'}")
+    print(f"  {'─'*70}")
     print()
 
 
@@ -1028,10 +1028,10 @@ def plot_architecture_comparison():
 
     global_best_val = min(best_vals.values())
     global_worst_dt = max(mean_dts.values())
-    # accuracy score: 1 = best val, 0 = 10× worse
+    # accuracy score: 1 = best val, 0 = 10x worse
     acc_score  = {m: max(0, 1 - math.log10(max(best_vals[m] / global_best_val, 1)) / 1.0)
                   for m in models}
-    # speed score: 1 = fastest, 0 = 2× slowest
+    # speed score: 1 = fastest, 0 = 2x slowest
     spd_score  = {m: 1 - (mean_dts[m] - min(mean_dts.values())) /
                            max(global_worst_dt - min(mean_dts.values()), 1)
                   for m in models}
@@ -1150,8 +1150,8 @@ def plot_model_arch(benchmark: str = "burgers_1d", model_type: str = "FNO",
     """
     import mlx.core as mx
     import mlx.nn as nn
-    from prepare import make_dataloader, GRID_SIZE
-    from research_plugins import MODEL_REGISTRY
+    from data.prepare import make_dataloader, GRID_SIZE
+    from .research_plugins import MODEL_REGISTRY
 
     is_1d  = benchmark.endswith("_1d")
     mk     = ("FNO2D" if model_type == "FNO" and not is_1d else model_type)
@@ -1184,7 +1184,7 @@ def plot_model_arch(benchmark: str = "burgers_1d", model_type: str = "FNO",
             axes[i].plot(grid, y_np[i], "b-",  linewidth=2, label="Target")
             axes[i].plot(grid, p_np[i], "r--", linewidth=2, label="Pred (untrained)")
             axes[i].legend(fontsize=8)
-            axes[i].set_title(f"Sample {i+1} — untrained {model_type}")
+            axes[i].set_title(f"Sample {i+1} - untrained {model_type}")
     else:
         fig, axes = plt.subplots(samples, 3, figsize=(15, 4 * samples))
         if samples == 1:
@@ -1211,14 +1211,14 @@ ALL_MODES = [
     "data", "validation", "spectral", "concerns",
     "architecture", "distribution",
 ]
-# "arch" is not included in "all" — it requires a live model forward pass
+# "arch" is not included in "all" - it requires a live model forward pass
 
 
 
 def main():
     global SHOW
     p = argparse.ArgumentParser(description="SciML Visualization Suite")
-    p.add_argument("--mode",      default="all",
+    p.add_argument("--mode", default="all", choices=[*ALL_MODES, "all"],
                    help=f"One of: {', '.join(ALL_MODES+['all'])}")
     p.add_argument("--benchmark", default=None,
                    help="Filter data/spectral plots to this benchmark")
