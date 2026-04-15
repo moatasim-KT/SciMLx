@@ -8212,13 +8212,13 @@
     }
   },
   {
-    "id": "elasticity_2d_AttentionEnhancedFNO2D_1776261130_c4db48",
+    "id": "elasticity_2d_AttentionEnhancedFNO2D_1776259004_7e4c23",
     "parent_id": "elasticity_2d_HybridDecoderDeepONet2D_1776257633_4841e5",
-    "timestamp": 1776261130,
+    "timestamp": 1776259004,
     "benchmark": "elasticity_2d",
     "model": "AttentionEnhancedFNO2D",
-    "val_l2_rel": 0.010918,
-    "memory_gb": 1.4099609375,
+    "val_l2_rel": 0.009796,
+    "memory_gb": 1.40693359375,
     "status": "discard",
     "description": "attentionenhancedfno_elasticity_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
     "commit": "2043f9d",
@@ -8255,18 +8255,18 @@
     "rationale": "Phase 3 Full Sweep",
     "conclusion": "crash:ParseError ",
     "diag": {
-      "diag_low_freq_error": 0.002699,
-      "diag_high_freq_error": 0.005095
+      "diag_low_freq_error": 0.002243,
+      "diag_high_freq_error": 0.004508
     }
   },
   {
-    "id": "elasticity_2d_HybridFNODeepONet2D_1776261972_a857d2",
+    "id": "elasticity_2d_HybridFNODeepONet2D_1776259703_19db4b",
     "parent_id": "elasticity_2d_HybridDecoderDeepONet2D_1776257633_4841e5",
-    "timestamp": 1776261972,
+    "timestamp": 1776259703,
     "benchmark": "elasticity_2d",
     "model": "HybridFNODeepONet2D",
-    "val_l2_rel": 0.01046,
-    "memory_gb": 1.4263671875,
+    "val_l2_rel": 0.009418,
+    "memory_gb": 1.404296875,
     "status": "discard",
     "description": "hybridfnodeeponet_elasticity_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
     "commit": "2043f9d",
@@ -8303,19 +8303,19 @@
     "rationale": "Phase 3 Full Sweep",
     "conclusion": "crash:ParseError ",
     "diag": {
-      "diag_low_freq_error": 0.00244,
-      "diag_high_freq_error": 0.005637
+      "diag_low_freq_error": 0.002363,
+      "diag_high_freq_error": 0.0049
     }
   },
   {
-    "id": "elasticity_2d_FEDONet2D_1776263177_e46021",
+    "id": "elasticity_2d_FEDONet2D_1776260914_ebc4b5",
     "parent_id": "elasticity_2d_HybridDecoderDeepONet2D_1776257633_4841e5",
-    "timestamp": 1776263177,
+    "timestamp": 1776260914,
     "benchmark": "elasticity_2d",
     "model": "FEDONet2D",
-    "val_l2_rel": 0.007734,
-    "memory_gb": 0.93427734375,
-    "status": "keep",
+    "val_l2_rel": 0.008167,
+    "memory_gb": 0.9345703125,
+    "status": "discard",
     "description": "fedonet_elasticity_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
     "commit": "2043f9d",
     "config": {
@@ -8351,8 +8351,56 @@
     "rationale": "Phase 3 Full Sweep",
     "conclusion": "crash:ParseError ",
     "diag": {
-      "diag_low_freq_error": 0.001921,
-      "diag_high_freq_error": 0.003595
+      "diag_low_freq_error": 0.002044,
+      "diag_high_freq_error": 0.004181
+    }
+  },
+  {
+    "id": "elasticity_2d_HANO2D_1776263844_d5dcfb",
+    "parent_id": "elasticity_2d_HybridDecoderDeepONet2D_1776257633_4841e5",
+    "timestamp": 1776263844,
+    "benchmark": "elasticity_2d",
+    "model": "HANO2D",
+    "val_l2_rel": 0.007686,
+    "memory_gb": 0.93359375,
+    "status": "keep",
+    "description": "hano_elasticity_2d_h32_l2_m8 HANO2D  h=32  l=2",
+    "commit": "ef93c98",
+    "config": {
+      "name": "hano_elasticity_2d_h32_l2_m8",
+      "benchmark": "elasticity_2d",
+      "model": "HANO2D",
+      "hidden_dim": 32,
+      "n_layers": 2,
+      "n_modes": 8,
+      "n_levels": 3,
+      "n_head": 4,
+      "slice_num": 32,
+      "lr": 0.001,
+      "batch_size": 64,
+      "grad_clip": 1.0,
+      "pino_lambda": 0.0,
+      "loss_type": "l2_rel",
+      "h1_alpha": 0.1,
+      "augment": false,
+      "curriculum": false,
+      "save_ckpt": false,
+      "resume": false,
+      "resume_from": "",
+      "budget_s": 480,
+      "parent_name": "",
+      "priority": 1,
+      "rationale": "Phase 3 Full Sweep",
+      "expected": "",
+      "paper_ref": "",
+      "refine_grid": false,
+      "cheb_degree": 5
+    },
+    "rationale": "Phase 3 Full Sweep",
+    "conclusion": "crash:ParseError ",
+    "diag": {
+      "diag_low_freq_error": 0.001929,
+      "diag_high_freq_error": 0.00323
     }
   }
 ]
