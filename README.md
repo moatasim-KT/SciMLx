@@ -134,6 +134,10 @@ Full constraint table with reasons in [`program.md`](./program.md).
 <!-- STRUCTURE_START -->
 ```text
 autoresearch-mlx/
+├── agents/
+│   └── skills/
+│       └── SciMLx/
+│           └── SKILL.md
 ├── core/
 │   ├── __init__.py
 │   ├── diagnostics.py
@@ -237,6 +241,7 @@ autoresearch-mlx/
 ├── CODE_INDEX.json
 ├── GEMINI.md
 ├── README.md
+├── SKILL.md
 ├── WIKI.md
 ├── agent_loop.py
 ├── analyze.py
