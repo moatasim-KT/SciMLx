@@ -1,0 +1,19 @@
+# DVC pipeline parameters — mirrors train.py CLI flags.
+# Override with: dvc exp run --set-param train.hidden_dim=64
+train:
+  benchmark:    burgers_1d
+  model:        FNO
+  loss:         l2_rel
+  h1_alpha:     0.1
+  n_modes:      16
+  hidden_dim:   64
+  n_layers:     4
+  batch_size:   32
+  lr:           1.0e-3
+  grad_clip:    1.0
+  budget_s:     300
+  weight_decay: 1.0e-4
+  augment:      false
+  curriculum:   false
+  save_ckpt:    true
+  name:         ""

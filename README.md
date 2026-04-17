@@ -4,10 +4,11 @@ Autonomous AI-driven research loop for **Scientific Machine Learning (SciML)**
 on Apple Silicon, built on [MLX](https://github.com/ml-explore/mlx) — no
 PyTorch, no CUDA.
 
-The system trains neural PDE solvers within a fixed 5-minute budget per
-experiment, logs every result to a lineage-aware DAG, and iterates toward
-published SOTA. A human or AI agent drives the loop by reading current state,
-forming hypotheses, queuing experiments, and analyzing outcomes.
+The system trains neural PDE solvers within a fixed budget per experiment
+(30 min for 1D, 60 min for 2D — auto-enforced), logs every result to a
+lineage-aware DAG, and iterates toward published SOTA. A human or AI agent
+drives the loop by reading current state, forming hypotheses, queuing
+experiments, and analyzing outcomes.
 
 Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
 
@@ -28,9 +29,23 @@ uv run auto_suggest.py                      # ranked next actions
 uv run autorun.py --priority 1 --commit
 ```
 
-For a continuous automated run:
+For a fully autonomous unattended run:
 ```bash
-uv run autorun.py --auto --commit --max-auto-experiments 20 --max-auto-time 10800
+uv run autorun.py --auto --commit \
+    --max-auto-experiments 50 \
+    --max-auto-time 86400    # 24-hour cap
+```
+
+`--auto` is a non-recursive iterative loop: runs queue → replenishes via
+`auto_suggest --generate --write-yaml` → falls back to `BayesianHPO` → stops
+after 3 idle rounds or the time/experiment cap.
+
+Optional `train.py` flags:
+```bash
+uv run train.py --lr_schedule cosine    # warmup_cosine | cosine | onecycle | none
+uv run train.py --seed 123              # reproducibility seed (default: 42)
+uv run train.py --ema_decay 0.999       # EMA shadow weights (3–8% free improvement)
+uv run train.py --patience 5            # early stopping (10%-budget evals)
 ```
 
 ---
@@ -65,9 +80,12 @@ autoresearch-mlx/
 │   ├── hypothesis.py      # failure pattern detection
 │   ├── hpo.py             # Gaussian Process Bayesian HPO
 │   ├── scaffold.py        # gated model registration
-│   ├── losses.py          # l2_rel, h1, spectral, l1_rel
+│   ├── losses.py          # l2_rel, h1, spectral, l1_rel (1D + 2D native)
+│   ├── diagnostics.py     # spectral bias, grad norm extraction, failure classifier
+│   ├── mlflow_integration.py  # optional MLflow run tracking
+│   ├── model_versioning.py    # model checkpoint versioning
 │   └── research_plugins.py  # model + benchmark registry
-├── models/                # 27 model implementations
+├── models/                # 48+ model implementations
 ├── data/
 │   ├── prepare.py         # READ-ONLY ground-truth evaluator
 │   ├── prefetch_data.py   # one-time dataset cache
@@ -114,12 +132,29 @@ and kill controls.
 
 ---
 
+## New Capabilities (Sessions 1–10)
+
+| Feature | How to use |
+|---------|-----------|
+| EMA weights | `ema_decay: 0.999` in YAML or `--ema_decay 0.999` — 3–8% free improvement |
+| Adaptive H1 loss | `loss_type: h1_adaptive` — auto-scales α to target 30% gradient contribution |
+| 2D curriculum | `curriculum: true` — spectral masking from k=2→N//4 over first 30% of budget |
+| Weighted snapshot ensemble | `snapshot_ensemble: 3` — inverse-val-error weighting across checkpoints |
+| Early stopping | `patience: 5` — halts if no improvement for N consecutive 10%-budget evals |
+| Budget floors | Auto-enforced: 1D ≥ 1800 s, 2D ≥ 3600 s — no manual config needed |
+| Plateau detection | Benchmarks with < 2% relative improvement over 5 runs get deprioritized |
+| Iterative auto loop | `--auto` is a stack-safe `while True` loop; queue replenished via `auto_suggest` |
+
 ## Hard Constraints
 
 - `data/prepare.py` is read-only — it defines the ground-truth metric
 - `results.json` is never hand-edited — use `core/tracker.py`
-- 2D benchmarks require `hidden_dim ≤ 32`, `n_layers ≤ 4`, `budget_s ≥ 480`
-- RFNO is 1D-only; PINO is broken — never queue either on 2D benchmarks
+- 2D benchmarks: `hidden_dim ≤ 32`, `n_layers ≤ 4`, `n_modes ≤ 12` (memory ceiling)
+- Budget floors auto-enforced: 1D → 1800 s (30 min), 2D → 3600 s (60 min)
+- Model registry keys are case-sensitive: `FNO2D` not `FNO2d`, `SSNO` not `SSNO1d`
+- RFNO is 1D-only; PINO always diverges — never queue either
+- AFNO: do not queue — consistently 0.50–0.72 spectral bias
+- SSNO: `hidden_dim ≤ 64`, `n_layers ≤ 4` only — diverges at h≥128
 
 Full constraint table with reasons in [`program.md`](./program.md).
 
@@ -145,6 +180,8 @@ autoresearch-mlx/
 │   ├── hypothesis.py
 │   ├── loader.py
 │   ├── losses.py
+│   ├── mlflow_integration.py
+│   ├── model_versioning.py
 │   ├── paper_registry.py
 │   ├── readme_hook.py
 │   ├── research_plugins.py
@@ -205,6 +242,115 @@ autoresearch-mlx/
 │   ├── LITERATURE.md
 │   ├── SOTA.md
 │   └── TERMINOLOGY.md
+├── mlruns/
+│   ├── 0/
+│   │   └── meta.yaml
+│   ├── 1/
+│   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
+│   │   │   └── artifacts/
+│   │   │       └── validation_ssno_burgers_best.npz
+│   │   ├── 0d9843e5ed4f4c6696b4e751083c2cdd/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_curriculum_adapt.log
+│   │   │       └── mambano_burgers_curriculum_adapt_best.npz
+│   │   ├── 17e7b93e132a475fb39531e06aaee960/
+│   │   │   └── artifacts/
+│   │   │       └── afno_fix_burgers_v2_best.npz
+│   │   ├── 28a02f8a1dd146c6ae80f5ebf0f65ab4/
+│   │   │   └── artifacts/
+│   │   │       └── afno_fix_v3_best.npz
+│   │   ├── 2a133368cbbb4025802d02d1f79c1e61/
+│   │   │   └── artifacts/
+│   │   │       └── validation_curriculum_smooth_best.npz
+│   │   ├── 3bc9ecb103cf4d7d894af3a9dd09b478/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
+│   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── 3ff8598ac74844fb8ef5c10b0d0517e8/
+│   │   │   └── artifacts/
+│   │   │       └── validation_pino_fix_best.npz
+│   │   ├── 5b0c5120f3164fb69e286941440c18c8/
+│   │   │   └── artifacts/
+│   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
+│   │   │   └── artifacts/
+│   │   │       └── mambano_burgers_h128_l8_h1_best.npz
+│   │   ├── 96c5b66cac274f6cb37a5ea71e5577c6/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_curriculum.log
+│   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── b48aca5c6f9c42d4bfe9f37e38dc1ab2/
+│   │   │   └── artifacts/
+│   │   │       └── ffno_burgers_test_best.npz
+│   │   ├── bf4a87c76f2a4107a71f1a281d7f27e5/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
+│   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── ca1b039eecd6409b839b073ab3eb404f/
+│   │   │   └── artifacts/
+│   │   │       └── afno_fix_v4_best.npz
+│   │   ├── e583018f152f4544bb845bdd9e553d9d/
+│   │   │   └── artifacts/
+│   │   │       └── repro_afno_bias_best.npz
+│   │   └── ff0b719f90d149d49d96bc8b9b27e78d/
+│   │       └── artifacts/
+│   │           └── afno_heavy_test_best.npz
+│   ├── 2/
+│   │   ├── 101fe0b7688e4303a829a3dcf9d7bfa8/
+│   │   │   └── artifacts/
+│   │   │       ├── ns2d_fno_h32_l4_m8.log
+│   │   │       └── ns2d_fno_h32_l4_m8_best.npz
+│   │   └── d6877b1b2654460aaae90343a0496d8e/
+│   │       └── artifacts/
+│   │           └── validation_ns2d_cleanup_best.npz
+│   ├── 3/
+│   │   ├── 2800e885ed3f406cbd1b857dfa1f40dd/
+│   │   │   └── artifacts/
+│   │   │       └── smoke_test_2d_best.npz
+│   │   ├── 303d458e47d14da7b3387f5e7b79c978/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno2d_darcy2d_h32_l4_m8.log
+│   │   │       └── rfno2d_darcy2d_h32_l4_m8_best.npz
+│   │   ├── 365d5e0de857483f977d9d3501148397/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno2d_darcy2d_h32_l4_m8_adapt.log
+│   │   │       └── rfno2d_darcy2d_h32_l4_m8_adapt_best.npz
+│   │   ├── 5bb14a75e85143e29f7f25087212e71a/
+│   │   │   └── artifacts/
+│   │   │       ├── fedonet2d_darcy_h32_l4.log
+│   │   │       └── fedonet2d_darcy_h32_l4_best.npz
+│   │   ├── b0b654187e3f4bf2bc185394e871a6b3/
+│   │   │   └── artifacts/
+│   │   │       ├── fno2d_darcy_h48_l6_m12_aug.log
+│   │   │       └── fno2d_darcy_h48_l6_m12_aug_best.npz
+│   │   ├── d26aaa4bbf92492896d0150798bd90ae/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver2d_darcy_h32_l4_s32_h1.log
+│   │   │       └── transolver2d_darcy_h32_l4_s32_h1_best.npz
+│   │   └── de4538a2e33a4120a0d19c01fea7c051/
+│   │       └── artifacts/
+│   │           ├── transolver2d_darcy_h32_l4_s32_h1_adapt.log
+│   │           └── transolver2d_darcy_h32_l4_s32_h1_adapt_best.npz
+│   └── 415139728503581214/
+│       ├── f487c4bd48de4f4b98dd180188324a57/
+│       │   ├── artifacts/
+│       │   ├── metrics/
+│       │   │   ├── training_seconds
+│       │   │   └── val_l2_rel
+│       │   ├── params/
+│       │   │   ├── hidden_dim
+│       │   │   ├── lr
+│       │   │   └── n_layers
+│       │   ├── tags/
+│       │   │   ├── benchmark
+│       │   │   ├── exp_name
+│       │   │   ├── mlflow.runName
+│       │   │   ├── mlflow.source.name
+│       │   │   ├── mlflow.source.type
+│       │   │   ├── mlflow.user
+│       │   │   └── model
+│       │   └── meta.yaml
+│       └── meta.yaml
 ├── models/
 │   ├── AGENTS.md
 │   ├── __init__.py
@@ -236,6 +382,11 @@ autoresearch-mlx/
 │   └── wno.py
 ├── notebooks/
 │   └── colab_experiments.ipynb
+├── scripts/
+│   ├── backfill_model_registry.py
+│   ├── dvc_train.py
+│   ├── gen_arch_nanobanana.py
+│   └── gen_arch_viz.py
 ├── AGENTS.md
 ├── CLAUDE.md
 ├── CODE_INDEX.json
@@ -247,11 +398,18 @@ autoresearch-mlx/
 ├── analyze.py
 ├── auto_suggest.py
 ├── autorun.py
+├── dvc.yaml
 ├── experiments.yaml
+├── identify_missing.py
+├── mlflow.db
 ├── model_architectures.md
+├── model_registry.json
+├── params.yaml
 ├── program.md
 ├── pyproject.toml
 ├── results.json
+├── test_hf.py
+├── test_openai.py
 ├── train.py
 └── uv.lock
 ```

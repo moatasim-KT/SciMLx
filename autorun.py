@@ -35,6 +35,25 @@ from core.tracker import Tracker
 
 TIMEOUT_S = 7200  # 2 hours per experiment (accommodates heavy 2D data-gen)
 
+TRAJECTORIES_FILE = LOGS_DIR / "trajectories.jsonl"
+
+
+def _write_trajectory(entry: dict) -> None:
+    """Append one JSON line to logs/trajectories.jsonl (RL replay buffer).
+
+    Never raises — a logging failure must not crash the runner.
+    Fields written: timestamp, benchmark, state, hypothesis, action,
+    expected_outcome, outcome (null while running), diag_snapshot.
+    """
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        if "timestamp" not in entry:
+            entry["timestamp"] = datetime.utcnow().isoformat() + "Z"
+        with open(TRAJECTORIES_FILE, "a") as _tf:
+            _tf.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
 # Early-stop: kill if any mid-run val (logged by trainer every 10%) exceeds
 # baseline x this multiplier at >=30% progress - catches disasters early.
 EARLY_STOP_MULTIPLIER: float = 50.0
@@ -53,12 +72,130 @@ TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
 MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
 MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 
-BENCHMARKS_2D = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "darcy_2d"}
+BENCHMARKS_2D = {
+    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d",
+    "elasticity_2d", "wavebench_2d", "pdebench_2d", "multiphysics_2d",
+}
+
+# Minimum training budgets (seconds).  Shorter experiments are upgraded to
+# these floors so every run gets enough steps to meaningfully converge.
+BUDGET_FLOOR_1D = 1800   # 30 minutes
+BUDGET_FLOOR_2D = 3600   # 60 minutes
+
+
+def _apply_budget_floor(exp: "ExperimentConfig") -> "ExperimentConfig":
+    """Return a copy of exp with budget_s raised to the per-dimension floor if needed."""
+    floor = BUDGET_FLOOR_2D if exp.benchmark in BENCHMARKS_2D else BUDGET_FLOOR_1D
+    if exp.budget_s < floor:
+        # Debug print for TASK-005 audit
+        print(f"  [AUDIT] Upgrading {exp.name} budget: {exp.budget_s}s -> {floor}s")
+        return dataclasses.replace(exp, budget_s=floor)
+    return exp
 
 # File written by POST /api/inject — autorun polls this between experiments
 INJECTIONS_FILE = SENTINEL_DIR / ".injected_experiments.json"
 PAUSE_FILE      = SENTINEL_DIR / ".autorun_pause"
 ACTIVE_FILE     = SENTINEL_DIR / ".active_experiment"
+
+def _is_benchmark_stuck(
+    benchmark: str,
+    results: list,
+    window: int = 5,
+    threshold: float = 0.02,
+) -> bool:
+    """Return True if the last `window` kept results show <threshold relative improvement.
+
+    Used to detect plateaus and deprioritise benchmarks where no architecture
+    has made progress recently (e.g. burgers_1d plateaued at 0.147 for 11 runs).
+    """
+    kept = sorted(
+        [r for r in results
+         if r.get("benchmark") == benchmark
+         and r.get("status") == "keep"
+         and r.get("val_l2_rel") is not None],
+        key=lambda r: r.get("timestamp", ""),
+    )
+    if len(kept) < window:
+        return False
+    recent_vals = [r["val_l2_rel"] for r in kept[-window:]]
+    best = min(recent_vals)
+    worst = max(recent_vals)
+    if worst < 1e-9:
+        return False
+    relative_spread = (worst - best) / worst
+    return relative_spread < threshold
+
+
+def _pick_highest_gap_benchmark() -> str:
+    """Return the benchmark with the largest ratio of current_best / SOTA target.
+
+    Falls back to 'burgers_1d' if SOTA targets are unavailable.
+    """
+    try:
+        from core.utils import SOTA
+        baselines = get_baselines()
+        worst_bm, worst_ratio = "burgers_1d", 0.0
+        for bm, sota in SOTA.items():
+            current = baselines.get(bm, float("inf"))
+            if current < float("inf") and sota > 0:
+                ratio = current / sota
+                if ratio > worst_ratio:
+                    worst_ratio = ratio
+                    worst_bm = bm
+        return worst_bm
+    except Exception:
+        return "burgers_1d"
+
+
+def _run_hpo_batch(benchmark: str, args) -> int:
+    """Run BayesianHPO suggestions for `benchmark`. Returns number of experiments run."""
+    import time as _t2
+    try:
+        from core.hpo import BayesianHPO
+        hpo = BayesianHPO(benchmark)
+        hpo.load_history()
+        hpo_configs = hpo.suggest_top(n=3)
+        done = load_done_names()
+        ran = 0
+        for cfg in hpo_configs:
+            ts = int(_t2.time())
+            exp_name = (
+                f"hpo_{benchmark}_{cfg.get('model','FNO').lower()}"
+                f"_h{cfg.get('hidden_dim',64)}_l{cfg.get('n_layers',4)}"
+                f"_m{cfg.get('n_modes',16)}_{ts}"
+            )
+            if exp_name in done:
+                continue
+            _budget = BUDGET_FLOOR_2D if benchmark in BENCHMARKS_2D else BUDGET_FLOOR_1D
+            exp = ExperimentConfig(
+                name=exp_name,
+                benchmark=benchmark,
+                model=cfg.get("model", "FNO"),
+                hidden_dim=int(cfg.get("hidden_dim", 64)),
+                n_layers=int(cfg.get("n_layers", 4)),
+                n_modes=int(cfg.get("n_modes", 16)),
+                lr=float(cfg.get("lr", 1e-3)),
+                budget_s=_budget,
+                priority=2,
+                rationale=f"BayesianHPO suggestion (EI acquisition) for {benchmark}",
+            )
+            _write_trajectory({
+                "benchmark": benchmark,
+                "state": "queue_empty",
+                "hypothesis": "BayesianHPO_suggestion",
+                "action": f"queue {exp.name}",
+                "expected_outcome": "val < current_best",
+            })
+            _log = LOGS_DIR / f"{exp.name}.log"
+            _bl = get_baselines().get(benchmark, float("inf"))
+            run_experiment(exp, _log, baseline=_bl)
+            ran += 1
+            _t2.sleep(1)
+        return ran
+    except Exception as _e:
+        print(f"  [HPO] BayesianHPO failed for {benchmark}: {_e}")
+        return 0
+
 
 def estimate_memory_mb(exp: ExperimentConfig) -> int:
     """Estimate peak memory usage for an experiment."""
@@ -230,17 +367,19 @@ def poll_injections(pending: list, done_names_set: set) -> list:
         # Build ExperimentConfig from the injected dict
         # Use defaults for fields not supplied by the inject payload
         try:
-            exp = ExperimentConfig(
+            bm = item["benchmark"]
+            default_budget = BUDGET_FLOOR_2D if bm in BENCHMARKS_2D else BUDGET_FLOOR_1D
+            exp = _apply_budget_floor(ExperimentConfig(
                 name=name,
-                benchmark=item["benchmark"],
+                benchmark=bm,
                 model=item["model"],
                 hidden_dim=int(item.get("hidden_dim", 64)),
                 n_layers=int(item.get("n_layers", 4)),
                 n_modes=int(item.get("n_modes", 16)),
-                budget_s=int(item.get("budget_s", 300)),
+                budget_s=int(item.get("budget_s", default_budget)),
                 priority=int(item.get("priority", 1)),
                 rationale=item.get("rationale", "injected via /api/inject"),
-            )
+            ))
             new_exps.append(exp)
         except Exception as e:
             print(f"  [inject] Skipping malformed entry {name!r}: {e}")
@@ -420,10 +559,50 @@ def main() -> None:
                         "Use 2 for 1D-only queues on M1 8GB; keep 1 for 2D experiments.")
     args = p.parse_args()
 
-    # Build queue
-    queue   = get_experiments(args.benchmark, args.model, args.priority)
-    done    = set() if args.force else load_done_names()
-    pending = [e for e in queue if e.name not in done]
+    # Build queue — load without priority filter so overrides can promote
+    # experiments that were originally below the --priority threshold.
+    queue = get_experiments(args.benchmark, args.model)
+    done  = set() if args.force else load_done_names()
+
+    # Apply dashboard priority overrides (POST /api/priority) before filtering.
+    # This ensures an experiment overridden to priority=1 is included even if
+    # its experiments.yaml priority was above the --priority threshold.
+    _overrides_path = SENTINEL_DIR / ".priority_overrides.json"
+    _overrides: dict = {}
+    if _overrides_path.exists():
+        try:
+            _overrides = json.loads(_overrides_path.read_text())
+        except Exception as _ov_err:
+            print(f"  [priority] Warning: could not read overrides: {_ov_err}")
+
+    if _overrides:
+        queue = [
+            dataclasses.replace(e, priority=_overrides[e.name])
+            if e.name in _overrides else e
+            for e in queue
+        ]
+        print(f"  [priority] Applied {len(_overrides)} dashboard override(s).")
+
+    # Now filter by effective priority and done set, then sort.
+    # Apply budget floors so every experiment gets at least 30 min (1D) or 60 min (2D).
+    pending = [
+        _apply_budget_floor(e) for e in queue
+        if e.name not in done and e.priority <= args.priority
+    ]
+    # Check for plateaued benchmarks and warn (deprioritise by bumping effective priority)
+    _all_results = load_results()
+    _stuck_benchmarks: set[str] = set()
+    for _bm in {e.benchmark for e in pending}:
+        if _is_benchmark_stuck(_bm, _all_results):
+            _stuck_benchmarks.add(_bm)
+            print(f"  [PLATEAU WARNING] {_bm} — last 5 kept results show <2% improvement. "
+                  f"Deprioritising in queue.")
+
+    def _effective_priority(e: ExperimentConfig) -> int:
+        # Bump priority by 2 for stuck benchmarks so other benchmarks go first
+        return e.priority + (2 if e.benchmark in _stuck_benchmarks else 0)
+
+    pending.sort(key=_effective_priority)
 
     if args.max:
         pending = pending[: args.max]
@@ -494,6 +673,25 @@ def main() -> None:
                   else f"  No baseline yet for {exp.benchmark}")
 
         log_path = LOGS_DIR / f"{exp.name}.log"
+
+        # ── Trajectory log: record action before run starts ───────────────────
+        _traj_state = (
+            f"{exp.benchmark} | best={baseline_val:.6f}"
+            if baseline_val < float("inf")
+            else f"{exp.benchmark} | no baseline yet"
+        )
+        _write_trajectory({
+            "benchmark":        exp.benchmark,
+            "model":            exp.model,
+            "exp_name":         exp.name,
+            "state":            _traj_state,
+            "hypothesis":       exp.rationale or "—",
+            "action":           f"started {exp.name}: {exp.short()}",
+            "expected_outcome": exp.expected or None,
+            "outcome":          None,
+            "diag_snapshot":    {},
+        })
+
         results  = run_experiment(exp, log_path, baseline=baseline_val)
         val, mem_gb = results["val"], results["mem_mb"] / 1024.0
 
@@ -666,6 +864,23 @@ def main() -> None:
             )
         wprint(f"  Logged to results.json [status={status}]")
 
+        # ── Trajectory log: record outcome after run completes ────────────────
+        _write_trajectory({
+            "benchmark":        exp.benchmark,
+            "model":            exp.model,
+            "exp_name":         exp.name,
+            "state":            _traj_state,
+            "hypothesis":       exp.rationale or "—",
+            "action":           f"completed {exp.name}: {exp.short()}",
+            "expected_outcome": exp.expected or None,
+            "outcome": (
+                f"val_l2_rel={val:.6f} status={status}"
+                if val is not None
+                else f"crash:{results.get('crash_type', 'Unknown')}"
+            ),
+            "diag_snapshot":    results.get("diag", {}),
+        })
+
         if args.commit and status == "keep":
             git_commit_result(exp, val)
 
@@ -740,10 +955,9 @@ def main() -> None:
         print("\n─── auto_suggest.py output ───")
         try:
             result = subprocess.run(
-                ["uv", "run", "auto_suggest.py",
-                 "--benchmark", args.benchmark or "burgers_1d",
-                 "--top", "6"],
-                cwd=REPO_ROOT, capture_output=True, text=True, timeout=30
+                ["uv", "run", "auto_suggest.py", "--top", "6"]
+                + (["--benchmark", args.benchmark] if args.benchmark else []),
+                cwd=REPO_ROOT, capture_output=True, text=True, timeout=60
             )
             print(result.stdout)
             if result.stderr:
@@ -751,59 +965,130 @@ def main() -> None:
         except Exception as e:
             print(f"  auto_suggest failed: {e}")
 
-    # ── Autonomous loop ───────────────────────────────────────────────────────
-    if args.auto:
-        global _AUTO_START_TIME, _AUTO_EXP_COUNT
-        import sys, time as _time
+    # ── Autonomous loop (iterative — no recursion) ────────────────────────────
+    if not args.auto:
+        return
 
-        # Initialise on first entry
-        if _AUTO_START_TIME == 0.0:
-            _AUTO_START_TIME = _time.time()
+    import time as _time
 
-        _AUTO_EXP_COUNT += len(pending)
+    auto_start   = _time.time()
+    auto_exp_cnt = len(pending)
+    idle_rounds  = 0          # consecutive rounds with no new experiments run
+    MAX_IDLE     = 3          # stop after 3 idle rounds (all HPO suggestions exhausted)
 
-        # ── Guard: wall-clock time limit ─────────────────────────────────────
+    while True:
+        # ── Time / experiment count guards ───────────────────────────────────
         if args.max_auto_time:
-            elapsed = _time.time() - _AUTO_START_TIME
+            elapsed = _time.time() - auto_start
             if elapsed >= args.max_auto_time:
-                print(f"\n  --max-auto-time {args.max_auto_time}s reached ({elapsed:.0f}s elapsed). Stopping.")
-                return
+                print(f"\n  [auto] --max-auto-time {args.max_auto_time}s reached "
+                      f"({elapsed:.0f}s elapsed). Stopping.")
+                break
 
-        # ── Guard: experiment count limit ────────────────────────────────────
-        if args.max_auto_experiments and _AUTO_EXP_COUNT >= args.max_auto_experiments:
-            print(f"\n  --max-auto-experiments {args.max_auto_experiments} reached "
-                  f"({_AUTO_EXP_COUNT} run). Stopping.")
-            return
+        if args.max_auto_experiments and auto_exp_cnt >= args.max_auto_experiments:
+            print(f"\n  [auto] --max-auto-experiments {args.max_auto_experiments} reached "
+                  f"({auto_exp_cnt} run). Stopping.")
+            break
 
-        # ── Check for more pending experiments ───────────────────────────────
-        remaining = [e for e in get_experiments(args.benchmark, args.model, args.priority)
-                     if e.name not in load_done_names()]
-        if remaining:
-            print(f"\n  {len(remaining)} experiments still in queue — continuing…")
-            new_argv = [a for a in sys.argv[1:] if a != "--auto"] + ["--auto"]
-            sys.argv[1:] = new_argv
-            main()
-        else:
-            # ── Queue exhausted: invoke agent_loop to generate new experiments ─
-            print("\n  Queue exhausted — invoking agent_loop to generate next experiments…")
-            try:
-                result = subprocess.run(
-                    ["uv", "run", "agent_loop.py", "--top", "5"],
-                    cwd=REPO_ROOT, timeout=180
-                )
-                # Re-check for newly added experiments
-                new_remaining = [e for e in get_experiments(args.benchmark, args.model, args.priority)
-                                 if e.name not in load_done_names()]
-                if new_remaining:
-                    print(f"  {len(new_remaining)} new experiments generated — continuing loop…")
-                    new_argv = [a for a in sys.argv[1:] if a != "--auto"] + ["--auto"]
-                    sys.argv[1:] = new_argv
-                    main()
-                    return
-            except Exception as e:
-                print(f"  agent_loop failed: {e}")
-            print("\n  Autonomous loop complete. No further experiments generated.")
+        # ── Check for pending work in experiments.yaml ───────────────────────
+        # Re-import so experiments added by auto_suggest --generate are picked up
+        from importlib import reload as _reload
+        import core.loader as _loader_mod
+        _reload(_loader_mod)
+
+        _done_now = load_done_names()
+        _remaining = [
+            _apply_budget_floor(e)
+            for e in _loader_mod.get_experiments(args.benchmark, args.model)
+            if e.name not in _done_now and e.priority <= args.priority
+        ]
+
+        # Apply plateau-aware priority bump (re-use logic from main)
+        _all_res = load_results()
+        _stuck_bms: set = set()
+        for _bm in {e.benchmark for e in _remaining}:
+            if _is_benchmark_stuck(_bm, _all_res):
+                _stuck_bms.add(_bm)
+        _remaining.sort(key=lambda e: e.priority + (2 if e.benchmark in _stuck_bms else 0))
+
+        if _remaining:
+            idle_rounds = 0
+            print(f"\n  [auto] {len(_remaining)} experiments pending — running next batch…")
+            # Run the next batch (up to --max experiments if set)
+            batch = _remaining
+            if args.max:
+                remaining_quota = args.max - auto_exp_cnt
+                if remaining_quota <= 0:
+                    print(f"  [auto] --max {args.max} experiments reached. Stopping.")
+                    break
+                batch = batch[:remaining_quota]
+
+            for _i, _exp in enumerate(batch, 1):
+                _worker_prefix.name = _exp.name
+                _, _, _, _, _status = run_one(_i, _exp)
+                auto_exp_cnt += 1
+                if _status == "crash":
+                    n_crashed += 1
+                elif _status == "keep":
+                    n_improved += 1
+
+                # Honour pause between experiments
+                while PAUSE_FILE.exists():
+                    print("\n  [pause] .autorun_pause found — waiting…", end="\r")
+                    time.sleep(5)
+
+                # Pick up any dashboard-injected experiments
+                batch = poll_injections(batch, load_done_names())
+
+            continue  # loop back to check for more pending
+
+        # ── Queue exhausted: generate new experiments via auto_suggest ────────
+        print(f"\n  [auto] Queue exhausted (idle_rounds={idle_rounds}) — "
+              f"running auto_suggest --generate…")
+        _generated = 0
+        try:
+            _suggest_cmd = (
+                ["uv", "run", "auto_suggest.py", "--generate", "--write-yaml", "--top", "5"]
+                + (["--benchmark", args.benchmark] if args.benchmark else [])
+            )
+            _res = subprocess.run(
+                _suggest_cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=60
+            )
+            if _res.stdout:
+                print(_res.stdout[:2000])
+            # Count how many lines were added to experiments.yaml
+            _new_remaining = [
+                e for e in _loader_mod.get_experiments(args.benchmark, args.model)
+                if e.name not in load_done_names() and e.priority <= args.priority
+            ]
+            _generated = len(_new_remaining)
+        except Exception as _sg_err:
+            print(f"  auto_suggest --generate failed: {_sg_err}")
+
+        if _generated > 0:
+            idle_rounds = 0
+            print(f"  [auto] auto_suggest generated {_generated} new experiments — continuing…")
+            continue
+
+        # ── HPO fallback: Bayesian optimisation for highest-gap benchmark ─────
+        _hpo_bm = args.benchmark or _pick_highest_gap_benchmark()
+        print(f"\n  [auto] auto_suggest generated nothing — "
+              f"falling back to BayesianHPO for {_hpo_bm}…")
+        _hpo_ran = _run_hpo_batch(_hpo_bm, args)
+        if _hpo_ran:
+            idle_rounds = 0
+            auto_exp_cnt += _hpo_ran
+            continue
+
+        idle_rounds += 1
+        if idle_rounds >= MAX_IDLE:
+            print(f"\n  [auto] {MAX_IDLE} consecutive idle rounds — no experiments to generate. "
+                  f"Stopping autonomous loop.")
             print("  → Run manually: uv run auto_suggest.py --generate")
+            break
+
+        print(f"  [auto] Idle round {idle_rounds}/{MAX_IDLE} — sleeping 60s before retrying…")
+        time.sleep(60)
 
 
 if __name__ == "__main__":

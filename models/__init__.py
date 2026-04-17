@@ -14,6 +14,7 @@ from .ssno import SSNO1d
 
 from .pacmann import PACMANN
 
+from .mamba_no  import MambaNO1d
 __all__ = [
 	"PACMANN",
 	"PINN",
@@ -71,4 +72,5 @@ __all__ = [
 	# WNO family
 	"WNO1d",
 	"WaveletConv1d",
+    "MambaNO1d",
 ]

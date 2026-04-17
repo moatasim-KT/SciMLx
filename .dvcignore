@@ -1,0 +1,22 @@
+# DVC ignores — patterns that DVC should not track or hash.
+# Syntax mirrors .gitignore.
+# Learn more at https://dvc.org/doc/user-guide/dvcignore
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+.venv/
+
+# MLflow run metadata (git-tracked, not DVC)
+mlruns/
+
+# Logs — tracked by git, not DVC
+logs/
+
+# Sentinel / telemetry files
+.active_experiment
+.vram_telemetry*
+.autorun_pause
+
+# macOS
+.DS_Store

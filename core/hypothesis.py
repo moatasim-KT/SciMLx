@@ -6,9 +6,17 @@ backed by papers/*.yaml literature.
 
 import json
 import re
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from pathlib import Path
 from core.utils import REPO_ROOT
+
+LOGS_DIR = REPO_ROOT / "logs"
+TRAJECTORIES_FILE = LOGS_DIR / "trajectories.jsonl"
+
+PlateauState = namedtuple(
+    "PlateauState",
+    ["benchmark", "is_stuck", "streak_length", "best_val", "suggested_action"],
+)
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +237,95 @@ class HypothesisEngine:
         return suggestions[:4]  # cap at 4
 
     # ------------------------------------------------------------------
-    # 4. Targeted intervention
+    # 4. Plateau detection (reads trajectories.jsonl)
+    # ------------------------------------------------------------------
+
+    def detect_plateau(
+        self,
+        benchmark: str,
+        window: int = 6,
+        threshold: float = 0.03,
+    ) -> PlateauState:
+        """Detect whether a benchmark has stalled by analysing the trajectory log.
+
+        Reads logs/trajectories.jsonl and looks at the last `window` completed
+        outcomes for the benchmark.  Returns a PlateauState with:
+          - is_stuck: True if the relative improvement across the window < threshold
+          - streak_length: how many consecutive non-improving outcomes
+          - best_val: best val_l2_rel seen in the window
+          - suggested_action: a string hint for what to try next
+        """
+        entries = []
+        if TRAJECTORIES_FILE.exists():
+            try:
+                with open(TRAJECTORIES_FILE) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            e = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if e.get("benchmark") != benchmark:
+                            continue
+                        outcome = e.get("outcome") or {}
+                        if isinstance(outcome, dict) and outcome.get("val") is not None:
+                            entries.append(outcome["val"])
+                        elif isinstance(outcome, (int, float)):
+                            entries.append(float(outcome))
+            except Exception:
+                pass
+
+        # Fall back to results.json if trajectories is sparse
+        if len(entries) < window:
+            kept = sorted(
+                [e for e in self.experiments
+                 if e.get("benchmark") == benchmark
+                 and e.get("status") == "keep"
+                 and e.get("val_l2_rel") is not None],
+                key=lambda e: e.get("timestamp", ""),
+            )
+            entries = [e["val_l2_rel"] for e in kept]
+
+        if len(entries) < 3:
+            return PlateauState(benchmark, False, 0, None, "insufficient_data")
+
+        recent = entries[-window:]
+        best_val = min(recent)
+        worst_val = max(recent)
+
+        # Streak: count consecutive non-improvements from the end
+        streak = 0
+        running_best = recent[-1]
+        for v in reversed(recent[:-1]):
+            if v <= running_best * (1.0 - threshold):
+                break
+            streak += 1
+            running_best = min(running_best, v)
+
+        relative_spread = (worst_val - best_val) / (worst_val + 1e-9)
+        is_stuck = relative_spread < threshold and len(recent) >= window
+
+        # Choose a suggested action
+        if is_stuck:
+            tried_models = {e.get("model") for e in self.experiments
+                            if e.get("benchmark") == benchmark}
+            untried_families = [m for m in ["GNOT", "Transolver", "TFNO", "FEDONet2D", "UNO"]
+                                 if m not in tried_models]
+            if untried_families:
+                suggested_action = f"try_different_model_family:{untried_families[0]}"
+            elif best_val > 0.05:
+                suggested_action = "increase_budget"
+            else:
+                suggested_action = "add_augmentation"
+        else:
+            suggested_action = "continue"
+
+        return PlateauState(benchmark, is_stuck, streak, best_val, suggested_action)
+
+    # ------------------------------------------------------------------
+    # 5. Targeted intervention
     # ------------------------------------------------------------------
 
     def suggest_intervention(

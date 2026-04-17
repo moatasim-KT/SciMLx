@@ -205,3 +205,97 @@ class WNO_GNOT(nn.Module):
         if out.shape[-1] == 1:
             return out[:, :, 0]
         return out
+
+# ── 2D Wavelet Components ───────────────────────────────────────────────────
+
+def _haar2d_forward(x: mx.array, levels: int):
+    """2D Multi-level Haar forward transform."""
+    details = []
+    approx = x
+    sq2 = math.sqrt(2)
+    for _ in range(levels):
+        B, H, W, C = approx.shape
+        # Decompose rows
+        rows = approx.reshape(B, H // 2, 2, W, C)
+        L = (rows[:, :, 0, :, :] + rows[:, :, 1, :, :]) / sq2
+        H_sub = (rows[:, :, 0, :, :] - rows[:, :, 1, :, :]) / sq2
+        
+        # Decompose columns
+        cols_L = L.reshape(B, H // 2, W // 2, 2, C)
+        LL = (cols_L[:, :, :, 0, :] + cols_L[:, :, :, 1, :]) / 2.0
+        LH = (cols_L[:, :, :, 0, :] - cols_L[:, :, :, 1, :]) / 2.0
+        
+        cols_H = H_sub.reshape(B, H // 2, W // 2, 2, C)
+        HL = (cols_H[:, :, :, 0, :] + cols_H[:, :, :, 1, :]) / 2.0
+        HH = (cols_H[:, :, :, 0, :] - cols_H[:, :, :, 1, :]) / 2.0
+        
+        details.append((LH, HL, HH))
+        approx = LL
+    return details, approx
+
+def _haar2d_inverse(details, approx):
+    """2D Multi-level Haar inverse transform."""
+    x = approx
+    for (LH, HL, HH) in reversed(details):
+        # Reconstruct L and H_sub
+        L_even = (x + LH) # * sq2 / 2
+        L_odd  = (x - LH)
+        L = mx.stack([L_even, L_odd], axis=3).reshape(x.shape[0], x.shape[1], -1, x.shape[3])
+        
+        H_even = (HL + HH)
+        H_odd  = (HL - HH)
+        H_sub = mx.stack([H_even, H_odd], axis=3).reshape(x.shape[0], x.shape[1], -1, x.shape[3])
+        
+        # Reconstruct approx
+        approx_even = (L + H_sub)
+        approx_odd  = (L - H_sub)
+        x = mx.stack([approx_even, approx_odd], axis=2).reshape(x.shape[0], x.shape[1]*2, x.shape[2]*2, x.shape[3])
+    return x
+
+class WaveletConv2d(nn.Module):
+    def __init__(self, in_ch: int, out_ch: int, n_levels: int = 3):
+        super().__init__()
+        self.n_levels = n_levels
+        # 3 detail sub-bands per level + 1 approx
+        self.W = [nn.Linear(in_ch, out_ch) for _ in range(3 * n_levels + 1)]
+
+    def __call__(self, x: mx.array) -> mx.array:
+        details, approx = _haar2d_forward(x, self.n_levels)
+        new_details = []
+        idx = 0
+        for LH, HL, HH in details:
+            new_details.append((self.W[idx](LH), self.W[idx+1](HL), self.W[idx+2](HH)))
+            idx += 3
+        new_approx = self.W[-1](approx)
+        return _haar2d_inverse(new_details, new_approx)
+
+class WNO2d(nn.Module):
+    """Wavelet Neural Operator for 2D benchmarks."""
+    def __init__(self, n_levels: int = 3, hidden_dim: int = 32, n_layers: int = 4, in_channels: int = 1):
+        super().__init__()
+        self.lift = nn.Linear(in_channels + 2, hidden_dim)
+        self.blocks = [nn.Sequential(WaveletConv2d(hidden_dim, hidden_dim, n_levels), nn.GELU()) 
+                        for _ in range(n_layers)]
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, in_channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        if x.ndim == 3:
+            B, N1, N2 = x.shape
+            x = x[..., None]
+        else:
+            B, N1, N2, _ = x.shape
+            
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
+        x     = mx.concatenate([x, grid1, grid2], axis=-1)
+        
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x = nn.gelu(self.proj1(x))
+        out = self.proj2(x)
+        
+        if out.shape[-1] == 1:
+            return out[:, :, :, 0]
+        return out

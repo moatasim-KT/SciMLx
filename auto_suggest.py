@@ -283,7 +283,34 @@ def _generate_empirical_suggestions(rows: list[dict],
             priority=2, source="empirical+paper",
         ))
 
-    # 5. KdV baseline (new benchmark, high value)
+    # 5. IC Smoothness Curriculum (for Burgers/1D)
+    if benchmark == "burgers_1d":
+        name = f"fno_h{bh}_m{bm}_l{bl}_curriculum"
+        if name not in done:
+            suggs.append(Suggestion(
+                name=name, benchmark=benchmark,
+                cli=f"uv run train.py --model FNO --hidden {bh} --layers {bl} "
+                    f"--modes {bm} --curriculum --benchmark {benchmark}",
+                rationale="Spectral IC Smoothness Curriculum (modes 4->8): helps learn large scales first.",
+                expected=f"~{best * 0.90:.4f}-{best * 0.95:.4f}",
+                priority=1, source="paper:curriculum-2009",
+            ))
+
+    # 6. Snapshot Ensembles for UQ and Accuracy (High Gap)
+    sota = _SOTA_TARGETS.get(benchmark, 1.0)
+    if best / sota > 2.0: # Only if gap is > 2x
+        name = f"{wins.get('best_model', 'FNO').lower()}_h{bh}_m{bm}_l{bl}_ensemble3"
+        if name not in done:
+            suggs.append(Suggestion(
+                name=name, benchmark=benchmark,
+                cli=f"uv run train.py --model {wins.get('best_model', 'FNO')} --hidden {bh} --layers {bl} "
+                    f"--modes {bm} --snapshot_ensemble 3 --benchmark {benchmark}",
+                rationale="Snapshot Ensemble (M=3): cyclical LR captures multiple local minima for UQ/accuracy.",
+                expected=f"~{best * 0.85:.4f}-{best * 0.95:.4f}",
+                priority=2, source="paper:ensemble-uq-2023",
+            ))
+
+    # 7. KdV baseline (new benchmark, high value)
     if benchmark == "burgers_1d":
         name = "fno_kdv_h128_m24_l8"
         if name not in done:
@@ -457,8 +484,29 @@ def _generate_transfer_suggestions(benchmark: str) -> list[Suggestion]:
 
 
 def _rank_suggestions(suggs: list[Suggestion]) -> list[Suggestion]:
-    """Sort by priority, then by estimated impact."""
-    return sorted(suggs, key=lambda s: (s.priority, s.name))
+    """Sort by priority, then by SOTA gap magnitude (larger gap = higher urgency).
+
+    A benchmark that is 9.9× behind SOTA (Burgers) should outrank one that is
+    already at SOTA (Wave) even if both have the same integer priority.  We
+    convert the log gap into a fractional priority bonus so a suggestion for
+    Burgers with priority=1 comes before a Wave suggestion also at priority=1.
+    """
+    rows = _load_results()
+    bests = _best_per_benchmark(rows)
+
+    def _sort_key(s: Suggestion):
+        sota = _SOTA_TARGETS.get(s.benchmark)
+        current = bests.get(s.benchmark)
+        # gap_score: larger = bigger gap = more urgent = smaller fractional value
+        # log(current/sota) > 0 when current > sota (behind); we negate so bigger
+        # gap yields a smaller key and sorts earlier.
+        if sota and current and sota > 0:
+            gap_score = -math.log(max(current / sota, 1e-6))
+        else:
+            gap_score = 0.0
+        return (s.priority, gap_score, s.name)
+
+    return sorted(suggs, key=_sort_key)
 
 
 # ── Reporting ─────────────────────────────────────────────────────────────────
@@ -538,49 +586,161 @@ def report(benchmark: Optional[str], top_n: int) -> None:
         print(f"{'═'*70}\n")
 
 
-def generate_config_snippets(benchmark: str, top_n: int = 5) -> None:
-    """Print ExperimentConfig snippets ready to paste into experiments.yaml."""
+def _build_generate_candidates(benchmark: str, top_n: int = 5) -> list[dict]:
+    """Return a list of YAML-ready experiment dicts for the given benchmark.
+
+    Deduplicates against results.json (done names) and experiments.yaml (queued names).
+    Falls back to empirical best-config heuristics when the suggestion pipeline
+    produces fewer than top_n candidates.
+    """
+    from core.loader import load_experiments
+    from core.utils import REPO_ROOT
+
     rows  = _load_results(benchmark)
     done  = _done_names()
-    wins  = (_get_known_wins()).get(benchmark, {})
+    best_vals = _best_per_benchmark(rows)
+    best_val  = best_vals.get(benchmark, 1.0)
+
+    # Names already queued in experiments.yaml
+    try:
+        queued_names = {e.name for e in load_experiments(REPO_ROOT / "experiments.yaml")}
+    except Exception:
+        queued_names = set()
+
+    skip = done | queued_names
+
+    is_2d = "2d" in benchmark
+    h_def, l_def, m_def = (32, 4, 8) if is_2d else (128, 8, 24)
+    budget_def = 3600 if is_2d else 1800
+
+    # Candidate pool — empirically motivated
+    import time as _t
+    ts = int(_t.time()) % 10000  # short suffix to avoid collisions
+
+    candidates = []
+
+    # Best model family for this benchmark derived from results
+    _2d_safe = {"FNO2D", "FEDONet2D", "Transolver2D", "TFNO2D", "AttentionEnhancedFNO2D",
+                "SNO2D", "RFNO2D", "HANO2D"}
+    _1d_safe = {"FNO", "RFNO", "GNOT", "Transolver", "TFNO", "UNO", "RFNO", "MambaNO1d"}
+    best_model = "FNO2D" if is_2d else "FNO"
+    best_exps = sorted([r for r in rows if r.get("status") == "keep" and r.get("val_l2_rel")],
+                       key=lambda r: r.get("val_l2_rel", 1.0))
+    if best_exps:
+        candidate_model = best_exps[0].get("model", best_model)
+        # Ensure we use a dimensionally-compatible model
+        safe_set = _2d_safe if is_2d else _1d_safe
+        if candidate_model in safe_set:
+            best_model = candidate_model
+        elif is_2d and candidate_model == "FNO":
+            best_model = "FNO2D"  # upgrade 1D FNO to 2D variant
+
+    tried_models = {r.get("model") for r in rows}
+
+    # 1. H1 loss on current best model
+    candidates.append({
+        "name": f"autogen_{benchmark}_{best_model.lower()}_h1_{ts}",
+        "benchmark": benchmark, "model": best_model,
+        "hidden_dim": h_def, "n_layers": l_def, "n_modes": m_def,
+        "loss_type": "h1", "h1_alpha": 0.3,
+        "budget_s": budget_def, "priority": 1,
+        "rationale": f"auto_suggest: H1 loss on best model ({best_model}, val={best_val:.4f})",
+    })
+
+    # 2. Adaptive H1 loss
+    candidates.append({
+        "name": f"autogen_{benchmark}_{best_model.lower()}_h1adapt_{ts}",
+        "benchmark": benchmark, "model": best_model,
+        "hidden_dim": h_def, "n_layers": l_def, "n_modes": m_def,
+        "loss_type": "h1_adaptive", "h1_alpha": 0.1,
+        "budget_s": budget_def, "priority": 1,
+        "rationale": f"auto_suggest: adaptive H1 loss auto-scales alpha per batch",
+    })
+
+    # 3. Untried model families (prefer GNOT for 1D, FEDONet2D for 2D)
+    untried_1d = [m for m in ["GNOT", "RFNO", "Transolver", "TFNO", "UNO"]
+                  if m not in tried_models]
+    untried_2d = [m for m in ["FEDONet2D", "Transolver2D", "TFNO2D", "AttentionEnhancedFNO2D"]
+                  if m not in tried_models]
+    untried = untried_2d if is_2d else untried_1d
+    for m in untried[:2]:
+        candidates.append({
+            "name": f"autogen_{benchmark}_{m.lower()}_{ts}",
+            "benchmark": benchmark, "model": m,
+            "hidden_dim": h_def, "n_layers": l_def, "n_modes": m_def,
+            "budget_s": budget_def, "priority": 2,
+            "rationale": f"auto_suggest: {m} not yet tried on {benchmark}",
+        })
+
+    # 4. Best config with EMA (stabilisation)
+    candidates.append({
+        "name": f"autogen_{benchmark}_{best_model.lower()}_ema_{ts}",
+        "benchmark": benchmark, "model": best_model,
+        "hidden_dim": h_def, "n_layers": l_def, "n_modes": m_def,
+        "ema_decay": 0.999, "budget_s": budget_def, "priority": 2,
+        "rationale": f"auto_suggest: EMA-0.999 on best model for stabilised eval",
+    })
+
+    # 5. Deeper stack with residuals (RFNO/RFNO2D)
+    rfno = "RFNO2D" if is_2d else "RFNO"
+    candidates.append({
+        "name": f"autogen_{benchmark}_{rfno.lower()}_deep_{ts}",
+        "benchmark": benchmark, "model": rfno,
+        "hidden_dim": h_def, "n_layers": l_def + 2, "n_modes": m_def,
+        "loss_type": "h1", "h1_alpha": 0.2,
+        "budget_s": budget_def, "priority": 2,
+        "rationale": f"auto_suggest: {rfno} deeper stack with H1 loss",
+    })
+
+    # Filter skip-list and cap
+    filtered = [c for c in candidates if c["name"] not in skip]
+    return filtered[:top_n]
+
+
+def generate_config_snippets(benchmark: str, top_n: int = 5, write_yaml: bool = False) -> int:
+    """Generate experiment suggestions and optionally append them to experiments.yaml.
+
+    When write_yaml=True (triggered by --generate flag), appends new YAML entries
+    directly to experiments.yaml so the autonomous loop picks them up on the next
+    iteration.  Returns the number of new experiments written.
+    """
+    from core.utils import REPO_ROOT
+    import yaml as _yaml
+
+    rows  = _load_results(benchmark)
     best  = _best_per_benchmark(rows).get(benchmark, 1.0)
-    bm    = wins.get("best_modes",  24)
-    bh    = wins.get("best_hidden", 128)
-    bl    = wins.get("best_layers", 8)
 
-    snippets = []
+    candidates = _build_generate_candidates(benchmark, top_n)
 
-    configs = [
-        ("afno_h128_m24_l8",  "AFNO",  128, 8,  24, "l2_rel", 0.1, 1,
-         "AFNO at best FNO config. Non-linear Fourier mixing + softshrink."),
-        ("afno_h128_m24_l10", "AFNO",  128, 10, 24, "l2_rel", 0.1, 1,
-         "AFNO deeper — Pre-LN residuals should unlock l=10."),
-        ("fno_h128_m24_l8_h1","FNO",   128, 8,  24, "h1",     0.1, 1,
-         "H1 Sobolev loss on best FNO. Targets shock gradient errors."),
-        ("rfno_h128_m24_l10", "RFNO",  128, 10, 24, "l2_rel", 0.1, 1,
-         "RFNO l=10 — FNO degraded here; residuals should unlock it."),
-        ("afno_h128_m24_l8_h1","AFNO", 128, 8,  24, "h1",     0.1, 2,
-         "AFNO + H1: compound architecture+loss innovations."),
-    ]
+    print(f"\n# ── Auto-generated experiments for {benchmark} ─────────────────")
+    print(f"# current best = {best:.6f}  |  {len(candidates)} new candidates\n")
 
-    print(f"\n# ── Auto-generated experiment configs for {benchmark} ──────")
-    print(f"# Generated by auto_suggest.py | current best = {best:.6f}\n")
+    if not candidates:
+        print("# No new candidates — all suggestions already in queue or results.")
+        return 0
 
-    for name, model, h, l, m, loss, alpha, pri, rat in configs[:top_n]:
-        if name in done:
-            print(f"# SKIP: {name} — already in results.json")
-            continue
-        loss_arg = f'loss_type="{loss}", h1_alpha={alpha},' if loss != "l2_rel" else ""
-        print(f"    ExperimentConfig(")
-        print(f"        name=\"{name}\",")
-        print(f"        benchmark=\"{benchmark}\", model=\"{model}\",")
-        print(f"        hidden_dim={h}, n_layers={l}, n_modes={m},")
-        if loss_arg:
-            print(f"        {loss_arg}")
-        print(f"        priority={pri},")
-        print(f"        rationale=\"{rat}\",")
-        print(f"    ),")
+    for c in candidates:
+        print(f"  - name: {c['name']}")
+        print(f"    benchmark: {c['benchmark']}  model: {c['model']}")
+        print(f"    h={c.get('hidden_dim')} l={c.get('n_layers')} m={c.get('n_modes')}")
+        if c.get("loss_type", "l2_rel") != "l2_rel":
+            print(f"    loss: {c['loss_type']} alpha={c.get('h1_alpha', 0.1)}")
+        print(f"    rationale: {c['rationale'][:80]}")
         print()
+
+    if write_yaml:
+        yaml_path = REPO_ROOT / "experiments.yaml"
+        # Build clean YAML blocks
+        lines = ["\n# ── auto_suggest --generate ─────────────────────────────────────────────────\n"]
+        for c in candidates:
+            lines.append(_yaml.dump([c], default_flow_style=False, sort_keys=False))
+        with open(yaml_path, "a") as f:
+            f.writelines(lines)
+        print(f"✓ Appended {len(candidates)} experiments to experiments.yaml")
+    else:
+        print("# (dry-run — pass --write-yaml to append to experiments.yaml)")
+
+    return len(candidates)
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -589,15 +749,26 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Autonomous experiment suggester")
     p.add_argument("--benchmark", default=None)
     p.add_argument("--top",       type=int, default=8)
-    p.add_argument("--generate",  action="store_true",
-                   help="Output ExperimentConfig code snippets")
-    p.add_argument("--gaps",      action="store_true",
+    p.add_argument("--generate",   action="store_true",
+                   help="Generate new experiment candidates (dry-run, prints to stdout)")
+    p.add_argument("--write-yaml", action="store_true",
+                   help="With --generate: append candidates directly to experiments.yaml")
+    p.add_argument("--gaps",       action="store_true",
                    help="Just show SOTA gap analysis")
     args = p.parse_args()
 
     if args.generate:
-        bm = args.benchmark or "burgers_1d"
-        generate_config_snippets(bm, top_n=args.top)
+        # When called with no benchmark, generate for all high-gap benchmarks
+        benchmarks = [args.benchmark] if args.benchmark else [
+            bm for bm in ["burgers_1d", "darcy_2d", "ns_2d", "allen_cahn_2d",
+                          "multiphysics_2d", "kdv_1d", "wave_1d"]
+        ]
+        total = 0
+        for bm in benchmarks:
+            total += generate_config_snippets(bm, top_n=args.top,
+                                              write_yaml=args.write_yaml)
+        if args.write_yaml:
+            print(f"\n✓ Total: {total} experiments appended to experiments.yaml")
     elif args.gaps:
         rows = _load_results()
         benchmarks = [args.benchmark] if args.benchmark else [

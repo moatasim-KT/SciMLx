@@ -60,6 +60,17 @@ task.md
 .sysphus
 .omg/
 
+# ── MLflow ────────────────────────────────────────────────────────────────────
+# mlflow.db is the SQLite experiment store — can grow large, not git-tracked.
+mlflow.db
+# mlruns/ holds artifact blobs — handled by DVC, not git.
+mlruns/
+
+# ── DVC ───────────────────────────────────────────────────────────────────────
+# Content-addressed local cache — never commit.
+.dvc/cache/
+.dvc/tmp/
+
 # ── Temporary Tests (AI & Scratch) ───────────────────────────────────────────
 test_p2_t*.py
 test_bg.py

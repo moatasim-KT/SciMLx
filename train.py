@@ -25,7 +25,7 @@ from mlx.utils import tree_flatten
 from data.prepare import GRID_SIZE, TIME_BUDGET, evaluate_l2_rel, make_dataloader
 from data.benchmarks_ext import EXT_BENCHMARKS, EXT_N_CHANNELS, make_ext_dataloader, evaluate_l2_rel_ext
 from data.simulations import SIM_BENCHMARKS, SIM_IS_MC, SIM_N_CHANNELS
-from core.losses import get_loss_fn
+from core.losses import get_loss_fn, spectral_grad_1d, spectral_grad2_1d, relative_l2
 from core.research_plugins import MODEL_REGISTRY, BENCHMARK_REGISTRY
 from core.trainer import Trainer, get_lr_schedule
 from mlx.optimizers import AdamW
@@ -50,6 +50,7 @@ SPARSITY     = 0.01
 AUGMENT      = False
 CURRICULUM   = False
 SAVE_CKPT    = False
+NUM_EPOCHS   = 100
 
 # Scheduler
 ADAM_BETAS     = (0.9, 0.999)
@@ -62,7 +63,7 @@ def _parse_args():
     p.add_argument("--benchmark",   default=BENCHMARK)
     p.add_argument("--model",       default=MODEL_TYPE)
     p.add_argument("--loss",        default=LOSS_TYPE,
-                   choices=["l2_rel", "h1", "h1_strong", "spectral", "l1_rel", "mse"])
+                   choices=["l2_rel", "h1", "h1_strong", "h1_adaptive", "spectral", "l1_rel", "mse"])
     p.add_argument("--h1_alpha",    type=float, default=H1_ALPHA)
     p.add_argument("--modes",       type=int,   default=N_MODES)
     p.add_argument("--levels",      type=int,   default=N_LEVELS)
@@ -76,19 +77,33 @@ def _parse_args():
     p.add_argument("--pino_lambda", type=float, default=PINO_LAMBDA)
     p.add_argument("--sparsity",    type=float, default=SPARSITY)
     p.add_argument("--budget",      type=int,   default=TIME_BUDGET)
+    p.add_argument("--patience",    type=int,   default=5,
+                   help="Early stopping: halt if val does not improve for this many consecutive "
+                        "10%%-budget evaluations. 0 disables early stopping (default: 5).")
     p.add_argument("--name",        default="",
                    help="Experiment name written to telemetry file for dashboard tracking.")
     p.add_argument("--augment",     action="store_true", default=AUGMENT)
     p.add_argument("--curriculum",  action="store_true", default=CURRICULUM)
+    p.add_argument("--curriculum_epochs", type=int, default=0,
+                   help="Number of epochs to ramp up spectral modes.")
     p.add_argument("--save_ckpt",   action="store_true", default=SAVE_CKPT)
     p.add_argument("--resume",      action="store_true", help="Resume from best checkpoint if exists")
     p.add_argument("--resume_from", default="", help="Resume from specific checkpoint name/path")
     p.add_argument("--max_vram_gb", type=float, default=5.0,
                    help="Abort training if peak VRAM exceeds this (GB). 0=disabled.")
     p.add_argument("--refine_grid", action="store_true",
-                   help="Phase 11: Enable Adaptive Grid Extension (doubling G at 30% and 60% budget)")
+                   help="Phase 11: Enable Adaptive Grid Extension (doubling G at 30%% and 60%% budget)")
     p.add_argument("--degree",      type=int,   default=5,
                    help="Chebyshev polynomial degree for cPIKAN models.")
+    p.add_argument("--snapshot_ensemble", type=int, default=1,
+                   help="Number of snapshots to save for ensemble UQ (default: 1).")
+    p.add_argument("--lr_schedule", default="warmup_cosine",
+                   choices=["warmup_cosine", "cosine", "onecycle", "none"],
+                   help="LR schedule: warmup_cosine (default), cosine, onecycle, none.")
+    p.add_argument("--seed", type=int, default=42,
+                   help="Global random seed for reproducibility (default: 42).")
+    p.add_argument("--ema_decay", type=float, default=0.0,
+                   help="EMA decay for model weights (0=disabled, 0.999 recommended).")
     return p.parse_args()
 
 args = _parse_args()
@@ -110,9 +125,17 @@ SPARSITY    = args.sparsity
 TIME_BUDGET  = args.budget
 AUGMENT      = args.augment
 CURRICULUM   = args.curriculum
+CURRICULUM_EPOCHS = args.curriculum_epochs
 SAVE_CKPT    = args.save_ckpt
 MAX_VRAM_GB  = args.max_vram_gb
 EXP_NAME     = args.name or f"{MODEL_TYPE}_{BENCHMARK}"
+N_ENSEMBLE   = args.snapshot_ensemble
+LR_SCHEDULE  = args.lr_schedule
+SEED         = args.seed
+EMA_DECAY    = args.ema_decay
+
+# Seed global RNG for reproducibility
+mx.random.seed(SEED)
 
 # Apply hard memory limit at startup (Metal will raise OOM before swapping)
 if MAX_VRAM_GB > 0:
@@ -125,17 +148,72 @@ if MAX_VRAM_GB > 0:
 
 # ── Physics residuals (for PINO) ──────────────────────────────────────────────
 
-def burgers_residual(u_pred: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
-    _, N   = u_pred.shape
-    k      = mx.arange(N // 2 + 1, dtype=mx.float32)
-    u_ft   = mx.fft.rfft(u_pred, axis=1)
-    ux_ft_r = -u_ft.imag * k[None, :]
-    ux_ft_i =  u_ft.real * k[None, :]
-    ux      = mx.fft.irfft(ux_ft_r + 1j * ux_ft_i, n=N, axis=1)
-    uxx_ft_r = -(k ** 2)[None, :] * u_ft.real
-    uxx_ft_i = -(k ** 2)[None, :] * u_ft.imag
-    uxx      = mx.fft.irfft(uxx_ft_r + 1j * uxx_ft_i, n=N, axis=1)
-    return u_pred * ux - nu * uxx
+def burgers_residual(u_pred: mx.array, u0: mx.array, nu: float = 0.01 / math.pi) -> mx.array:
+    """Computes u_t + u*u_x - nu*u_xx = 0 using backward Euler at the endpoint.
+
+    The 'Endpoint Problem' fix: instead of just testing u*u_x - nu*u_xx = 0 (steady state),
+    we estimate u_t as (u_pred - u0) / T.
+    """
+    T_final = 1.0 # Standard for burgers_1d
+    ut      = (u_pred - u0) / T_final
+    ux      = spectral_grad_1d(u_pred)
+    uxx     = spectral_grad2_1d(u_pred)
+    return ut + u_pred * ux - nu * uxx
+
+def darcy_residual(u_pred: mx.array, a_in: mx.array) -> mx.array:
+    """PCG-equivalent Darcy residual for PINO loss: -div(a grad u) - f = 0.
+
+    Includes the fixed source term f from the Darcy benchmark setup.
+    """
+    B, N, _ = u_pred.shape if u_pred.ndim == 3 else (u_pred.shape[0], u_pred.shape[1], 1)
+
+    # Physical wavenumbers on [0,1]^2: 2pi * k
+    k = 2 * math.pi * mx.array(np.fft.fftfreq(N))
+    kx, ky = mx.meshgrid(k, k)
+
+    # Compute grad u: [B, N, N, 2]
+    u_hat = mx.fft.fft2(u_pred, axes=(1, 2))
+    ux = mx.fft.ifft2(1j * kx[None] * u_hat, axes=(1, 2)).real
+    uy = mx.fft.ifft2(1j * ky[None] * u_hat, axes=(1, 2)).real
+
+    # -div(a grad u)
+    flux_x_hat = mx.fft.fft2(a_in * ux, axes=(1, 2))
+    flux_y_hat = mx.fft.fft2(a_in * uy, axes=(1, 2))
+
+    div_a_grad_u = mx.fft.ifft2(
+        1j * kx[None] * flux_x_hat + 1j * ky[None] * flux_y_hat,
+        axes=(1, 2)
+    ).real
+
+    # Fixed source term f (must match data/benchmarks_ext.py _darcy_fix_ic)
+    from data.prepare import _random_ic_2d
+    f_rng = np.random.RandomState(12345)
+    f_single = _random_ic_2d(1, N, f_rng, n_modes=5, scale=1.0, offset=0.0)
+    f = mx.array(np.broadcast_to(f_single, (B, N, N)))
+
+    return -div_a_grad_u - f
+def apply_spectral_mask(x: mx.array, k_max: int) -> mx.array:
+    """Filters x to only include frequencies up to k_max."""
+    if x.ndim == 3: # 1D [B, N, C]
+        _, N, _ = x.shape
+        x_ft = mx.fft.rfft(x, axis=1)
+        mask = mx.zeros_like(x_ft)
+        mask[:, :k_max, :] = 1.0
+        return mx.fft.irfft(x_ft * mask, n=N, axis=1)
+    elif x.ndim == 4: # 2D [B, H, W, C]
+        _, H, W, _ = x.shape
+        x_ft = mx.fft.rfft2(x, axes=(1, 2))
+        mask = mx.zeros_like(x_ft)
+        # rfft2 last dim is W//2 + 1
+        k_max_w = min(k_max, x_ft.shape[2])
+        k_max_h = min(k_max, x_ft.shape[1])
+        mask[:, :k_max_h, :k_max_w, :] = 1.0
+        # Also need to handle the negative frequencies in the first axis if it was fft2, 
+        # but rfft2 only has one real axis. Wait, rfft2 axes (1,2) -> (1 is full, 2 is half).
+        # So mask[:k_max] and mask[-k_max:] for the first axis.
+        mask[:, -k_max_h:, :k_max_w, :] = 1.0
+        return mx.fft.irfft2(x_ft * mask, s=(H, W), axes=(1, 2))
+    return x
 
 # ── Model factory (registry-driven) ──────────────────────────────────────────
 
@@ -171,10 +249,23 @@ model = MODEL_REGISTRY.build(
 
 # Resumption logic: load best weights if available
 if (args.resume or args.resume_from) and EXP_NAME:
-    # Use explicit resume_from if provided, otherwise fallback to current EXP_NAME
     source_name = args.resume_from if args.resume_from else EXP_NAME
-    # If source_name doesn't end in .npz, assume it's an experiment name and append _best.npz
-    if not source_name.endswith(".npz"):
+
+    # champion:<benchmark> — resolve via model registry
+    if source_name.startswith("champion:"):
+        _bm = source_name[len("champion:"):]
+        try:
+            from core.model_versioning import get_champion_path as _gcp
+            _champ = _gcp(_bm, MODEL_TYPE)
+            if _champ is None:
+                _champ = _gcp(_bm)   # any model family
+            ckpt_path = _champ if _champ else Path("__not_found__")
+            if _champ:
+                print(f"Champion for {_bm}: {ckpt_path.name}")
+        except Exception as _e:
+            print(f"[ModelRegistry] champion lookup failed: {_e}")
+            ckpt_path = Path("__not_found__")
+    elif not source_name.endswith(".npz"):
         ckpt_path = REPO_ROOT / "checkpoints" / f"{source_name}_best.npz"
     else:
         ckpt_path = Path(source_name)
@@ -223,13 +314,32 @@ def _forward(model, x: mx.array) -> mx.array:
 _loss_kwargs = {"alpha": H1_ALPHA} if LOSS_TYPE.startswith("h1") else {}
 _core_loss   = get_loss_fn(LOSS_TYPE, **_loss_kwargs)
 
+CURRENT_K_MAX = 128 # Default to high
+
 def loss_fn(model, x, y):
     pred = _forward(model, x)
     data_loss = _core_loss(pred, y)
-    if PINO_LAMBDA > 0 and BENCHMARK == "burgers_1d":
-        res = burgers_residual(pred)
-        phys_loss = mx.mean(mx.sum(res**2, axis=1) / (mx.sum(y**2, axis=1) + 1e-6))
-        return data_loss + PINO_LAMBDA * phys_loss
+        
+    if PINO_LAMBDA > 0:
+        if BENCHMARK == "burgers_1d":
+            res = burgers_residual(pred, x)
+            # Use relative L2 norm for physics loss stability
+            phys_loss = mx.mean(
+                mx.sqrt(mx.mean(res**2, axis=1)) / (mx.sqrt(mx.mean(y**2, axis=1)) + 1e-6)
+            )
+            return data_loss + PINO_LAMBDA * phys_loss
+        elif BENCHMARK == "darcy_2d":
+            if x.ndim == 4:
+                a_in = x[..., 0]
+            else:
+                a_in = x
+            u_pr = pred[..., 0] if pred.ndim == 4 else pred
+            res = darcy_residual(u_pr, a_in)
+            y_2d = y[..., 0] if y.ndim == 4 else y
+            phys_loss = mx.mean(
+                mx.sqrt(mx.mean(res**2, axis=(1, 2))) / (mx.sqrt(mx.mean(y_2d**2, axis=(1, 2))) + 1e-6)
+            )
+            return data_loss + PINO_LAMBDA * phys_loss
     return data_loss
 
 # ── Phase 11: Adaptive Grid Hook ───────────────────────────────────────────
@@ -256,9 +366,21 @@ def refine_grid_callback(step: int, progress: float):
                         mod.update_grid(target_g)
                         mx.eval(model.parameters()) # ensure weights are materialized
 
+# ── Training Loop ────────────────────────────────────────────────────────────
+train_losses = []
+val_losses   = []
+min_val_loss = float("inf")
+
 # ── Training ─────────────────────────────────────────────────────────────────
 
-lr_sch = get_lr_schedule(WARMUP_RATIO, WARMDOWN_RATIO, FINAL_LR_FRAC)
+lr_sch = get_lr_schedule(
+    warmup_ratio=WARMUP_RATIO,
+    wardown_ratio=WARMDOWN_RATIO,
+    final_lr_frac=FINAL_LR_FRAC,
+    cyclical=(N_ENSEMBLE > 1),
+    n_cycles=N_ENSEMBLE,
+    schedule_type=LR_SCHEDULE,
+)
 trainer = Trainer(
     model=model,
     optimizer=optimizer,
@@ -273,6 +395,8 @@ trainer = Trainer(
     curriculum=CURRICULUM,
     exp_name=EXP_NAME,
     step_callback=refine_grid_callback,
+    n_ensemble=N_ENSEMBLE,
+    ema_decay=EMA_DECAY,
 )
 
 print(f"Starting training (budget {TIME_BUDGET}s)...")
@@ -318,3 +442,91 @@ if SAVE_CKPT:
     ckpt_path = ckpt_dir / f"{MODEL_TYPE}_{BENCHMARK}_val{val_l2_rel:.4f}.npz"
     mx.savez(str(ckpt_path), **dict(tree_flatten(model.parameters())))
     print(f"checkpoint_path:  {ckpt_path}")
+
+# ── MLflow Logging ─────────────────────────────────────────────────────────────
+try:
+    from core.mlflow_integration import log_run
+
+    _mlflow_params = {
+        "benchmark":    BENCHMARK,
+        "model":        MODEL_TYPE,
+        "loss":         LOSS_TYPE,
+        "n_modes":      N_MODES,
+        "hidden_dim":   HIDDEN_DIM,
+        "n_layers":     N_LAYERS,
+        "lr":           LR,
+        "batch_size":   BATCH_SIZE,
+        "grad_clip":    GRAD_CLIP,
+        "budget_s":     TIME_BUDGET,
+        "h1_alpha":     H1_ALPHA,
+        "weight_decay": WEIGHT_DECAY,
+        "augment":      AUGMENT,
+        "curriculum":   CURRICULUM,
+    }
+
+    _mlflow_metrics: dict = {
+        "val_l2_rel":       float(val_l2_rel),
+        "training_seconds": float(total_train_time),
+        "peak_vram_mb":     float(peak_vram_mb),
+        "num_steps":        float(steps),
+        "num_params_M":     float(n_params / 1e6),
+    }
+
+    # Fold in spectral diagnostics if they were computed above
+    try:
+        _mlflow_metrics["diag_low_freq_error"]  = float(spec_bias["low_freq_error"])
+        _mlflow_metrics["diag_high_freq_error"] = float(spec_bias["high_freq_error"])
+    except Exception:
+        pass
+
+    # Collect artifact paths: mid-run best checkpoint + final SAVE_CKPT checkpoint
+    _artifacts: list[str] = []
+    _mid_run_ckpt = REPO_ROOT / "checkpoints" / f"{EXP_NAME}_best.npz"
+    if _mid_run_ckpt.exists():
+        _artifacts.append(str(_mid_run_ckpt))
+    if SAVE_CKPT and "ckpt_path" in dir():
+        _artifacts.append(str(ckpt_path))
+    # Include run log if it exists
+    _log_file = REPO_ROOT / "logs" / f"{EXP_NAME}.log"
+    if _log_file.exists():
+        _artifacts.append(str(_log_file))
+
+    _run_id = log_run(
+        benchmark=BENCHMARK,
+        model=MODEL_TYPE,
+        exp_name=EXP_NAME,
+        params=_mlflow_params,
+        metrics=_mlflow_metrics,
+        artifact_paths=_artifacts,
+    )
+    if _run_id:
+        print(f"mlflow_run_id: {_run_id}")
+except Exception as _mlflow_err:
+    print(f"[MLflow] logging skipped: {_mlflow_err}")
+else:
+    _run_id = None  # ensure _run_id is always defined
+
+# ── Model Registry ──────────────────────────────────────────────────────────
+# Register the best checkpoint so `--resume_from champion:<benchmark>` works
+# and the MLflow Model Registry shows the current champion per benchmark.
+try:
+    from core.model_versioning import register as _register_model
+
+    # Use the mid-run best checkpoint (always saved); fall back to SAVE_CKPT path
+    _reg_ckpt = REPO_ROOT / "checkpoints" / f"{EXP_NAME}_best.npz"
+    if not _reg_ckpt.exists() and SAVE_CKPT and "ckpt_path" in dir():
+        _reg_ckpt = ckpt_path
+
+    if _reg_ckpt.exists():
+        _version_id = _register_model(
+            ckpt_path=_reg_ckpt,
+            benchmark=BENCHMARK,
+            model=MODEL_TYPE,
+            exp_name=EXP_NAME,
+            val_l2_rel=float(val_l2_rel),
+            config=_mlflow_params if "_mlflow_params" in dir() else {},
+            mlflow_run_id=_run_id,
+        )
+        print(f"model_version_id: {_version_id}")
+except Exception as _reg_err:
+    print(f"[ModelRegistry] registration skipped: {_reg_err}")

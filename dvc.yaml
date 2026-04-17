@@ -1,0 +1,64 @@
+# DVC pipeline for SciML AutoResearch
+#
+# Run a single experiment:
+#   uv run dvc exp run
+#
+# Override params on the fly:
+#   uv run dvc exp run --set-param train.benchmark=darcy_2d \
+#                      --set-param train.model=FNO \
+#                      --set-param train.hidden_dim=32
+#
+# Compare experiments:
+#   uv run dvc exp show
+#   uv run dvc exp diff
+#
+# NOTE: The autorun.py loop (experiments.yaml) remains the primary driver.
+#       Use `dvc exp run` for interactive single-experiment iteration or
+#       HPO sweeps.  Both paths write to results.json and mlruns/.
+
+stages:
+  prefetch:
+    cmd: uv run data/prefetch_data.py --skip-slow
+    deps:
+      - data/prefetch_data.py
+    outs:
+      - data/cache:
+          cache: true
+          persist: true   # keep across re-runs; only regenerate if dep changes
+    desc: "Download and cache datasets (run once)"
+
+  train:
+    cmd: uv run python scripts/dvc_train.py
+    params:
+      - params.yaml:
+          - train
+    deps:
+      - train.py
+      - core/trainer.py
+      - core/losses.py
+      - core/tracker.py
+      - core/mlflow_integration.py
+      - core/model_versioning.py
+      - scripts/dvc_train.py
+      - models/
+      - data/prepare.py
+      - data/cache
+    outs:
+      - checkpoints:
+          cache: true
+          persist: true
+    metrics:
+      - results.json:
+          cache: false    # results.json is SSoT — git-tracked, not DVC-cached
+      - model_registry.json:
+          cache: false    # model registry metadata — git-tracked
+    desc: "Train a single SciML model and log to MLflow + results.json + model_registry.json"
+
+artifacts:
+  # Named, versioned model artifacts — one entry per benchmark/model champion.
+  # Populated automatically by core/model_versioning.py after each training run.
+  # Access via: uv run python -m core.model_versioning champion burgers_1d
+  sciml-model:
+    type: model
+    path: checkpoints/
+    desc: "Best SciML checkpoint per benchmark (see model_registry.json for metadata)"

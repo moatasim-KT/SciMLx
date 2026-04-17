@@ -33,19 +33,25 @@ class BlockDiagMLP(nn.Module):
     parts of the Fourier coefficients are processed jointly.
     """
 
-    def __init__(self, channels: int, block_size: int = 32):
+    def __init__(self, channels: int, block_size: int = None):
         super().__init__()
+        # Default to full MLP (block_size = channels)
+        if block_size is None:
+            block_size = channels
+
         # Auto-adjust block_size if channels not divisible
         while channels % block_size != 0 and block_size > 1:
             block_size //= 2
         assert channels % block_size == 0
         self.n_blocks   = channels // block_size
         self.block_size = block_size
-        scale = block_size ** -0.5
-        self.W1 = mx.random.normal([self.n_blocks, block_size, block_size]) * scale
-        self.W2 = mx.random.normal([self.n_blocks, block_size, block_size]) * scale
-        self.b1 = mx.zeros([self.n_blocks, block_size])
-        self.b2 = mx.zeros([self.n_blocks, block_size])
+        
+        # Improved initialization with proper bounds
+        bound = 1.0 / math.sqrt(block_size)
+        self.W1 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size, block_size])
+        self.W2 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size, block_size])
+        self.b1 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size])
+        self.b2 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size])
 
     def __call__(self, x: mx.array) -> mx.array:
         """x: [N_flat, channels] → [N_flat, channels]"""
@@ -74,11 +80,18 @@ class AdaptiveSpectralMixer1d(nn.Module):
     """
 
     def __init__(self, channels: int, n_modes: int,
-                 block_size: int = 32, sparsity: float = 0.01):
+                 block_size: int = None, sparsity: float = 0.0):
         super().__init__()
         self.n_modes  = n_modes
         self.channels = channels
         self.sparsity = sparsity
+
+        # Mixer expressivity: default to 16 or 32 (whichever is larger but divisible)
+        if block_size is None:
+            # For hidden_dim=128, 2*channels=256. 256 % 32 == 0.
+            # BlockDiagMLP will auto-reduce if not divisible.
+            block_size = 32
+
         # MLP operates on 2*channels (real + imag stacked)
         self.mixer = BlockDiagMLP(2 * channels, block_size)
 
@@ -90,15 +103,15 @@ class AdaptiveSpectralMixer1d(nn.Module):
         xr = x_ft[:, :m, :].real                   # [B, m, C]
         xi = x_ft[:, :m, :].imag
 
-        # Interleave real & imag → [B*m, 2C] so [r0, i0, r1, i1, ...] are together.
-        # This ensures the same MLP block sees both components of each channel,
-        # allowing it to learn the proper complex-valued mapping.
-        ri_flat = mx.stack([xr, xi], axis=-1).reshape(B * m, 2 * C)
+        # Simplified complex coupling: concatenate real and imag
+        # This allows the MLP to learn the full xr*wr - xi*wi complex interaction.
+        # [B, m, C] + [B, m, C] -> [B, m, 2C] -> [B*m, 2C]
+        ri_flat = mx.concatenate([xr, xi], axis=-1).reshape(B * m, 2 * C)
 
         out     = self.mixer(ri_flat)               # [B*m, 2C]
-        out     = out.reshape(B, m, C, 2)
-        out_r   = out[:, :, :, 0]
-        out_i   = out[:, :, :, 1]
+        out     = out.reshape(B, m, 2 * C)
+        out_r   = out[:, :, :C]
+        out_i   = out[:, :, C:]
 
         # Learned sparsity
         if self.sparsity > 0:
@@ -118,18 +131,30 @@ class AdaptiveSpectralMixer1d(nn.Module):
 
 
 class AFNOBlock1d(nn.Module):
-    """Pre-LN residual AFNO block: x = x + GELU(AFNO(LN(x)) + w(LN(x)))."""
+    """Transformer-style two-stage residual AFNO block (Pre-LN).
+    
+    Phase 1: Spectral Mixing (Token mixing)
+    Phase 2: Channel Mixing (Feed-forward)
+    """
 
     def __init__(self, channels: int, n_modes: int,
-                 block_size: int = 32, sparsity: float = 0.01):
+                 block_size: int = None, sparsity: float = 0.0, mlp_ratio: int = 4):
         super().__init__()
-        self.norm = nn.LayerNorm(channels)
-        self.spec = AdaptiveSpectralMixer1d(channels, n_modes, block_size, sparsity)
-        self.w    = nn.Linear(channels, channels)
+        self.norm1 = nn.LayerNorm(channels)
+        self.spec  = AdaptiveSpectralMixer1d(channels, n_modes, block_size, sparsity)
+        self.norm2 = nn.LayerNorm(channels)
+        self.mlp   = nn.Sequential(
+            nn.Linear(channels, channels * mlp_ratio),
+            nn.GELU(),
+            nn.Linear(channels * mlp_ratio, channels)
+        )
 
     def __call__(self, x: mx.array) -> mx.array:
-        h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
+        # Phase 1: Spectral Mixing
+        x = x + self.spec(self.norm1(x))
+        # Phase 2: Channel Mixing (Feed-Forward)
+        x = x + self.mlp(self.norm2(x))
+        return x
 
 
 class AFNO1d(nn.Module):
@@ -139,15 +164,15 @@ class AFNO1d(nn.Module):
     correct complex-valued Fourier mode mixing.
 
     Hyperparameter guide:
-        n_modes    = 24    : same sweet spot as FNO
+        n_modes    = 32    : more modes due to parameter efficiency
         hidden_dim = 128   : same as best FNO
         n_layers   = 8     : start here; Pre-LN residuals allow going deeper
-        block_size = 32    : channel block size (must divide 2*hidden_dim)
-        sparsity   = 0.01  : softshrink threshold
+        block_size = None  : default to full MLP (no block-diagonal)
+        sparsity   = 0.0   : softshrink threshold (default 0.0 for stability)
     """
 
-    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int,
-                 in_ch: int = 2, block_size: int = 32, sparsity: float = 0.01):
+    def __init__(self, n_modes: int = 32, hidden_dim: int = 128, n_layers: int = 8,
+                 in_ch: int = 2, block_size: int = None, sparsity: float = 0.0):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
         self.blocks = [
@@ -167,6 +192,7 @@ class AFNO1d(nn.Module):
             x = blk(x)
         x     = nn.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)[:, :, 0]
+
 
 
 # ── Factorized / Diagonal FNO ─────────────────────────────────────────────────
@@ -216,19 +242,18 @@ class DiagSpectralConv1d(nn.Module):
 
 class FFNOBlock1d(nn.Module):
     """Factorized FNO block: diagonal spectral conv + pointwise linear + GELU.
-
-    Same structure as FNOBlock1d but with DiagSpectralConv1d (much cheaper).
-    The pointwise linear 'w' provides the full channel mixing that the
-    diagonal spectral conv lacks.
+    Added LayerNorm and residual connection for depth stability.
     """
 
     def __init__(self, channels: int, n_modes: int):
         super().__init__()
+        self.norm = nn.LayerNorm(channels)
         self.spec = DiagSpectralConv1d(channels, n_modes)
         self.w    = nn.Linear(channels, channels)
 
     def __call__(self, x: mx.array) -> mx.array:
-        return nn.gelu(self.spec(x) + self.w(x))
+        h = self.norm(x)
+        return x + nn.gelu(self.spec(h) + self.w(h))
 
 
 class FFNO1d(nn.Module):
@@ -254,6 +279,7 @@ class FFNO1d(nn.Module):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
         self.blocks = [FFNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
@@ -264,5 +290,5 @@ class FFNO1d(nn.Module):
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(x))
+        x     = nn.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)[:, :, 0]

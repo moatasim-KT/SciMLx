@@ -91,12 +91,18 @@ class GNOT1d(nn.Module):
         return out
 
 class GNOT2d(nn.Module):
-    """Simplified GNOT for 2-D problems."""
-    
+    """GNOT for 2-D problems using axial attention.
+
+    Uses row-then-column attention (O(N³) memory) instead of full quadratic
+    attention (O(N⁴)) so it fits in M1 8GB for 64×64 grids.
+    Internally identical to GNOT_Axial2d — the registry key GNOT2D/GNOT2d
+    maps here for backward compatibility with experiments.yaml entries.
+    """
+
     def __init__(self, hidden_dim: int, n_layers: int, n_heads: int = 4, in_channels: int = 1):
         super().__init__()
         self.lift = nn.Linear(in_channels + 2, hidden_dim)
-        self.blocks = [TransformerBlock(hidden_dim, n_heads) for _ in range(n_layers)]
+        self.blocks = [AxialTransformerBlock(hidden_dim, n_heads) for _ in range(n_layers)]
         self.norm = nn.LayerNorm(hidden_dim)
         self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2 = nn.Linear(hidden_dim // 2, in_channels)
@@ -108,22 +114,22 @@ class GNOT2d(nn.Module):
             x = x[..., None]
         else:
             B, N1, N2, _ = x.shape
-            
+
         grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
         grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
-        
-        # Flatten spatial dims to tokens
-        x = x.reshape(B, N1 * N2, -1)
-        
-        x = self.lift(x)
+        x = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
+
+        # Lift to hidden dim; AxialTransformerBlock expects [B, H, W, C]
+        B2, H, W, Cin = x.shape
+        x = self.lift(x.reshape(B2 * H * W, Cin)).reshape(B2, H, W, -1)
+
         for blk in self.blocks:
-            x = blk(x)
-        
+            x = blk(x)  # [B, N1, N2, hidden_dim]
+
+        # Project back to output channels
         x = nn.gelu(self.proj1(self.norm(x)))
-        out = self.proj2(x) # [B, N1*N2, C]
-        out = out.reshape(B, N1, N2, -1)
-        
+        out = self.proj2(x)  # [B, N1, N2, in_channels]
+
         if out.shape[-1] == 1:
             return out[:, :, :, 0]
         return out
@@ -140,9 +146,10 @@ class GNOT_FFNO_Block(nn.Module):
         self.attn = MultiHeadAttention(dims, n_heads)
         self.spec = DiagSpectralConv1d(dims, n_modes)
         
-        # Learnable gate for spectral vs spatial weighting
-        self.gate = mx.zeros([1, 1, dims]) 
-        
+        # Learnable gate: linear projection from hidden state to scalar blend weight.
+        # nn.Linear is tracked by nn.Module so gradients flow through it.
+        self.gate = nn.Linear(dims, 1, bias=True)
+
         self.ln2 = nn.LayerNorm(dims)
         self.mlp = nn.Sequential(
             nn.Linear(dims, mlp_ratio * dims),
@@ -156,9 +163,9 @@ class GNOT_FFNO_Block(nn.Module):
         x_attn = self.attn(h, h, h)
         # Spectral path
         x_spec = self.spec(h)
-        
-        # Gated fusion
-        g = mx.sigmoid(self.gate)
+
+        # Gated fusion: gate weight derived from hidden state, broadcast over dim
+        g = mx.sigmoid(self.gate(h))  # [B, N, 1] — trainable blend weight
         x = x + g * x_spec + (1 - g) * x_attn
         
         x = x + self.mlp(self.ln2(x))
@@ -192,4 +199,57 @@ class GNOT_FFNO(nn.Module):
         out = self.proj2(x)
         if out.shape[-1] == 1:
             return out[:, :, 0]
+        return out
+
+class AxialTransformerBlock(nn.Module):
+    """Transformer block using Axial Attention to save memory on 2D grids."""
+    def __init__(self, dims: int, num_heads: int, mlp_ratio: int = 2):
+        super().__init__()
+        from models.axial_attention import AxialAttention2d
+        self.attn = AxialAttention2d(dims, num_heads)
+        self.ln1 = nn.LayerNorm(dims)
+        self.ln2 = nn.LayerNorm(dims)
+        self.mlp = nn.Sequential(
+            nn.Linear(dims, mlp_ratio * dims),
+            nn.GELU(),
+            nn.Linear(mlp_ratio * dims, dims),
+        )
+
+    def __call__(self, x: mx.array) -> mx.array:
+        # x: [B, H, W, C]
+        x = x + self.attn(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
+        return x
+
+class GNOT_Axial2d(nn.Module):
+    """Memory-efficient 2D GNOT using Axial Attention."""
+    def __init__(self, hidden_dim: int, n_layers: int, n_heads: int = 4, in_channels: int = 1):
+        super().__init__()
+        self.lift = nn.Linear(in_channels + 2, hidden_dim)
+        self.blocks = [AxialTransformerBlock(hidden_dim, n_heads) for _ in range(n_layers)]
+        self.norm = nn.LayerNorm(hidden_dim)
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, in_channels)
+
+    def __call__(self, x: mx.array) -> mx.array:
+        # x : [B, N1, N2] or [B, N1, N2, C]
+        if x.ndim == 3:
+            B, N1, N2 = x.shape
+            x = x[..., None]
+        else:
+            B, N1, N2, _ = x.shape
+            
+        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
+        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
+        x     = mx.concatenate([x, grid1, grid2], axis=-1)  
+        
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        
+        x = nn.gelu(self.proj1(self.norm(x)))
+        out = self.proj2(x)
+        
+        if out.shape[-1] == 1:
+            return out[:, :, :, 0]
         return out

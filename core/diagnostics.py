@@ -61,7 +61,9 @@ def parse_log_file(log_path: Path) -> Dict[str, Any]:
         return results
 
     try:
+        import re as _re
         content = log_path.read_text()
+        grad_norms: list = []
         for line in content.splitlines():
             if line.startswith("val_l2_rel:"):
                 results["val"] = float(line.split(":")[1].strip())
@@ -69,10 +71,26 @@ def parse_log_file(log_path: Path) -> Dict[str, Any]:
                 results["mem_mb"] = float(line.split(":")[1].strip())
             elif line.startswith("diag_"):
                 key = line.split(":")[0].strip()
-                val = float(line.split(":")[1].strip())
-                results["diag"][key] = val
+                try:
+                    val = float(line.split(":")[1].strip())
+                    results["diag"][key] = val
+                except (ValueError, IndexError):
+                    pass
             elif line.startswith("inspect_id:"):
                 results["inspect_id"] = line.split(":", 1)[1].strip()
+            else:
+                # Extract per-step grad norm logged by trainer every 20 steps:
+                # "step XXXXX (XX.X%%) | loss: ... | gnorm: X.XXX | ..."
+                m = _re.search(r"gnorm:\s*([\d.]+)", line)
+                if m:
+                    try:
+                        grad_norms.append(float(m.group(1)))
+                    except ValueError:
+                        pass
+
+        if grad_norms:
+            results["diag"]["diag_grad_norm_max"]  = max(grad_norms)
+            results["diag"]["diag_grad_norm_mean"] = sum(grad_norms) / len(grad_norms)
 
         # Classify crash type if no val_l2_rel found
         if results["val"] is None:

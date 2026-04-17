@@ -13,9 +13,11 @@
       --bg0: #0D1117; --bg1: #161B22; --bg2: #21262D;
       --border: #30363D;
       --indigo: #7C3AED; --indigo-dim: rgba(124,58,237,0.15);
-      --cyan: #22D3EE; --green: #4ADE80; --red: #F87171;
-      --amber: #FBBF24; --purple: #A78BFA;
-      --txt: #E6EDF3; --txt2: #8B949E; --txt3: #484F58;
+      --cyan: #22D3EE; --teal: #2DD4BF; --blue: #60A5FA;
+      --green: #4ADE80; --red: #F87171; --orange: #FB923C;
+      --amber: #FBBF24; --yellow: #FDE047; --pink: #F472B6;
+      --purple: #A78BFA;
+      --txt: #E6EDF3; --txt1: #E6EDF3; --txt2: #8B949E; --txt3: #484F58;
       --mono: 'JetBrains Mono', monospace;
       --sans: 'Inter', sans-serif;
     }
@@ -147,6 +149,17 @@
     /* ── Empty states ── */
     .empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--txt2); font-size: 13px; }
 
+    /* ── Models tab ── */
+    .champion-row { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+    .champion-row:hover { background: rgba(255,255,255,.03); }
+    .champion-row.selected { background: var(--indigo-dim); }
+    .badge-champion { background: rgba(251,191,36,.15); color: var(--amber); }
+    .mlflow-link { color: var(--cyan); font-size: 10px; text-decoration: underline; cursor: pointer; }
+    .versions-panel { width: 400px; background: var(--bg1); border-left: 1px solid var(--border);
+                      overflow-y: auto; flex-shrink: 0; display: flex; flex-direction: column; }
+    .ckpt-path { font-family: var(--mono); font-size: 9px; color: var(--txt3);
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -251,7 +264,7 @@ function MiniChart({ points }) {
 }
 
 // ── SOTA sidebar card ─────────────────────────────────────────────────────────
-function BmCard({ bm, data, active, onClick }) {
+function BmCard({ bm, data, active, onClick, champion }) {
   const ratio = data?.ratio;
   const fillPct = ratio ? Math.min(100, (1/ratio)*100) : 0;
   const color = barColor(ratio);
@@ -263,6 +276,11 @@ function BmCard({ bm, data, active, onClick }) {
         <span className="bm-sota">/ {data?.sota ? fmt(data.sota,4) : "—"}</span>
         {data?.beats_sota && <span style={{color:"#4ADE80",fontSize:10}}>✓ SOTA</span>}
       </div>
+      {champion && (
+        <div style={{fontSize:9,color:"var(--amber)",fontFamily:"var(--mono)",marginTop:3}}>
+          ★ {champion.model}
+        </div>
+      )}
       <div className="bm-bar">
         <div className="bm-bar-fill" style={{width:`${fillPct}%`, background: color}}/>
       </div>
@@ -323,7 +341,7 @@ function LogPanel({ expName }) {
 }
 
 // ── Experiment inspector (right panel) ────────────────────────────────────────
-function Inspector({ exp, sota, onClose }) {
+function Inspector({ exp, sota, archMap, onClose }) {
   const [tab, setTab] = useState("details");
   const [parentExp, setParentExp] = useState(null);
 
@@ -358,12 +376,18 @@ function Inspector({ exp, sota, onClose }) {
           <button className="btn" style={{padding:"2px 8px",fontSize:11}} onClick={onClose}>✕</button>
         </div>
         <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt2)"}}>{exp.description}</div>
-        <div style={{marginTop:6,display:"flex",gap:6}}>
-          {["details","log","diag"].map(t => (
-            <button key={t} className={`btn ${tab===t?"btn-primary":""}`} style={{padding:"3px 10px",fontSize:11}} onClick={()=>setTab(t)}>
-              {t}
-            </button>
-          ))}
+        <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
+          {["details","log","diag","arch"].map(t => {
+            const hasArch = t === "arch" && archMap?.[exp?.model];
+            return (
+              <button key={t} className={`btn ${tab===t?"btn-primary":""}`}
+                style={{padding:"3px 10px",fontSize:11,
+                        ...(t==="arch"&&hasArch ? {borderColor:"var(--amber)",color:"var(--amber)"} : {})}}
+                onClick={()=>setTab(t)}>
+                {t}{t==="arch"&&hasArch?" ✦":""}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -485,13 +509,34 @@ function Inspector({ exp, sota, onClose }) {
           </> : <div className="text-block">No spectral diagnostics recorded for this experiment.</div>}
           {exp.inspect_url && <img src={`${API}${exp.inspect_url}`} style={{width:"100%",borderRadius:4,border:"1px solid var(--border)"}} alt="diagnostic"/>}
         </>}
+
+        {tab === "arch" && (() => {
+          const archUrl = archMap?.[exp?.model];
+          return archUrl ? (
+            <div>
+              <div className="sec-label">Architecture — {exp.model}</div>
+              <img
+                src={`${API}${archUrl}`}
+                alt={`${exp.model} architecture`}
+                style={{width:"100%",borderRadius:6,border:"1px solid var(--border)",
+                        marginTop:4,display:"block"}}
+              />
+            </div>
+          ) : (
+            <div className="text-block">
+              No architecture diagram available for <code>{exp?.model}</code>.
+              <br/><br/>
+              Run <code>uv run python scripts/gen_arch_viz.py</code> to generate.
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
 // ── Experiment table ──────────────────────────────────────────────────────────
-function ExpTable({ experiments, sota, selectedId, onSelect, bmFilter }) {
+function ExpTable({ experiments, sota, selectedId, onSelect, bmFilter, championExpNames }) {
   const [sortKey, setSortKey] = useState("timestamp");
   const [sortDir, setSortDir] = useState(-1);
   const [search, setSearch] = useState("");
@@ -563,7 +608,13 @@ function ExpTable({ experiments, sota, selectedId, onSelect, bmFilter }) {
                   <td className="td-model">{e.model}</td>
                   <td className={`td-val ${valClass(e.val_l2_rel, bmSota)}`}>{fmt(e.val_l2_rel,6)}</td>
                   <td className="td-mem">{fmt(e.memory_gb,2)}</td>
-                  <td><span className={`badge ${e.status==="keep"?"badge-keep":e.status==="discard"?"badge-discard":"badge-crash"}`}>{e.status}</span></td>
+                  <td>
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      <span className={`badge ${e.status==="keep"?"badge-keep":e.status==="discard"?"badge-discard":"badge-crash"}`}>{e.status}</span>
+                      {championExpNames?.has(e.config?.name || e.description?.split(" ")[0]) &&
+                        <span className="badge badge-champion" title="Current champion for this benchmark">★</span>}
+                    </div>
+                  </td>
                   <td style={{color:"var(--txt2)",maxWidth:240,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.description}</td>
                 </tr>
               );
@@ -735,6 +786,1030 @@ function LineageDAG({ lineage, onSelect }) {
   );
 }
 
+// ── Static metadata ───────────────────────────────────────────────────────────
+const MODEL_INFO = {
+  FNO:       { family:"Fourier NO",         domain:"Spectral",         desc:"Foundational operator learning via spectral convolutions in Fourier space. Resolution-invariant global receptive field.", features:["FFT convolution","Resolution-invariant","Global receptive field"] },
+  FNO2D:     { family:"Fourier NO",         domain:"Spectral",         desc:"2D extension of FNO applying SpectralConv2D with full 2D FFT for spatial PDE fields.", features:["2D SpectralConv","Lifting + projection","Pointwise linear skip"] },
+  RFNO:      { family:"Fourier NO",         domain:"Spectral",         desc:"Real-valued FNO exploiting Hermitian symmetry of rfft to halve parameter count.", features:["Half-spectrum weights","Hermitian symmetry","Parameter efficient"] },
+  RFNO2D:    { family:"Fourier NO",         domain:"Spectral",         desc:"Real-valued 2D FNO using rfft2, reducing spectral weight storage via Hermitian symmetry.", features:["rfft2 symmetry","Reduced parameters","2D real FFT"] },
+  TFNO:      { family:"Tensor FNO",         domain:"Spectral",         desc:"Tucker-decomposed FNO compressing spectral weights via tensor factorization.", features:["Tucker decomposition","Parameter compression","Factorized weights"] },
+  TFNO2D:    { family:"Tensor FNO",         domain:"Spectral",         desc:"2D Tucker-factorized FNO with core tensor + factor matrices for SpectralConv2D weights.", features:["Tucker factors","2D spectral","Compressed representation"] },
+  CPFNO:     { family:"Tensor FNO",         domain:"Spectral",         desc:"CP-decomposed FNO using CANDECOMP/PARAFAC rank-r decomposition of spectral weights.", features:["CP decomposition","Rank-r approximation","Outer product sum"] },
+  FFNO:      { family:"Factorized FNO",     domain:"Spectral",         desc:"Factorizes 2D spectral convolution into separate 1D passes along x and y axes.", features:["Axis-factorized","Separate x/y passes","Efficient 2D"] },
+  RTFNO:     { family:"Tensor FNO",         domain:"Spectral",         desc:"Residual Tensor FNO adding long skip connections from block input to output for improved gradient flow.", features:["Residual connections","Tensor decomposed","Skip connections"] },
+  AFNO:      { family:"Adaptive FNO",       domain:"Spectral",         desc:"Learns per-frequency adaptive filters mixing tokens in frequency domain with sparsity-promoting SoftShrink.", features:["Per-frequency weights","Token mixing","Adaptive filtering"] },
+  SNO2D:     { family:"Spectral NO",        domain:"Spectral",         desc:"Pure spectral operator mapping directly between Fourier coefficients without spatial convolution path.", features:["Direct coefficient map","Frequency domain only","No spatial MLP"] },
+  SSNO:      { family:"State-Space NO",     domain:"Hybrid",           desc:"Combines S4D state-space model with spectral convolution layer, fused via gating mechanism.", features:["S4D state-space","Spectral convolution","Gating fusion"] },
+  S4NO:      { family:"State-Space NO",     domain:"Hybrid",           desc:"S4D-based neural operator: diagonal state matrix + Fourier spectral convolution path.", features:["Diagonal state matrix","S4D internals","FFT processing"] },
+  MemNO:     { family:"Memory NO",          domain:"Hybrid",           desc:"Multi-scale S4D memory blocks capturing long-range dependencies, combined with Fourier spectral path.", features:["Multi-scale S4D","Memory mechanism","Fourier block"] },
+  WNO:       { family:"Wavelet NO",         domain:"Wavelet",          desc:"Multi-level Haar wavelet transform replaces Fourier basis for multi-resolution analysis and kernel integral learning.", features:["Haar wavelets","Multi-level decomp","Kernel integral"] },
+  MambaNO:   { family:"Mamba NO",           domain:"State-Space",      desc:"Mamba selective state-space model applied as a neural operator backbone.", features:["Selective SSM","Mamba blocks","Long sequences"] },
+  VSMNO2D:   { family:"Mixture of Experts", domain:"Spectral",         desc:"Variational Spectral Mixture NO with router gating over multiple spectral convolution expert paths.", features:["MoE gating","Spectral mixture","Variational"] },
+  DeepONet:  { family:"Deep Operator Net",  domain:"Operator Learning", desc:"Branch-trunk architecture: branch encodes input function, trunk encodes query coordinates, dot product fuses them.", features:["Branch + trunk","Dot product fusion","Function-to-function"] },
+  PODDeepONet:{ family:"Deep Operator Net", domain:"Operator Learning", desc:"DeepONet using precomputed POD basis modes from SVD as the trunk, reducing learnable parameters.", features:["POD basis","SVD decomposition","Modal coefficients"] },
+  DualDeepONet:{ family:"Deep Operator Net",domain:"Operator Learning", desc:"Two-branch DeepONet accepting primary and auxiliary input functions, combined with trunk.", features:["Dual branch","Auxiliary inputs","Combined embeddings"] },
+  TimeDeepONet:{ family:"Deep Operator Net",domain:"Operator Learning", desc:"Time-conditioned DeepONet with sinusoidal temporal positional encoding in the trunk network.", features:["Temporal encoding","Time conditioning","Sinusoidal PE"] },
+  FEDONet2D: { family:"Deep Operator Net",  domain:"Operator Learning", desc:"Fourier-Enhanced DeepONet: branch uses spectral convolution; trunk is standard MLP. Designed for 2D spatial fields.", features:["Spectral branch","MLP trunk","Fourier-enhanced"] },
+  GNOT:      { family:"GNOT",               domain:"Transformer",      desc:"Graph Neural Operator Transformer with cross-attention on irregular meshes and geometric encoding.", features:["Cross-attention","Irregular grids","Geometric encoding"] },
+  GNOT2D:    { family:"GNOT",               domain:"Transformer",      desc:"2D GNOT for structured spatial grids with query-point cross-attention.", features:["2D attention","Query points","Node embedding"] },
+  Transolver: { family:"Transolver",        domain:"Transformer",      desc:"Physics-aware transformer slicing PDE fields into physics-meaningful tokens for cross-attention.", features:["Physics tokens","Slice tokenization","Cross-attention"] },
+  Transolver2D:{ family:"Transolver",       domain:"Transformer",      desc:"2D Transolver for spatial PDE fields with structured grid tokenization.", features:["2D physics tokens","Structured grids","Attention decoder"] },
+  HANO2D:    { family:"Hierarchical Attn NO",domain:"Hybrid",          desc:"Hierarchical Attention Neural Operator combining global spectral convolution with local axial attention.", features:["Axial attention","Spectral + attention","Hierarchical"] },
+  AttentionEnhancedFNO2D:{ family:"Hybrid Attention FNO",domain:"Hybrid",desc:"FNO2D augmented with parallel row-wise and column-wise axial attention paths in each block.", features:["Axial attention","3-way parallel","Spectral + local"] },
+  HNN:       { family:"Physics-Constrained",domain:"Physics-Informed", desc:"Hamiltonian Neural Network learning symplectic dynamics by parameterizing the Hamiltonian scalar H(q,p).", features:["Hamiltonian scalar","Symplectic gradient","Energy conserving"] },
+  EnergyFNO: { family:"Physics-Constrained",domain:"Physics-Informed", desc:"FNO with energy conservation normalization layers ensuring total field energy is preserved.", features:["Energy conservation","Normalization","Physics constraint"] },
+  PINN:      { family:"PINN",               domain:"Physics-Informed", desc:"Physics-Informed Neural Network enforcing PDE residuals and boundary conditions as soft loss constraints.", features:["PDE residual loss","Boundary conditions","Auto-differentiation"] },
+  PACMANN:   { family:"PINN",               domain:"Physics-Informed", desc:"PINN augmented with PAC-Learning theory bounds and spectral refinement for generalization guarantees.", features:["PAC-Learning bounds","Spectral refinement","Dual loss"] },
+  PINO:      { family:"Physics-Informed NO",domain:"Physics-Informed", desc:"Physics-Informed Neural Operator combining FNO backbone with PDE residual loss. (Diverges in this repo — do not queue.)", features:["FNO backbone","PDE loss","Operator + physics"] },
+  cPIKAN_FNO:{ family:"KAN FNO",           domain:"Hybrid",           desc:"Continuous physics-informed KAN FNO with B-spline edge activations and PDE constraint loss.", features:["B-spline KAN","PDE constraint","Physics-informed"] },
+  KAN_FNO:   { family:"KAN FNO",           domain:"Hybrid",           desc:"FNO with Kolmogorov-Arnold Network skip connections using learnable B-spline edge functions.", features:["KAN skip","B-spline edges","Learnable activations"] },
+  ModifiedKAN_FNO:{ family:"KAN FNO",      domain:"Hybrid",           desc:"Simplified KAN FNO with adaptive knot placement and reduced parameter count per block.", features:["Adaptive knots","Simplified KAN","Sparse grid"] },
+  NeuralODE: { family:"Neural ODE",        domain:"Continuous",       desc:"Continuous-depth model defining hidden state dynamics via neural network ODE, solved with adjoint method.", features:["ODE solver","Continuous depth","Adjoint gradient"] },
+  LatentODE: { family:"Neural ODE",        domain:"Continuous",       desc:"VAE encoder + Neural ODE for continuous-time latent dynamics, decoded to observations.", features:["VAE encoder","Latent dynamics","ODE decoder"] },
+  UDE:       { family:"Neural ODE",        domain:"Continuous",       desc:"Universal Differential Equation: known physics RHS augmented with learned neural network correction term.", features:["Known + neural RHS","Hybrid dynamics","Physics augmentation"] },
+  HybridDecoderDeepONet2D:{ family:"Hybrid",domain:"Hybrid",          desc:"FNO2D encoder passes latent features h(x,y) as branch input to a DeepONet decoder.", features:["FNO encoder","DeepONet decoder","Spectral branch"] },
+  HybridFNODeepONet2D:{ family:"Hybrid",   domain:"Hybrid",           desc:"Parallel FNO2D and DeepONet paths fused by a learned linear projection.", features:["Parallel paths","Spectral + operator","Learned fusion"] },
+  GNOT_FFNO: { family:"Hybrid",            domain:"Hybrid",           desc:"Factorized FNO spectral path and GNOT graph-attention path fused at feature level.", features:["FFNO + GNOT","Spectral + graph","Feature fusion"] },
+  WNO_GNOT:  { family:"Hybrid",            domain:"Hybrid",           desc:"Wavelet Neural Operator and GNOT cross-attention fused by MLP projection.", features:["WNO + GNOT","Wavelet + graph","Dual-path"] },
+  FNO_MC:    { family:"Uncertainty",       domain:"Uncertainty",      desc:"FNO with MC Dropout: 50 stochastic forward passes at inference yield mean + epistemic uncertainty.", features:["MC Dropout","50 forward passes","Mean ± std"] },
+};
+
+const BENCHMARK_INFO = {
+
+  burgers_1d: {
+    name:"Burgers 1D", domain:"Fluid Dynamics", color:"var(--cyan)",
+    resolution:"1D × 1024", difficulty:"Medium",
+    equation:"∂u/∂t + u·∂u/∂x = ν·∂²u/∂x²",
+    formulation:"Map initial condition u(x,0) to solution u(x,T) at fixed future time T. The viscosity ν controls shock sharpness. Lower ν produces near-discontinuous shocks requiring fine-scale resolution.",
+    ic:"Random superposition of low-frequency sinusoidal modes: u(x,0) = Σ aₖ sin(2πkx/L + φₖ), k=1..8, coefficients drawn from N(0,1).",
+    bc:"Periodic: u(0,t) = u(L,t). Domain x ∈ [0,1].",
+    desc:"Viscous Burgers equation — the canonical nonlinear 1D PDE combining advection and diffusion. Develops sharp shock-like gradients from smooth initial data. A standard stress-test for any operator learning approach.",
+    note:"Low-ν regime (ν=0.001) is hardest — shocks approach discontinuities. High-frequency spectral modes are required.",
+    numerical:"Classically solved with finite-difference or finite-volume schemes on uniform 1D grids. Upwind or WENO schemes handle shock capturing; Crank-Nicolson handles diffusion implicitly. Time-stepping via RK4 with CFL-limited dt ~ 10⁻⁴. A single high-resolution solve takes milliseconds, but Monte Carlo studies over thousands of ICs require hours — motivating the operator-learning surrogate.",
+  },
+
+  burgers_nu_001: {
+    name:"Burgers (ν=0.001)", domain:"Fluid Dynamics", color:"var(--cyan)",
+    resolution:"1D × 1024", difficulty:"Hard",
+    equation:"∂u/∂t + u·∂u/∂x = 0.001·∂²u/∂x²",
+    formulation:"Same as Burgers 1D but fixed at the hardest viscosity regime ν=0.001. Nearly inviscid — solutions develop near-discontinuous shocks by T=1 from smooth initial data.",
+    ic:"Random Fourier modes with limited bandwidth; same generation as burgers_1d.",
+    bc:"Periodic: u(0,t) = u(L,t).",
+    desc:"Low-viscosity Burgers sub-benchmark. At ν=0.001 the solution develops near-shock features that require extremely high spectral resolution to capture accurately. Separates high-frequency-capable models from those that blur shocks.",
+    note:"Shock width scales with sqrt(ν) ≈ 0.032. Models that blur the shock plateau near val_l2_rel ~ 0.02 rather than true solution.",
+    numerical:"Requires WENO5 or ENO shock-capturing schemes with ~4096 cells to resolve the shock profile at this viscosity. Operator-learning targets reducing this from thousands of fine-grid solves to a single forward pass.",
+  },
+
+  burgers_nu_01: {
+    name:"Burgers (ν=0.01)", domain:"Fluid Dynamics", color:"var(--teal)",
+    resolution:"1D × 1024", difficulty:"Medium",
+    equation:"∂u/∂t + u·∂u/∂x = 0.01·∂²u/∂x²",
+    formulation:"Intermediate-viscosity Burgers. Shock features are present but diffusively broadened — easier than ν=0.001 but harder than ν=0.1.",
+    ic:"Random Fourier modes (same generation as burgers_1d).",
+    bc:"Periodic: u(0,t) = u(L,t).",
+    desc:"Moderate-viscosity Burgers sub-benchmark. Bridges the gap between diffusion-dominated and shock-dominated regimes. Useful for ablating how well models handle intermediate-scale gradient features.",
+    note:"Good intermediate difficulty; models that handle ν=0.001 should also handle this comfortably.",
+    numerical:"Standard finite-difference with upwind advection and central diffusion. Grid resolution of 256 points is usually sufficient at this viscosity.",
+  },
+
+  kdv_1d: {
+    name:"KdV 1D", domain:"Wave Dynamics / Solitons", color:"var(--purple)",
+    resolution:"1D × 1024", difficulty:"Medium",
+    equation:"∂u/∂t + u·∂u/∂x + ε·∂³u/∂x³ = 0",
+    formulation:"Map initial condition u(x,0) to u(x,T). The dispersive ∂³u/∂x³ term balances the nonlinear steepening from u·∂u/∂x, creating stable soliton solutions. ε controls dispersion strength.",
+    ic:"Superposition of one or more sech² soliton profiles: u(x,0) = Σ Aₖ sech²((x - xₖ)/wₖ), or random Fourier modes at low wavenumber.",
+    bc:"Periodic: u(0,t) = u(L,t). Domain x ∈ [0, 2π].",
+    desc:"Korteweg–de Vries equation — the prototypical integrable PDE with exact soliton solutions. Solitons must pass through each other without deformation; any numerical dissipation or phase error destroys this property.",
+    note:"Soliton amplitude determines speed: faster solitons overtake slower ones. Phase error from insufficient spectral resolution accumulates and moves solitons to wrong positions.",
+    numerical:"Solved with pseudo-spectral methods (FFT-based spatial differentiation) combined with integrating-factor time-stepping to handle the stiff dispersive term exactly. Alternatively, symplectic finite-difference schemes preserve the Hamiltonian structure. Single solves are cheap (~seconds), but the operator learns the entire IC-to-solution map.",
+  },
+
+  wave_1d: {
+    name:"Wave 1D", domain:"Wave Dynamics", color:"var(--blue)",
+    resolution:"1D × 1024", difficulty:"Easy",
+    equation:"∂²u/∂t² = c²·∂²u/∂x²",
+    formulation:"Given initial displacement u(x,0) and velocity u_t(x,0), predict solution u(x,T) at time T. Wave speed c may vary across samples. Can be reformulated as a first-order system: [u, v]_t = [v, c²u_xx].",
+    ic:"Random smooth initial displacement and zero initial velocity: u(x,0) = Σ aₖ sin(2πkx), u_t(x,0) = 0.",
+    bc:"Periodic: u(0,t) = u(L,t). Some variants use Dirichlet u=0 at both ends.",
+    desc:"1D linear wave equation. Exact solution is given by d'Alembert's formula: u(x,t) = ½[u₀(x+ct) + u₀(x-ct)]. Tests whether operators can learn pure advection at varying speeds without dissipation or dispersion.",
+    note:"Analytically solvable — any error is purely numerical. Good baseline: models that fail here have fundamental issues.",
+    numerical:"Classically solved with second-order finite differences (Yee scheme) or spectral methods. Stability requires CFL condition c·dt/dx ≤ 1. No numerical dissipation is needed — the challenge is achieving this in a learned surrogate.",
+  },
+
+  advection_1d: {
+    name:"Advection 1D", domain:"Transport", color:"var(--teal)",
+    resolution:"1D × 1024", difficulty:"Easy",
+    equation:"∂u/∂t + v·∂u/∂x = 0",
+    formulation:"Given initial profile u(x,0), predict u(x,T). Exact solution is pure translation: u(x,T) = u₀(x - vT). Advection velocity v may vary across samples. Tests whether operators learn translation invariance.",
+    ic:"Random superposition of smooth sinusoidal modes with random phase; compact bump profiles also used.",
+    bc:"Periodic: u(0,t) = u(L,t).",
+    desc:"Pure linear advection — no diffusion, no source terms. The exact solution simply translates the initial profile at speed v. Any operator that cannot exactly translate a function will show systematic phase error that grows with T.",
+    note:"Trivial analytically, surprisingly hard for neural operators: phase error can accumulate to O(1) over long rollouts.",
+    numerical:"Finite-difference upwind schemes introduce artificial diffusion that smears features. High-order WENO or pseudo-spectral methods are preferred. Semi-Lagrangian schemes track characteristics exactly and are unconditionally stable, commonly used in atmospheric models.",
+  },
+
+  euler_1d: {
+    name:"Euler 1D", domain:"Compressible Flow", color:"var(--orange)",
+    resolution:"1D × 512", difficulty:"Hard",
+    equation:"∂U/∂t + ∂F(U)/∂x = 0,  U=[ρ, ρv, E]ᵀ",
+    formulation:"Inviscid compressible gas dynamics in 1D conservation form. State vector U = [density ρ, momentum ρv, total energy E]. Flux F(U) = [ρv, ρv²+p, (E+p)v]. Closed by ideal gas EOS: p=(γ-1)(E - ½ρv²). Maps initial state U(x,0) → U(x,T).",
+    ic:"Riemann problem initial conditions: piecewise constant left/right states with a discontinuity at x=0.5. Random left/right (ρ,v,p) states drawn from physically consistent ranges.",
+    bc:"Transmissive (outflow) at both ends, or periodic for smooth test cases.",
+    desc:"1D Euler equations — inviscid compressible gas dynamics. Solutions contain shocks, rarefaction waves, and contact discontinuities (Riemann problems). The hardest 1D benchmark: discontinuous solutions require special treatment and multi-output (ρ, v, p) adds complexity.",
+    note:"Shock speed is determined by Rankine-Hugoniot conditions. Models that smear the contact discontinuity will show large L2 errors near wave fronts.",
+    numerical:"Solved with finite-volume Godunov-type schemes (Roe, HLLC, AUSM flux splitting) on uniform grids. Each cell-face flux is computed from an approximate Riemann solver. High-order reconstruction (MUSCL, WENO) with slope limiters prevents spurious oscillations. CFL-limited explicit time-stepping. A standard tool is OpenFOAM's sonicFoam or hand-coded 1D Euler solvers. Each solve is cheap but thousands of random Riemann data require operator learning.",
+  },
+
+  darcy_2d: {
+    name:"Darcy Flow 2D", domain:"Porous Media / Subsurface Flow", color:"var(--orange)",
+    resolution:"2D 64×64", difficulty:"Hard",
+    equation:"-∇·(a(x)∇u) = f,  x ∈ [0,1]²",
+    formulation:"Steady-state elliptic PDE. Given spatially varying permeability field a(x) (lognormal random field) and constant source f, solve for pressure u(x). This is a parameter-to-solution map: a(x) → u(x), learned as a neural operator.",
+    ic:"N/A (steady-state). Permeability field a(x) = exp(G(x)) where G is a Gaussian random field with Matérn-3/2 kernel, length scale l=0.1.",
+    bc:"Zero Dirichlet on top/bottom: u(x,0)=u(x,1)=0. Periodic in x: u(0,y)=u(1,y). Source f=1 uniform.",
+    desc:"Steady-state Darcy flow through heterogeneous porous media. This is the foundational benchmark for operator learning — the original FNO paper used this problem. Multiscale permeability heterogeneity makes it genuinely hard: the pressure response is non-local and requires capturing long-range correlations.",
+    note:"The operator must be sensitive to fine-scale permeability variations that create non-local pressure effects. Averaging or smoothing the permeability before prediction leads to large errors.",
+    numerical:"Traditionally solved with finite-element methods (FEM) on structured or unstructured meshes. Piecewise linear (P1) elements with direct sparse linear solvers (UMFPACK, PARDISO) handle the symmetric positive-definite system. For random fields requiring thousands of solves (uncertainty quantification), Monte Carlo sampling drives total compute cost to hours/days. Operator learning replaces the expensive solver with a single neural network forward pass.",
+  },
+
+  elasticity_2d: {
+    name:"Elasticity 2D", domain:"Solid Mechanics / Structural Analysis", color:"var(--red)",
+    resolution:"2D 64×64", difficulty:"Hard",
+    equation:"∇·σ = 0,  σ = C:ε,  ε = ½(∇u + (∇u)ᵀ)",
+    formulation:"2D plane-stress linear elasticity. Given material geometry (Young's modulus E(x) field with inclusions), predict displacement field (u_x, u_y). Constitutive law: σ = C:ε where C is the 4th-order stiffness tensor. This is a multi-output regression: geometry → (u_x, u_y).",
+    ic:"N/A (static/quasi-static). Material geometry: random circular/elliptical stiff inclusions embedded in soft background matrix.",
+    bc:"Fixed displacement on bottom boundary (u=0). Applied traction/displacement on top boundary. Traction-free on left/right sides.",
+    desc:"2D linear elasticity mapping material microstructure to displacement fields. Arises in mechanical design, geomechanics, and composite material analysis. Multi-output (two displacement components) increases difficulty. The solution is globally influenced by the distribution of inclusions — a classic non-local operator.",
+    note:"Stress concentrations near inclusion boundaries drive prediction errors. Models that cannot resolve sharp material interfaces underpredict peak stress.",
+    numerical:"The industry standard is FEM with quadrilateral Q1 or triangular P2 elements. Mesh generation (e.g. Gmsh, ANSYS Meshing) conforming to inclusion boundaries is crucial for accuracy. Solved with assembled global stiffness matrix K via conjugate gradient or direct sparse solvers. A commercial solve in ANSYS or Abaqus takes minutes per geometry; surrogate operators collapse this to milliseconds for design optimization loops.",
+  },
+
+  ns_2d: {
+    name:"Navier-Stokes 2D", domain:"Fluid Dynamics / Turbulence", color:"var(--indigo)",
+    resolution:"2D 64×64", difficulty:"Very Hard",
+    equation:"∂ω/∂t + u·∇ω = ν∇²ω,  u = ∇×ψ,  ∇²ψ = -ω",
+    formulation:"2D incompressible Navier-Stokes in vorticity-streamfunction form. Vorticity ω = ∂v/∂x - ∂u/∂y is the prognostic variable; velocity is recovered via the Poisson equation ∇²ψ = -ω. Given ω(x,0), predict ω(x,T) for T up to 10 advective time units at Re=1000 (ν=10⁻³). Forcing f(x) keeps turbulence statistically stationary.",
+    ic:"Random vorticity field drawn from Gaussian random field with Matérn-5/2 kernel. Initialized at coarser resolution and interpolated to 64×64.",
+    bc:"Fully periodic: ω(0,y)=ω(Lx,y), ω(x,0)=ω(x,Ly). Domain [0,2π]².",
+    desc:"2D Navier-Stokes is the hardest benchmark in this suite. Turbulent flow at Re=1000 exhibits sensitive dependence on initial conditions — small errors amplify exponentially over time. The operator must not just be accurate at T=1 but remain stable and physically consistent up to T=10.",
+    note:"Lyapunov divergence timescale ~ 1 advective unit. Beyond T~3, pointwise accuracy becomes impossible; statistical accuracy (energy spectrum, enstrophy) is the realistic target.",
+    numerical:"Solved pseudo-spectrally (Fourier collocation) with 2/3 dealiasing rule. Time-stepping: 4th-order Runge-Kutta with dt=1e-3, taking ~10,000 steps per simulation. The Poisson equation is solved exactly in Fourier space. Reference: Kochkov et al. 2021, Li et al. 2021 (FNO). A single high-resolution solve takes ~minutes; ensembles for climate/turbulence statistics require weeks of HPC time.",
+  },
+
+  ns_hre_2d: {
+    name:"Navier-Stokes 2D (High Re)", domain:"Fluid Dynamics / Turbulence", color:"var(--pink)",
+    resolution:"2D 64×64", difficulty:"Very Hard",
+    equation:"∂ω/∂t + u·∇ω = ν∇²ω + f,  ν = 10⁻⁴",
+    formulation:"Same vorticity-streamfunction formulation as ns_2d but at Re=10,000 (ν=10⁻⁴). More turbulent, finer-scale structures, stronger cascade from large to small scales. The 64×64 grid is significantly under-resolved at this Reynolds number — tests how well models can predict coarse-grained behavior.",
+    ic:"Gaussian random vorticity field; same procedure as ns_2d but with higher-amplitude initial conditions to trigger stronger turbulence faster.",
+    bc:"Fully periodic. Domain [0,2π]².",
+    desc:"High Reynolds number (Re=10,000) Navier-Stokes. At this turbulence level the solution is deeply chaotic — the operator is learning a coarse-grained statistical surrogate rather than a pointwise accurate map. The most challenging dynamical regime in the benchmark suite.",
+    note:"At 64×64 the flow is marginally resolved. Operators that implicitly perform subgrid-scale modeling (like attention-based models) may outperform pure spectral approaches.",
+    numerical:"Direct numerical simulation requires resolution N ~ Re^(3/4) per dimension — about 1000×1000 for Re=10k. The 64×64 benchmark instead treats this as LES (Large Eddy Simulation) with implicit SGS modeling. Industry uses OpenFOAM (finite-volume), Nek5000 (spectral elements), or GPU-accelerated pseudo-spectral codes. A single DNS at Re=10k takes hours on a cluster; surrogate operators enable real-time ensemble prediction.",
+  },
+
+  allen_cahn_2d: {
+    name:"Allen-Cahn 2D", domain:"Phase-Field / Reaction-Diffusion", color:"var(--green)",
+    resolution:"2D 64×64", difficulty:"Medium",
+    equation:"∂u/∂t = ε²∇²u + u - u³",
+    formulation:"Phase-field equation modeling the evolution of a binary interface. u ∈ [-1,+1] represents two phases (e.g. solid/liquid). The term u-u³ drives u toward ±1 (phase separation); ε²∇²u penalizes sharp interfaces. Maps u(x,0) → u(x,T). ε controls interface thickness.",
+    ic:"Random smooth field u(x,0) ∈ (-1,1) generated as a Gaussian random field, then clipped. Creates random blob-like initial phase distributions.",
+    bc:"Periodic on all boundaries. Domain [0,1]².",
+    desc:"Allen-Cahn equation — the canonical phase-field model for interface motion. The interface (u=0 level-set) moves by mean curvature, merging and annihilating circular domains over time. Tests whether operators can track topological changes (merging interfaces) and multi-scale dynamics (thin interface + large-scale rearrangement).",
+    note:"Interface topology changes (mergers) are discontinuous in parameter space — a major challenge for smooth neural operators.",
+    numerical:"Solved with semi-implicit finite differences: diffusion term treated implicitly (backward Euler), reaction term u-u³ treated explicitly. The resulting linear system is solved with FFT-based methods (exploiting periodicity) or sparse direct solvers. Stabilized schemes (convex-concave splitting) ensure energy decrease. Adaptive time-stepping as interfaces merge.",
+  },
+
+  mhd_2d: {
+    name:"MHD 2D", domain:"Magnetohydrodynamics", color:"var(--amber)",
+    resolution:"2D 64×64", difficulty:"Very Hard",
+    equation:"∂ω/∂t = ν∇²ω - u·∇ω + B·∇j,  ∂A/∂t = η∇²A - u·∇A",
+    formulation:"2D incompressible MHD in vorticity-vector potential form. Two coupled fields: vorticity ω (fluid) and vector potential A (magnetic). Current density j = -∇²A. Kinematic viscosity ν and magnetic diffusivity η. Maps (ω₀, A₀) → (ω_T, A_T). Magnetic field B = (∂A/∂y, -∂A/∂x).",
+    ic:"Random Gaussian vorticity field and random Gaussian vector potential field, both drawn independently with Matérn-5/2 kernels.",
+    bc:"Doubly periodic. Domain [0,2π]².",
+    desc:"2D Magnetohydrodynamics — coupled fluid and magnetic field evolution. MHD turbulence is fundamentally different from hydrodynamic turbulence: the Alfvén wave interaction creates anisotropic energy cascades. Two-field prediction (vorticity + magnetic potential) doubles the output dimension and introduces electromagnetic coupling absent in pure NS.",
+    note:"Magnetic Prandtl number Pm = ν/η controls coupling strength. When Pm~1 (this benchmark) both fields are comparably energetic — neither can be treated as passive.",
+    numerical:"Solved pseudo-spectrally: both fields evolved in Fourier space with FFT-based Laplacian inversion. The coupling term B·∇j requires careful dealiasing. Reference codes include GHOST, Snoopy, or custom Python pseudo-spectral solvers. Full 3D MHD (for astrophysics/fusion) uses codes like Athena, FLASH, or OpenMHD on HPC clusters with domain decomposition.",
+  },
+
+  swe_2d: {
+    name:"Shallow Water 2D", domain:"Geophysical Fluid Dynamics", color:"var(--teal)",
+    resolution:"2D 64×64", difficulty:"Hard",
+    equation:"∂h/∂t + ∇·(hv) = 0,   ∂v/∂t + (v·∇)v + g∇h = -fk×v",
+    formulation:"Depth-averaged 2D shallow water equations. State: water height h(x,y,t) and 2D velocity v=(u,v). Gravity wave speed c = sqrt(gh). Coriolis term fk×v adds rotation relevant to geophysical applications. Maps (h₀, u₀, v₀) → (h_T, u_T, v_T) — three output fields.",
+    ic:"Random height perturbations h(x,0) = H₀ + η(x,y) where η is a Gaussian random field; initial velocity from geostrophic balance: fk×v = -g∇h.",
+    bc:"Doubly periodic. Domain [0,2π]².",
+    desc:"Shallow water equations govern large-scale ocean and atmosphere dynamics. Conservation laws for mass and momentum produce gravity waves, Rossby waves, and geostrophic adjustment. Three coupled output fields (h, u, v) and Coriolis effects make this one of the more complex benchmarks, representative of numerical weather prediction building blocks.",
+    note:"Geostrophic balance must be approximately preserved: fv = g∂h/∂x, fu = -g∂h/∂y. Models that violate this produce unphysical gravity wave noise.",
+    numerical:"Traditionally solved with finite-difference or finite-volume schemes on lat-lon or cubed-sphere grids. Staggered Arakawa C-grid is standard for energy/enstrophy conservation. Semi-implicit time-stepping handles fast gravity waves. Global weather models (ECMWF IFS, NOAA GFS) solve the full primitive equations at ~9km resolution, requiring thousands of CPU hours per forecast. Shallow water serves as the testbed for novel discretizations and ML surrogates.",
+  },
+
+  pdebench_2d: {
+    name:"PDEBench 2D", domain:"Multi-Physics Benchmark Suite", color:"var(--pink)",
+    resolution:"2D 128×128", difficulty:"Very Hard",
+    equation:"Compressible NS: ∂U/∂t + ∇·F(U) = 0,  U=[ρ, ρv, E]ᵀ",
+    formulation:"Composite benchmark from the PDEBench dataset (Takamoto et al. 2022). Primarily covers 2D compressible Navier-Stokes with varying Mach numbers and initial conditions. State vector U = [density, x-momentum, y-momentum, energy]. Closed by ideal gas EOS. High-resolution 128×128 spatial grid.",
+    ic:"Random initial density/velocity/pressure fields with smooth random Fourier modes. Mach number Ma = v/c drawn from [0.1, 1.0].",
+    bc:"Periodic on all boundaries for the standard PDEBench configuration.",
+    desc:"PDEBench 2D is the highest-resolution benchmark in this suite at 128×128. It covers compressible flow — fundamentally different from the incompressible NS benchmark, with shocks, acoustic waves, and density variations. The combination of high resolution and compressibility makes this extremely memory-intensive for 2D models (OOM risk at hidden_dim > 32).",
+    note:"At 128×128 memory is the primary constraint. 2D FNO blocks scale as O(N²) in memory. Use hidden_dim ≤ 16 and n_modes ≤ 8 to fit in 8GB VRAM.",
+    numerical:"Solved with finite-volume Godunov schemes: HLLC or Roe Riemann solver at each cell face, MUSCL reconstruction for 2nd-order accuracy, RK2/RK3 time integration. Industry tools include OpenFOAM (rhoCentralFoam for compressible flow), SU2, and Clawpack. DNS of turbulent compressible flow at high Reynolds numbers requires petascale computing. The PDEBench dataset provides precomputed ground truth, bypassing the need for users to run their own high-fidelity simulations.",
+  },
+
+  multiphysics_2d: {
+    name:"Multi-Physics 2D", domain:"Coupled Multi-Physics", color:"var(--amber)",
+    resolution:"2D 64×64", difficulty:"Very Hard",
+    equation:"Coupled: fluid (NS) + thermal (heat) + species (advection-diffusion)",
+    formulation:"Coupled Navier-Stokes, energy equation, and scalar transport. State: velocity u, temperature T, and species concentration c evolve simultaneously with two-way coupling (buoyancy: density varies with T; heat release from species reaction). Maps multi-field initial state to multi-field solution.",
+    ic:"Random smooth velocity, temperature, and concentration fields generated as Gaussian random fields. Temperature initialized with a warm plume structure.",
+    bc:"Periodic lateral boundaries; isothermal/no-slip top and bottom in some configurations.",
+    desc:"Multi-physics benchmark combining fluid dynamics, heat transfer, and reactive scalar transport. Coupling between fields creates emergent phenomena absent in single-physics benchmarks: buoyancy-driven convection, thermal plumes, and reaction fronts. Tests whether neural operators can handle strongly coupled multi-field systems.",
+    note:"Multi-field output (u, v, T, c) quadruples the output dimension. Cross-field coupling means errors in one field amplify errors in others over time.",
+    numerical:"Solved with operator-splitting: each physics step advanced separately then coupled. CFD codes like OpenFOAM (buoyantPimpleFoam), ANSYS Fluent, or custom spectral codes. Industrial multi-physics simulations (combustion, nuclear reactor thermal-hydraulics) run for days on clusters, making fast surrogates extremely valuable for design optimization.",
+  },
+
+  wavebench_2d: {
+    name:"WaveBench 2D", domain:"Wave Propagation / Acoustics", color:"var(--blue)",
+    resolution:"2D 64×64", difficulty:"Hard",
+    equation:"∂²u/∂t² = c(x)²∇²u + f(x,t)",
+    formulation:"2D acoustic/elastic wave equation with spatially varying wave speed c(x) and source term f. Maps wave speed field c(x) and source f → wave field u(x,T). The velocity field c(x) encodes material heterogeneity (geological structure, tissue properties, etc.). Goal: fast forward solver for seismic/ultrasound imaging.",
+    ic:"Zero displacement and velocity: u(x,0) = 0, u_t(x,0) = 0. Source f is a point or Ricker wavelet pulse.",
+    bc:"Absorbing boundary conditions (PML — Perfectly Matched Layer) to prevent reflections from domain edges.",
+    desc:"2D wave equation with heterogeneous medium — the forward problem in seismic and ultrasound imaging. The wave speed field c(x) encodes subsurface structure; computing u(x,T) given c(x) is the expensive step in iterative imaging algorithms (FWI — Full Waveform Inversion). A fast operator surrogate enables real-time imaging.",
+    note:"PML boundary conditions are difficult to learn — models often produce spurious reflections at domain edges. Key metric is whether the operator captures the correct wave front arrival times.",
+    numerical:"Solved with finite-difference time-domain (FDTD) methods on staggered grids (second-order accurate in space and time). Requires 10+ grid points per wavelength for accuracy. For large 3D domains (seismic) this requires petascale computing. Alternatively, spectral element methods (SEM, used in SPECFEM3D) achieve higher accuracy per DOF. Industrial seismic imaging requires thousands of forward solves per iteration of FWI — exactly where neural operator surrogates offer the most leverage.",
+  },
+
+  radiative_2d: {
+    name:"Radiative Transfer 2D", domain:"Radiative Transfer / Astrophysics", color:"var(--yellow)",
+    resolution:"2D 64×64", difficulty:"Hard",
+    equation:"(1/c)∂I/∂t + Ω·∇I = -κI + j,  (κ=absorption, j=emission)",
+    formulation:"Steady-state radiative transfer equation (RTE) in 2D spatial domain with angular integration. Intensity field I(x, Ω) depends on spatial position x and direction Ω. Opacity κ(x) and emissivity j(x) are input fields. After angular integration: ∂²u/∂x² + ∂²u/∂y² - κ²u = -j (diffusion approximation). Maps (κ, j) → mean intensity u(x).",
+    ic:"N/A (steady-state in diffusion approximation). Opacity field κ(x) drawn as log-normal random field.",
+    bc:"Vacuum boundary (I=0 at inflow boundaries); periodic in some configurations.",
+    desc:"Radiative transfer — governs how radiation propagates through absorbing/emitting media. Critical in astrophysical simulations (stellar interiors, accretion disks), atmospheric radiative forcing (climate models), and medical imaging (optical tomography). In the diffusion limit the RTE reduces to an elliptic PDE similar to Darcy flow but with additional angular complexity.",
+    note:"Full angular resolution makes RTE 6D (3 spatial + 2 angular + 1 frequency). This benchmark uses the diffusion approximation, collapsing it to 2D spatial. Still hard due to multiscale opacity variations.",
+    numerical:"Full RTE solved with discrete ordinates (Sn method) — angular space discretized into N quadrature directions, giving N coupled transport equations. Alternatively, Monte Carlo radiative transfer (MCRT) uses photon packet sampling — standard in astrophysics codes (Hyperion, RADMC-3D). The diffusion approximation (used here) reduces to a sparse linear system solved with multigrid or conjugate gradient. Astrophysical RTE codes (ZEUS, ATHENA-RT) run for days/weeks for realistic stellar opacity tables.",
+  },
+
+};
+
+
+const DIFFICULTY_COLOR = { Easy:"var(--green)", Medium:"var(--amber)", Hard:"var(--orange)", "Very Hard":"var(--red)" };
+const DOMAIN_COLOR = { Spectral:"var(--cyan)", Hybrid:"var(--purple)", Wavelet:"var(--teal)", Transformer:"var(--amber)", "Operator Learning":"var(--blue)", "Physics-Informed":"var(--green)", "State-Space":"var(--indigo)", Continuous:"var(--orange)", Uncertainty:"var(--pink)", "Mixture of Experts":"var(--red)" };
+
+// ── Models Tab ────────────────────────────────────────────────────────────────
+function ModelsTab({ registry, mlflowRuns, sota, archMap, experiments }) {
+  // All unique model keys: from archMap (has image) + from experiments (has been trained)
+  const allModels = useMemo(() => {
+    const keys = new Set([
+      ...Object.keys(archMap || {}),
+      ...((experiments||[]).map(e => e.model).filter(Boolean)),
+    ]);
+    return [...keys].sort();
+  }, [archMap, experiments]);
+
+  const [selModel, setSelModel] = useState(null);
+  const [subTab, setSubTab]   = useState("catalog"); // "catalog" | "mlflow"
+  const [search, setSearch]   = useState("");
+
+  // Best result per model across all benchmarks
+  const bestPerModel = useMemo(() => {
+    const m = {};
+    for (const e of (experiments||[])) {
+      if (!e.model || e.val_l2_rel == null) continue;
+      if (!m[e.model] || e.val_l2_rel < m[e.model].val_l2_rel) m[e.model] = e;
+    }
+    return m;
+  }, [experiments]);
+
+  // Benchmarks each model has been run on
+  const benchmarksPerModel = useMemo(() => {
+    const m = {};
+    for (const e of (experiments||[])) {
+      if (!e.model || !e.benchmark) continue;
+      if (!m[e.model]) m[e.model] = new Set();
+      m[e.model].add(e.benchmark);
+    }
+    return m;
+  }, [experiments]);
+
+  const filteredModels = useMemo(() => {
+    if (!search) return allModels;
+    const q = search.toLowerCase();
+    return allModels.filter(k => {
+      const info = MODEL_INFO[k] || {};
+      return k.toLowerCase().includes(q) ||
+        (info.family||"").toLowerCase().includes(q) ||
+        (info.domain||"").toLowerCase().includes(q) ||
+        (info.desc||"").toLowerCase().includes(q);
+    });
+  }, [allModels, search]);
+
+  return (
+    <div style={{display:"flex",flex:1,overflow:"hidden",flexDirection:"column"}}>
+      {/* Sub-tab bar */}
+      <div style={{display:"flex",borderBottom:"1px solid var(--border)",background:"var(--bg1)",
+                   padding:"0 14px",gap:4,flexShrink:0,alignItems:"center"}}>
+        {[["catalog","Model Catalog"],["mlflow","MLflow Runs"]].map(([k,label]) => (
+          <div key={k}
+            style={{padding:"8px 12px",cursor:"pointer",fontSize:12,fontWeight:500,
+                    color: subTab===k ? "var(--amber)" : "var(--txt2)",
+                    borderBottom: subTab===k ? "2px solid var(--amber)" : "2px solid transparent",
+                    marginBottom:-1}}
+            onClick={() => setSubTab(k)}>
+            {label}
+            {k==="catalog" && ` (${allModels.length})`}
+            {k==="mlflow" && ` (${(mlflowRuns||[]).length})`}
+          </div>
+        ))}
+        {subTab==="catalog" && (
+          <input type="text" placeholder="Search models…" value={search}
+            onChange={e=>setSearch(e.target.value)}
+            style={{marginLeft:"auto",width:200,padding:"3px 8px",fontSize:11,
+                    background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,
+                    color:"var(--txt1)",fontFamily:"var(--mono)"}}/>
+        )}
+      </div>
+
+      {subTab === "catalog" && (
+        <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+          {/* Card grid */}
+          <div style={{flex:1,overflow:"auto",padding:14,display:"grid",
+                       gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",
+                       gap:12,alignContent:"start"}}>
+            {filteredModels.map(key => {
+              const info   = MODEL_INFO[key] || {};
+              const imgUrl = archMap?.[key];
+              const best   = bestPerModel[key];
+              const bms    = benchmarksPerModel[key];
+              const isSel  = selModel === key;
+              return (
+                <div key={key}
+                  onClick={() => setSelModel(isSel ? null : key)}
+                  style={{background: isSel ? "rgba(251,191,36,.06)" : "var(--bg1)",
+                          border:`1px solid ${isSel ? "var(--amber)" : "var(--border)"}`,
+                          borderRadius:7,cursor:"pointer",overflow:"hidden",
+                          transition:"border-color .15s",display:"flex",flexDirection:"column"}}>
+                  {/* Arch image */}
+                  {imgUrl ? (
+                    <img src={`${API}${imgUrl}`} alt={key}
+                      style={{width:"100%",height:110,objectFit:"cover",display:"block",
+                              borderBottom:"1px solid var(--border)"}}/>
+                  ) : (
+                    <div style={{width:"100%",height:110,background:"var(--bg2)",
+                                 borderBottom:"1px solid var(--border)",display:"flex",
+                                 alignItems:"center",justifyContent:"center",
+                                 fontSize:11,color:"var(--txt3)",fontFamily:"var(--mono)"}}>
+                      no image
+                    </div>
+                  )}
+                  {/* Card body */}
+                  <div style={{padding:"8px 10px",flex:1,display:"flex",flexDirection:"column",gap:4}}>
+                    <div style={{fontFamily:"var(--mono)",fontSize:12,fontWeight:700,
+                                 color:"var(--txt1)",lineHeight:1.3}}>{key}</div>
+                    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      {info.family && (
+                        <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,
+                                      background:"var(--bg2)",border:"1px solid var(--border)",
+                                      color:DOMAIN_COLOR[info.domain]||"var(--txt2)",
+                                      fontFamily:"var(--mono)"}}>{info.family}</span>
+                      )}
+                    </div>
+                    {info.desc && (
+                      <div style={{fontSize:10,color:"var(--txt2)",lineHeight:1.4,
+                                   display:"-webkit-box",WebkitLineClamp:2,
+                                   WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                        {info.desc}
+                      </div>
+                    )}
+                    <div style={{marginTop:"auto",display:"flex",alignItems:"center",
+                                 justifyContent:"space-between",paddingTop:4}}>
+                      {best ? (
+                        <span style={{fontFamily:"var(--mono)",fontSize:10,color:"var(--green)",fontWeight:700}}>
+                          {fmt(best.val_l2_rel,4)}
+                        </span>
+                      ) : (
+                        <span style={{fontSize:10,color:"var(--txt3)"}}>not trained</span>
+                      )}
+                      {bms && (
+                        <span style={{fontSize:9,color:"var(--txt3)"}}>
+                          {bms.size} bm{bms.size!==1?"s":""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {filteredModels.length === 0 && (
+              <div style={{gridColumn:"1/-1",textAlign:"center",padding:40,
+                           color:"var(--txt3)",fontSize:12}}>No models match "{search}"</div>
+            )}
+          </div>
+
+          {/* Detail panel */}
+          {selModel && (() => {
+            const info   = MODEL_INFO[selModel] || {};
+            const imgUrl = archMap?.[selModel];
+            const bms    = benchmarksPerModel[selModel] ? [...benchmarksPerModel[selModel]].sort() : [];
+            // Best result per benchmark for this model
+            const scoresByBm = {};
+            for (const e of (experiments||[])) {
+              if (e.model !== selModel || e.val_l2_rel == null) continue;
+              if (!scoresByBm[e.benchmark] || e.val_l2_rel < scoresByBm[e.benchmark]) {
+                scoresByBm[e.benchmark] = e.val_l2_rel;
+              }
+            }
+            return (
+              <div style={{width:340,background:"var(--bg1)",borderLeft:"1px solid var(--border)",
+                           overflow:"auto",flexShrink:0,display:"flex",flexDirection:"column"}}>
+                {/* Header */}
+                <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",
+                             display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <span style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:700,
+                                color:"var(--amber)",flex:1}}>{selModel}</span>
+                  <button className="btn" style={{padding:"2px 8px",fontSize:10}}
+                    onClick={()=>setSelModel(null)}>✕</button>
+                </div>
+
+                {/* Full arch image */}
+                {imgUrl && (
+                  <div style={{padding:"10px 14px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
+                    <div className="sec-label" style={{marginBottom:6}}>Architecture</div>
+                    <img src={`${API}${imgUrl}`} alt={selModel}
+                      style={{width:"100%",borderRadius:5,border:"1px solid var(--border)",display:"block"}}/>
+                  </div>
+                )}
+
+                <div style={{padding:"12px 14px",overflow:"auto",flex:1}}>
+                  {/* Family / domain */}
+                  <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                    {info.family && (
+                      <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                                    background:"var(--bg2)",border:"1px solid var(--border)",
+                                    color:DOMAIN_COLOR[info.domain]||"var(--txt2)",
+                                    fontFamily:"var(--mono)"}}>{info.family}</span>
+                    )}
+                    {info.domain && (
+                      <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                                    background:"var(--bg2)",border:"1px solid var(--border)",
+                                    color:"var(--txt2)",fontFamily:"var(--mono)"}}>{info.domain}</span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {info.desc && (
+                    <>
+                      <div className="sec-label">Description</div>
+                      <div style={{fontSize:11,color:"var(--txt2)",lineHeight:1.6,marginBottom:10}}>
+                        {info.desc}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Key features */}
+                  {info.features && (
+                    <>
+                      <div className="sec-label">Key Features</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+                        {info.features.map(f => (
+                          <span key={f} style={{fontSize:10,padding:"2px 7px",borderRadius:4,
+                                                background:"rgba(56,189,248,.08)",
+                                                border:"1px solid rgba(56,189,248,.2)",
+                                                color:"var(--cyan)",fontFamily:"var(--mono)"}}>
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Benchmark scores */}
+                  {bms.length > 0 && (
+                    <>
+                      <div className="sec-label">Results by Benchmark</div>
+                      <table style={{width:"100%",borderCollapse:"collapse",
+                                     fontFamily:"var(--mono)",fontSize:11,marginBottom:8}}>
+                        <thead>
+                          <tr>
+                            {["Benchmark","Best val_l2_rel","vs SOTA"].map(h => (
+                              <th key={h} style={{padding:"4px 6px",textAlign:"left",
+                                                  color:"var(--txt2)",fontWeight:600,fontSize:10,
+                                                  borderBottom:"1px solid var(--border)"}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bms.map(bm => {
+                            const score = scoresByBm[bm];
+                            const sotaTarget = sota?.[bm]?.sota;
+                            const ratio = score && sotaTarget ? score / sotaTarget : null;
+                            return (
+                              <tr key={bm} style={{borderBottom:"1px solid var(--border)"}}>
+                                <td style={{padding:"4px 6px",color:"var(--cyan)"}}>{bm}</td>
+                                <td style={{padding:"4px 6px",fontWeight:700,
+                                            color: ratio && ratio<1.2 ? "var(--green)" : ratio && ratio<3 ? "var(--amber)" : "var(--red)"}}>
+                                  {score != null ? fmt(score,4) : "—"}
+                                </td>
+                                <td style={{padding:"4px 6px",color:"var(--txt2)"}}>
+                                  {ratio ? `${ratio.toFixed(2)}×` : "—"}
+                                  {ratio && ratio < 1 && <span style={{color:"var(--green)"}}> ✓</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+
+                  {bms.length === 0 && (
+                    <div style={{fontSize:11,color:"var(--txt3)",marginBottom:8}}>
+                      No training runs recorded yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {subTab === "mlflow" && (
+        <MLflowRunsTable runs={mlflowRuns || []} sota={sota} bmFilter="all"/>
+      )}
+    </div>
+  );
+}
+
+// ── Benchmarks Tab ────────────────────────────────────────────────────────────
+function BenchmarksTab({ sota, registry, experiments, archMap }) {
+  const [selBm, setSelBm] = useState(null);
+
+  // All benchmark keys — BENCHMARK_INFO is authoritative; supplement with live data
+  const allBms = useMemo(() => {
+    const keys = new Set([
+      ...Object.keys(BENCHMARK_INFO),          // always show all defined benchmarks
+      ...Object.keys(sota || {}),
+      ...Object.keys(registry || {}),
+      ...(experiments||[]).map(e => e.benchmark).filter(Boolean),
+    ]);
+    return [...keys].sort();
+  }, [sota, registry, experiments]);
+
+  // Best result per (benchmark, model) combo
+  const scoresByBm = useMemo(() => {
+    const m = {};
+    for (const e of (experiments||[])) {
+      if (!e.model || !e.benchmark || e.val_l2_rel == null) continue;
+      if (!m[e.benchmark]) m[e.benchmark] = {};
+      if (!m[e.benchmark][e.model] || e.val_l2_rel < m[e.benchmark][e.model]) {
+        m[e.benchmark][e.model] = e.val_l2_rel;
+      }
+    }
+    return m;
+  }, [experiments]);
+
+  const selectedBmScores = selBm ? (scoresByBm[selBm] || {}) : {};
+  const sortedModels = Object.entries(selectedBmScores)
+    .sort(([,a],[,b]) => a - b);
+  const info = selBm ? (BENCHMARK_INFO[selBm] || {}) : {};
+  const sotaData = selBm ? (sota?.[selBm] || {}) : {};
+
+  return (
+    <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+      {/* Left: benchmark cards */}
+      <div style={{flex:1,overflow:"auto",padding:16,
+                   display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",
+                   gap:14,alignContent:"start"}}>
+        {allBms.map(bm => {
+          const info     = BENCHMARK_INFO[bm] || {};
+          const sd       = sota?.[bm] || {};
+          const scores   = scoresByBm[bm] || {};
+          const bestScore= Object.values(scores).length ? Math.min(...Object.values(scores)) : null;
+          const sotaT    = sd.sota;
+          const ratio    = bestScore && sotaT ? bestScore / sotaT : null;
+          const modelCount = Object.keys(scores).length;
+          const isSel    = selBm === bm;
+          return (
+            <div key={bm}
+              onClick={() => setSelBm(isSel ? null : bm)}
+              style={{background: isSel ? "rgba(251,191,36,.06)" : "var(--bg1)",
+                      border:`1px solid ${isSel ? "var(--amber)" : "var(--border)"}`,
+                      borderRadius:8,cursor:"pointer",padding:"14px 16px",
+                      display:"flex",flexDirection:"column",gap:8,
+                      transition:"border-color .15s"}}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:700,
+                               color: info.color || "var(--cyan)",marginBottom:3}}>
+                    {info.name || bm}
+                  </div>
+                  <div style={{fontSize:10,fontFamily:"var(--mono)",
+                               color:"var(--txt2)",marginBottom:2}}>{bm}</div>
+                </div>
+                {info.difficulty && (
+                  <span style={{fontSize:9,padding:"2px 6px",borderRadius:4,flexShrink:0,
+                                background:"var(--bg2)",border:"1px solid var(--border)",
+                                color:DIFFICULTY_COLOR[info.difficulty]||"var(--txt2)",
+                                fontFamily:"var(--mono)"}}>
+                    {info.difficulty}
+                  </span>
+                )}
+              </div>
+
+              {/* Domain + resolution */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {info.domain && (
+                  <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,
+                                background:"var(--bg2)",border:"1px solid var(--border)",
+                                color:"var(--purple)",fontFamily:"var(--mono)"}}>{info.domain}</span>
+                )}
+                {info.resolution && (
+                  <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,
+                                background:"var(--bg2)",border:"1px solid var(--border)",
+                                color:"var(--txt3)",fontFamily:"var(--mono)"}}>{info.resolution}</span>
+                )}
+              </div>
+
+              {/* Equation */}
+              {info.equation && (
+                <div style={{fontFamily:"var(--mono)",fontSize:10,
+                             color:"var(--txt2)",background:"var(--bg2)",
+                             borderRadius:4,padding:"4px 8px",
+                             border:"1px solid var(--border)"}}>
+                  {info.equation}
+                </div>
+              )}
+
+              {/* Description (truncated) */}
+              {info.desc && (
+                <div style={{fontSize:10,color:"var(--txt2)",lineHeight:1.5,
+                             display:"-webkit-box",WebkitLineClamp:2,
+                             WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                  {info.desc}
+                </div>
+              )}
+
+              {/* Stats row */}
+              <div style={{display:"flex",gap:12,marginTop:"auto",
+                           paddingTop:6,borderTop:"1px solid var(--border)"}}>
+                <div>
+                  <div style={{fontSize:9,color:"var(--txt3)"}}>SOTA</div>
+                  <div style={{fontSize:11,color:"var(--txt2)",fontFamily:"var(--mono)",fontWeight:600}}>
+                    {sotaT ? fmt(sotaT,4) : "—"}
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:9,color:"var(--txt3)"}}>Our Best</div>
+                  <div style={{fontSize:11,fontFamily:"var(--mono)",fontWeight:700,
+                               color: ratio && ratio<1.2 ? "var(--green)" : ratio && ratio<3 ? "var(--amber)" : bestScore ? "var(--red)" : "var(--txt3)"}}>
+                    {bestScore != null ? fmt(bestScore,4) : "—"}
+                  </div>
+                </div>
+                {ratio && (
+                  <div>
+                    <div style={{fontSize:9,color:"var(--txt3)"}}>Gap</div>
+                    <div style={{fontSize:11,fontFamily:"var(--mono)",fontWeight:600,
+                                 color: ratio<1 ? "var(--green)" : ratio<2 ? "var(--amber)" : "var(--red)"}}>
+                      {ratio.toFixed(2)}×{ratio < 1 && " ✓"}
+                    </div>
+                  </div>
+                )}
+                <div style={{marginLeft:"auto"}}>
+                  <div style={{fontSize:9,color:"var(--txt3)"}}>Models</div>
+                  <div style={{fontSize:11,color:"var(--txt2)",fontFamily:"var(--mono)"}}>{modelCount}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Right: benchmark detail */}
+      {selBm && (
+        <div style={{width:360,background:"var(--bg1)",borderLeft:"1px solid var(--border)",
+                     overflow:"auto",flexShrink:0,display:"flex",flexDirection:"column"}}>
+          {/* Header */}
+          <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",
+                       display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:"var(--mono)",fontSize:14,fontWeight:700,
+                           color:info.color||"var(--cyan)",lineHeight:1.3}}>
+                {info.name || selBm}
+              </div>
+              <div style={{fontSize:10,color:"var(--txt2)",fontFamily:"var(--mono)"}}>{selBm}</div>
+            </div>
+            <button className="btn" style={{padding:"2px 8px",fontSize:10}}
+              onClick={()=>setSelBm(null)}>✕</button>
+          </div>
+
+          <div style={{padding:"14px 16px",overflow:"auto",flex:1}}>
+            {/* Equation */}
+            {info.equation && (
+              <>
+                <div className="sec-label">PDE / Equation</div>
+                <div style={{fontFamily:"var(--mono)",fontSize:12,color:"var(--amber)",
+                             background:"var(--bg2)",borderRadius:5,padding:"8px 12px",
+                             border:"1px solid var(--border)",marginBottom:12}}>
+                  {info.equation}
+                </div>
+              </>
+            )}
+
+            {/* Tags row */}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+              {info.domain && (
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,
+                              background:"var(--bg2)",border:"1px solid var(--border)",
+                              color:"var(--purple)",fontFamily:"var(--mono)"}}>{info.domain}</span>
+              )}
+              {info.resolution && (
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,
+                              background:"var(--bg2)",border:"1px solid var(--border)",
+                              color:"var(--txt2)",fontFamily:"var(--mono)"}}>{info.resolution}</span>
+              )}
+              {info.difficulty && (
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:4,
+                              background:"var(--bg2)",border:"1px solid var(--border)",
+                              color:DIFFICULTY_COLOR[info.difficulty]||"var(--txt2)",
+                              fontFamily:"var(--mono)"}}>{info.difficulty}</span>
+              )}
+            </div>
+
+            {/* Description */}
+            {info.desc && (
+              <>
+                <div className="sec-label">Overview</div>
+                <div style={{fontSize:11,color:"var(--txt2)",lineHeight:1.7,marginBottom:12}}>
+                  {info.desc}
+                </div>
+              </>
+            )}
+
+            {info.formulation && (
+              <>
+                <div className="sec-label">Problem Formulation</div>
+                <div style={{fontSize:11,color:"var(--txt2)",lineHeight:1.7,marginBottom:12}}>
+                  {info.formulation}
+                </div>
+              </>
+            )}
+
+            {(info.ic || info.bc) && (
+              <>
+                <div className="sec-label">Conditions</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+                  {info.ic && (
+                    <div style={{background:"var(--bg2)",borderRadius:4,padding:"7px 10px",
+                                 border:"1px solid var(--border)"}}>
+                      <span style={{fontSize:9,fontWeight:700,color:"var(--cyan)",
+                                    fontFamily:"var(--mono)",marginRight:6}}>IC</span>
+                      <span style={{fontSize:10,color:"var(--txt2)",lineHeight:1.6}}>{info.ic}</span>
+                    </div>
+                  )}
+                  {info.bc && (
+                    <div style={{background:"var(--bg2)",borderRadius:4,padding:"7px 10px",
+                                 border:"1px solid var(--border)"}}>
+                      <span style={{fontSize:9,fontWeight:700,color:"var(--purple)",
+                                    fontFamily:"var(--mono)",marginRight:6}}>BC</span>
+                      <span style={{fontSize:10,color:"var(--txt2)",lineHeight:1.6}}>{info.bc}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Notes */}
+            {info.note && (
+              <div style={{background:"rgba(251,191,36,.06)",borderRadius:5,
+                           border:"1px solid rgba(251,191,36,.2)",padding:"8px 12px",marginBottom:14}}>
+                <span style={{fontSize:9,color:"var(--amber)",fontWeight:700,
+                              fontFamily:"var(--mono)"}}>NOTE  </span>
+                <span style={{fontSize:11,color:"var(--txt2)",lineHeight:1.5}}>{info.note}</span>
+              </div>
+            )}
+
+            {info.numerical && (
+              <>
+                <div className="sec-label">Classical Numerical Methods</div>
+                <div style={{fontSize:11,color:"var(--txt2)",lineHeight:1.7,marginBottom:12,
+                             background:"rgba(56,189,248,.04)",borderRadius:5,
+                             border:"1px solid rgba(56,189,248,.12)",padding:"10px 12px"}}>
+                  {info.numerical}
+                </div>
+              </>
+            )}
+
+            {/* SOTA target */}
+            {sotaData.sota && (
+              <>
+                <div className="sec-label">SOTA Target</div>
+                <div className="metric-row" style={{marginBottom:4}}>
+                  <span className="metric-key">val_l2_rel (SOTA)</span>
+                  <span className="metric-val" style={{color:"var(--green)",fontFamily:"var(--mono)"}}>
+                    {fmt(sotaData.sota,6)}
+                  </span>
+                </div>
+                {sotaData.source && (
+                  <div style={{fontSize:10,color:"var(--txt3)",marginBottom:12,fontFamily:"var(--mono)"}}>
+                    {sotaData.source}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Placeholder for benchmark visualization */}
+            <div style={{background:"var(--bg2)",borderRadius:6,border:"1px dashed var(--border)",
+                         padding:"24px 16px",textAlign:"center",marginBottom:14}}>
+              <div style={{fontSize:11,color:"var(--txt3)",marginBottom:4}}>Benchmark Visualization</div>
+              <div style={{fontSize:10,color:"var(--txt3)"}}>Coming soon — add to figs/benchmarks/</div>
+            </div>
+
+            {/* Model leaderboard for this benchmark */}
+            {sortedModels.length > 0 && (
+              <>
+                <div className="sec-label">Model Leaderboard</div>
+                <table style={{width:"100%",borderCollapse:"collapse",
+                               fontFamily:"var(--mono)",fontSize:11}}>
+                  <thead>
+                    <tr>
+                      {["#","Model","Best val_l2_rel","vs SOTA"].map(h => (
+                        <th key={h} style={{padding:"4px 6px",textAlign:"left",
+                                            color:"var(--txt2)",fontWeight:600,fontSize:10,
+                                            borderBottom:"1px solid var(--border)"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedModels.map(([model, score], i) => {
+                      const ratio = sotaData.sota && score ? score / sotaData.sota : null;
+                      const isChamp = i === 0;
+                      return (
+                        <tr key={model}
+                          style={{borderBottom:"1px solid var(--border)",
+                                  background: isChamp ? "rgba(251,191,36,.04)" : "transparent"}}>
+                          <td style={{padding:"4px 6px",color:"var(--txt3)"}}>{i+1}</td>
+                          <td style={{padding:"4px 6px",color:"var(--purple)"}}>
+                            {model}
+                            {isChamp && <span style={{marginLeft:5,color:"var(--amber)"}}>★</span>}
+                          </td>
+                          <td style={{padding:"4px 6px",fontWeight:700,
+                                      color: ratio && ratio<1.2 ? "var(--green)" : ratio && ratio<3 ? "var(--amber)" : "var(--red)"}}>
+                            {fmt(score,4)}
+                          </td>
+                          <td style={{padding:"4px 6px",color:"var(--txt2)"}}>
+                            {ratio ? `${ratio.toFixed(2)}×` : "—"}
+                            {ratio && ratio < 1 && <span style={{color:"var(--green)"}}> ✓</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MLflow Runs Table ─────────────────────────────────────────────────────────
+function MLflowRunsTable({ runs, sota, bmFilter }) {
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState("val_l2_rel");
+  const [sortDir, setSortDir] = useState(1);
+  const [selRun, setSelRun] = useState(null);
+
+  const toggleSort = k => {
+    if (sortKey === k) setSortDir(d => -d);
+    else { setSortKey(k); setSortDir(1); }
+  };
+
+  const filtered = useMemo(() => {
+    let rows = runs;
+    if (bmFilter && bmFilter !== "all") rows = rows.filter(r => r.benchmark === bmFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(r => r.exp_name?.toLowerCase().includes(q) ||
+        r.benchmark?.toLowerCase().includes(q) || r.model?.toLowerCase().includes(q));
+    }
+    return [...rows].sort((a,b) => {
+      const av = a[sortKey] ?? 999, bv = b[sortKey] ?? 999;
+      return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
+    });
+  }, [runs, bmFilter, search, sortKey, sortDir]);
+
+  const Th = ({k,label}) => (
+    <th onClick={() => toggleSort(k)}
+      style={{position:"sticky",top:0,background:"var(--bg1)",padding:"8px 10px",
+              textAlign:"left",color:"var(--txt2)",fontWeight:600,fontSize:11,
+              borderBottom:"1px solid var(--border)",cursor:"pointer",whiteSpace:"nowrap"}}>
+      {label} {sortKey===k ? (sortDir>0?"↑":"↓") : ""}
+    </th>
+  );
+
+  return (
+    <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+      <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
+        <div className="filter-bar">
+          <input type="text" placeholder="Search runs…" value={search}
+            onChange={e=>setSearch(e.target.value)} style={{width:220}}/>
+          <span style={{marginLeft:"auto",color:"var(--txt2)",fontSize:11}}>{filtered.length} / {runs.length} runs</span>
+        </div>
+        <div style={{flex:1,overflow:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"var(--mono)",fontSize:11}}>
+            <thead>
+              <tr>
+                <Th k="benchmark" label="Benchmark"/>
+                <Th k="model" label="Model"/>
+                <Th k="val_l2_rel" label="val_l2_rel"/>
+                <Th k="training_seconds" label="Train(s)"/>
+                <Th k="peak_vram_mb" label="VRAM MB"/>
+                <Th k="num_steps" label="Steps"/>
+                <th style={{position:"sticky",top:0,background:"var(--bg1)",padding:"8px 10px",
+                            color:"var(--txt2)",fontWeight:600,fontSize:11,
+                            borderBottom:"1px solid var(--border)"}}>Exp Name</th>
+                <Th k="diag_high_freq" label="hi-freq"/>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => {
+                const sotaTarget = sota?.[r.benchmark]?.sota;
+                const ratio = sotaTarget && r.val_l2_rel ? r.val_l2_rel / sotaTarget : null;
+                const isSelected = selRun?.run_id === r.run_id;
+                return (
+                  <tr key={r.run_id}
+                    style={{borderBottom:"1px solid var(--border)",cursor:"pointer",
+                            background: isSelected ? "var(--indigo-dim)" : "transparent"}}
+                    onClick={() => setSelRun(isSelected ? null : r)}>
+                    <td style={{padding:"6px 10px",color:"var(--cyan)"}}>{r.benchmark}</td>
+                    <td style={{padding:"6px 10px",color:"var(--purple)"}}>{r.model}</td>
+                    <td style={{padding:"6px 10px",fontWeight:700,
+                                color: ratio && ratio<1.2 ? "var(--green)" : ratio && ratio<3 ? "var(--amber)" : "var(--red)"}}>
+                      {fmt(r.val_l2_rel,6)}
+                    </td>
+                    <td style={{padding:"6px 10px",color:"var(--txt2)"}}>{r.training_seconds ? Math.round(r.training_seconds)+"s" : "—"}</td>
+                    <td style={{padding:"6px 10px",color:"var(--txt2)"}}>{r.peak_vram_mb ? Math.round(r.peak_vram_mb) : "—"}</td>
+                    <td style={{padding:"6px 10px",color:"var(--txt2)"}}>{r.num_steps ? Math.round(r.num_steps) : "—"}</td>
+                    <td style={{padding:"6px 10px",color:"var(--txt2)",maxWidth:220,overflow:"hidden",
+                                textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.exp_name}</td>
+                    <td style={{padding:"6px 10px",
+                                color: r.diag_high_freq > 0.2 ? "var(--red)" : r.diag_high_freq > 0.05 ? "var(--amber)" : "var(--green)"}}>
+                      {r.diag_high_freq ? fmt(r.diag_high_freq,3) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && <div className="empty">No MLflow runs yet — run an experiment to populate.</div>}
+        </div>
+      </div>
+      {/* Run detail panel */}
+      {selRun && (
+        <div style={{width:320,background:"var(--bg1)",borderLeft:"1px solid var(--border)",
+                     overflow:"auto",padding:"14px 16px",flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <span style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--cyan)"}}>Run detail</span>
+            <button className="btn" style={{padding:"2px 8px",fontSize:10}} onClick={()=>setSelRun(null)}>✕</button>
+          </div>
+          <div style={{fontFamily:"var(--mono)",fontSize:10,color:"var(--txt2)",marginBottom:10,wordBreak:"break-all"}}>
+            {selRun.run_id}
+          </div>
+          <div className="sec-label">Metrics</div>
+          {[["val_l2_rel",selRun.val_l2_rel,6],["training_s",selRun.training_seconds,0],
+            ["vram_mb",selRun.peak_vram_mb,0],["steps",selRun.num_steps,0],
+            ["hi-freq",selRun.diag_high_freq,4],["lo-freq",selRun.diag_low_freq,4]].map(([k,v,d]) =>
+            v != null ? (
+              <div key={k} className="metric-row">
+                <span className="metric-key">{k}</span>
+                <span className="metric-val" style={{fontFamily:"var(--mono)",fontSize:12}}>{typeof v==="number"?v.toFixed(d):v}</span>
+              </div>
+            ) : null
+          )}
+          {selRun.params && Object.keys(selRun.params).length > 0 && <>
+            <div className="sec-label" style={{marginTop:12}}>Params</div>
+            <div className="kv-grid">
+              {Object.entries(selRun.params).map(([k,v]) => (
+                <div key={k} className="kv-item">
+                  <div className="kv-k">{k}</div>
+                  <div className="kv-v" style={{fontSize:11}}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
   const [experiments, setExperiments] = useState([]);
@@ -743,6 +1818,9 @@ function App() {
   const [sota, setSota] = useState({});
   const [status, setStatus] = useState({});
   const [lineage, setLineage] = useState({nodes:[],links:[]});
+  const [registry, setRegistry] = useState({});
+  const [mlflowRuns, setMlflowRuns] = useState([]);
+  const [archMap, setArchMap] = useState({});
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("results");
   const [bmFilter, setBmFilter] = useState("all");
@@ -750,17 +1828,21 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [expR, qR, sotaR, stR, actR, linR] = await Promise.all([
+      const [expR, qR, sotaR, stR, actR, linR, regR, mlfR, archR] = await Promise.all([
         fetch(`${API}/api/experiments`),
         fetch(`${API}/api/queue`),
         fetch(`${API}/api/sota`),
         fetch(`${API}/api/status`),
         fetch(`${API}/api/active`),
         fetch(`${API}/api/lineage`),
+        fetch(`${API}/api/model-registry`),
+        fetch(`${API}/api/mlflow/runs`),
+        fetch(`${API}/api/arch-map`),
       ]);
       if (!expR.ok) throw new Error(`API ${expR.status}`);
-      const [exps, q, s, st, act, lin] = await Promise.all([
-        expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json(), linR.json()
+      const [exps, q, s, st, act, lin, reg, mlf, arch] = await Promise.all([
+        expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json(),
+        linR.json(), regR.json(), mlfR.json(), archR.json(),
       ]);
       setExperiments([...exps].reverse());
       setQueue(q.experiments || []);
@@ -768,6 +1850,9 @@ function App() {
       setStatus(st);
       setActive(act.active || []);
       setLineage(lin || {nodes:[],links:[]});
+      setRegistry(reg || {});
+      setMlflowRuns(mlf.runs || []);
+      setArchMap(arch || {});
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -805,6 +1890,18 @@ function App() {
 
   const keepCount = experiments.filter(e=>e.status==="keep").length;
   const pendingCount = queue.length;
+  const modelCount = Object.keys(registry).length;
+
+  // Build a set of exp_names that are current champions (for badge rendering)
+  const championExpNames = useMemo(() => {
+    const names = new Set();
+    for (const bm of Object.values(registry)) {
+      for (const v of bm.versions || []) {
+        if (v.is_champion) names.add(v.exp_name);
+      }
+    }
+    return names;
+  }, [registry]);
 
   return (
     <div className="shell">
@@ -816,7 +1913,7 @@ function App() {
           <span style={{fontSize:11,color:"var(--txt2)"}}>{paused ? "PAUSED" : "LIVE"}</span>
         </div>
         <div style={{fontSize:11,color:"var(--txt2)",fontFamily:"var(--mono)"}}>
-          {experiments.length} runs · {keepCount} kept · {pendingCount} queued
+          {experiments.length} runs · {keepCount} kept · {pendingCount} queued · {modelCount} champions
         </div>
         {error && <div style={{fontSize:11,color:"var(--red)"}}>⚠ {error}</div>}
         <div className="spacer"/>
@@ -839,9 +1936,14 @@ function App() {
               >
                 <div style={{fontSize:12,color:"var(--txt2)"}}>All benchmarks</div>
               </div>
-              {Object.entries(sota).map(([bm, data]) => (
-                <BmCard key={bm} bm={bm} data={data} active={bmFilter===bm} onClick={()=>setBmFilter(bm)}/>
-              ))}
+              {Object.entries(sota).map(([bm, data]) => {
+                const bm_versions = registry?.[bm]?.versions || [];
+                const champ = bm_versions.find(v => v.is_champion && v.exists);
+                return (
+                  <BmCard key={bm} bm={bm} data={data} active={bmFilter===bm}
+                          onClick={()=>setBmFilter(bm)} champion={champ}/>
+                );
+              })}
             </div>
           </div>
 
@@ -905,6 +2007,16 @@ function App() {
             </div>
             <div className={`tab ${tab==="queue"?"active":""}`} onClick={()=>setTab("queue")}>
               Queue ({pendingCount})
+            </div>
+            <div className={`tab ${tab==="models"?"active":""}`} onClick={()=>setTab("models")}
+              style={{color: tab==="models" ? "var(--amber)" : undefined,
+                      borderBottomColor: tab==="models" ? "var(--amber)" : undefined}}>
+              Models ({Object.keys(archMap).length})
+            </div>
+            <div className={`tab ${tab==="benchmarks"?"active":""}`} onClick={()=>setTab("benchmarks")}
+              style={{color: tab==="benchmarks" ? "var(--cyan)" : undefined,
+                      borderBottomColor: tab==="benchmarks" ? "var(--cyan)" : undefined}}>
+              Benchmarks ({Object.keys(sota).length})
             </div>
             <div className={`tab ${tab==="lineage"?"active":""}`} onClick={()=>setTab("lineage")}>
               Lineage DAG
@@ -978,15 +2090,35 @@ function App() {
                 selectedId={selected?.id}
                 onSelect={handleSelect}
                 bmFilter={bmFilter}
+                championExpNames={championExpNames}
               />
             )}
             {tab==="queue" && <QueueTable queue={queue} active={active} onSelect={(e) => setSelected({id: e.name, status: "running", ...e})}/>}
+            {tab==="models" && (
+              <ModelsTab
+                registry={registry}
+                mlflowRuns={mlflowRuns}
+                sota={sota}
+                archMap={archMap}
+                experiments={experiments}
+              />
+            )}
+            {tab==="benchmarks" && (
+              <BenchmarksTab
+                sota={sota}
+                registry={registry}
+                experiments={experiments}
+                archMap={archMap}
+              />
+            )}
             {tab==="lineage" && <LineageDAG lineage={lineage} onSelect={handleSelect}/>}
           </div>
         </div>
 
-        {/* Inspector */}
-        <Inspector exp={selected} sota={sota} onClose={()=>setSelected(null)}/>
+        {/* Inspector — hidden on Models and Benchmarks tabs (they have their own detail panels) */}
+        {tab !== "models" && tab !== "benchmarks" && (
+          <Inspector exp={selected} sota={sota} archMap={archMap} onClose={()=>setSelected(null)}/>
+        )}
       </div>
     </div>
   );

@@ -21,7 +21,8 @@ class ModelRegistry:
 
     def build(self, name: str, benchmark: str = "", **kwargs) -> nn.Module:
         # Safety constraint: 2D benchmark model size limits
-        if benchmark in ["darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d"]:
+        _2d_benchmarks = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d"}
+        if benchmark in _2d_benchmarks:
             hidden = kwargs.get("hidden_dim", 64)
             layers = kwargs.get("n_layers", 4)
             if hidden >= 64 or layers >= 8:
@@ -112,6 +113,7 @@ class BenchmarkRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._loaders
 
+
 BENCHMARK_REGISTRY = BenchmarkRegistry()
 
 # ── Populate registries from existing codebase ────────────────────────────────
@@ -131,18 +133,21 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("WNO", "wno", "WNO1d")
     MODEL_REGISTRY.register_lazy("WNO_GNOT", "wno", "WNO_GNOT")
     MODEL_REGISTRY.register_lazy("KAN_FNO", "kan", "KAN_FNO")
-    MODEL_REGISTRY.register_lazy("ModifiedKAN_FNO", "kan", "ModifiedKAN_FNO")
     MODEL_REGISTRY.register_lazy("cPIKAN_FNO", "chebyshev_kan", "cPIKAN_FNO")
     MODEL_REGISTRY.register_lazy("DeepONet", "deeponet", "DeepONet")
     MODEL_REGISTRY.register_lazy("PODDeepONet", "deeponet", "PODDeepONet")
     MODEL_REGISTRY.register_lazy("S4NO", "s4d", "S4NO1d")
     MODEL_REGISTRY.register_lazy("SSNO", "ssno", "SSNO1d")
+    MODEL_REGISTRY.register_lazy("UNO2d", "fno", "UNO2d")
+    MODEL_REGISTRY.register_lazy("WNO2d", "wno", "WNO2d")
     MODEL_REGISTRY.register_lazy("GNOT", "gnot", "GNOT1d")
-    MODEL_REGISTRY.register_lazy("GNOT2D", "gnot", "GNOT2d")
+    MODEL_REGISTRY.register_lazy("GNOT2d", "gnot", "GNOT2d")
+    MODEL_REGISTRY.register_lazy("GNOT_Axial2d", "gnot", "GNOT_Axial2d")
+    MODEL_REGISTRY.register_lazy("GNOT_FFNO", "gnot", "GNOT_FFNO")
+    MODEL_REGISTRY.register_lazy("MambaNO", "mamba_no", "MambaNO1d")
     MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
     MODEL_REGISTRY.register_lazy("FNO2D", "fno", "FNO2d")
     MODEL_REGISTRY.register_lazy("RFNO2D", "fno", "RFNO2d")
-    MODEL_REGISTRY.register_lazy("GNOT_FFNO", "gnot", "GNOT_FFNO")
     MODEL_REGISTRY.register_lazy("FNO_MC", "fno", "FNO1dMC")
     MODEL_REGISTRY.register_lazy("TFNO", "tfno", "TFNO1d")
     MODEL_REGISTRY.register_lazy("RTFNO", "tfno", "RTFNO1d")
@@ -161,7 +166,10 @@ def _register_defaults():
     
     # ── 2024-2025 SOTA Models ────────────────────────────────────────────────
     MODEL_REGISTRY.register_lazy("MambaNO", "mamba_no", "MambaNO1d")
+    MODEL_REGISTRY.register_lazy("MambaNO1d", "mamba_no", "MambaNO1d")   # alias: experiments.yaml uses both
     MODEL_REGISTRY.register_lazy("MemNO", "mem_no", "MemNO1d")
+    MODEL_REGISTRY.register_lazy("ModifiedKAN_FNO", "kan", "ModifiedKAN_FNO")  # missing registration
+    MODEL_REGISTRY.register_lazy("GNOT2D", "gnot", "GNOT2d")              # alias: GNOT2D → GNOT2d
     
     # ── Novel Hybrid Models ───────────────────────────────────────────────────
     MODEL_REGISTRY.register_lazy("HybridDecoderDeepONet2D", "hybrid_decoder_deeponet", "HybridDecoderDeepONet2d")
