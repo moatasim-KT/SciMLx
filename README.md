@@ -175,6 +175,8 @@ autoresearch-mlx/
 │           └── SKILL.md
 ├── core/
 │   ├── __init__.py
+│   ├── adversarial.py
+│   ├── closed_loop_reasoner.py
 │   ├── diagnostics.py
 │   ├── hpo.py
 │   ├── hypothesis.py
@@ -186,6 +188,7 @@ autoresearch-mlx/
 │   ├── readme_hook.py
 │   ├── research_plugins.py
 │   ├── scaffold.py
+│   ├── scientific_debugger.py
 │   ├── tracker.py
 │   ├── trainer.py
 │   ├── utils.py
@@ -200,12 +203,22 @@ autoresearch-mlx/
 │   │   ├── AGENTS.md
 │   │   ├── __init__.py
 │   │   ├── allen_cahn.py
+│   │   ├── cahn_hilliard.py
+│   │   ├── classic_fm.py
+│   │   ├── compressible_euler.py
 │   │   ├── elasticity.py
 │   │   ├── euler1d.py
+│   │   ├── gray_scott.py
+│   │   ├── hyperelasticity.py
+│   │   ├── kolmogorov_flow.py
+│   │   ├── maxwell.py
+│   │   ├── multiphase.py
 │   │   ├── multiphysics.py
+│   │   ├── nls.py
 │   │   ├── ns_etdrk4.py
 │   │   ├── pdebench.py
 │   │   ├── radiative.py
+│   │   ├── rayleigh_benard.py
 │   │   ├── shallow_water.py
 │   │   └── wavebench.py
 │   ├── benchmarks_ext.py
@@ -215,6 +228,7 @@ autoresearch-mlx/
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
+│   │   ├── classic_fm.yaml
 │   │   ├── curriculum_2009.yaml
 │   │   ├── deeponet_2021.yaml
 │   │   ├── ensemble_uq_2023.yaml
@@ -228,6 +242,7 @@ autoresearch-mlx/
 │   │   ├── memno_2025.yaml
 │   │   ├── mppde_2022.yaml
 │   │   ├── neural_ode_ude_2020.yaml
+│   │   ├── pdebench_2022.yaml
 │   │   ├── physicsnemo_2024.yaml
 │   │   ├── pikan_2025.yaml
 │   │   ├── pino_2021.yaml
@@ -238,6 +253,7 @@ autoresearch-mlx/
 │   │   ├── transolver_2024.yaml
 │   │   ├── uno_2022.yaml
 │   │   └── wno_2022.yaml
+│   ├── GAP_ANALYSIS.md
 │   ├── LICENSE
 │   ├── LITERATURE.md
 │   ├── SOTA.md
@@ -253,6 +269,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
 │   │   │       └── mambano_burgers_curriculum_adapt_best.npz
+│   │   ├── 0da8cee76c0940e7a11f61401ccc022f/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_baseline_h128_l8_m24.log
+│   │   │       └── fno_burgers_baseline_h128_l8_m24_best.npz
 │   │   ├── 17e7b93e132a475fb39531e06aaee960/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_burgers_v2_best.npz
@@ -269,6 +289,14 @@ autoresearch-mlx/
 │   │   ├── 3ff8598ac74844fb8ef5c10b0d0517e8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_pino_fix_best.npz
+│   │   ├── 4d95bbd7cc9447e2a98362d265f69b95/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_curriculum_ema_h128_l8_m24.log
+│   │   │       └── fno_burgers_curriculum_ema_h128_l8_m24_best.npz
+│   │   ├── 52096fa8b71f452883fb1533c72045b3/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_curriculum_h128_l8_m24.log
+│   │   │       └── fno_burgers_curriculum_h128_l8_m24_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
@@ -292,6 +320,10 @@ autoresearch-mlx/
 │   │   ├── e583018f152f4544bb845bdd9e553d9d/
 │   │   │   └── artifacts/
 │   │   │       └── repro_afno_bias_best.npz
+│   │   ├── ec87c364298a43abb3835ae27d49bc75/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_ema_h128_l8_m24.log
+│   │   │       └── fno_burgers_ema_h128_l8_m24_best.npz
 │   │   └── ff0b719f90d149d49d96bc8b9b27e78d/
 │   │       └── artifacts/
 │   │           └── afno_heavy_test_best.npz
@@ -319,6 +351,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fedonet2d_darcy_h32_l4.log
 │   │   │       └── fedonet2d_darcy_h32_l4_best.npz
+│   │   ├── 7b6b50efb79d4eefaba32ec67f79cfd1/
+│   │   │   └── artifacts/
+│   │   │       ├── fno2d_darcy_h32_l4_m12_h1_aug.log
+│   │   │       └── fno2d_darcy_h32_l4_m12_h1_aug_best.npz
+│   │   ├── 7fc7b67f422d48459b86cf9fda4de340/
+│   │   │   └── artifacts/
+│   │   │       ├── fno2d_darcy_h32_l4_m8_h1.log
+│   │   │       └── fno2d_darcy_h32_l4_m8_h1_best.npz
+│   │   ├── 968bf7023a124d728e9a769ebc59a12b/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver2d_darcy_s16_h24_l3.log
+│   │   │       └── transolver2d_darcy_s16_h24_l3_best.npz
 │   │   ├── b0b654187e3f4bf2bc185394e871a6b3/
 │   │   │   └── artifacts/
 │   │   │       ├── fno2d_darcy_h48_l6_m12_aug.log
@@ -359,6 +403,7 @@ autoresearch-mlx/
 │   ├── axial_attention.py
 │   ├── chebyshev_kan.py
 │   ├── deeponet.py
+│   ├── explosion_fno.py
 │   ├── fedonet.py
 │   ├── fno.py
 │   ├── gnot.py
@@ -408,6 +453,8 @@ autoresearch-mlx/
 ├── program.md
 ├── pyproject.toml
 ├── results.json
+├── results.json.bak_pre_burgers_removal
+├── results.json.bak_session11
 ├── test_hf.py
 ├── test_openai.py
 ├── train.py
