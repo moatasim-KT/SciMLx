@@ -175,8 +175,6 @@ autoresearch-mlx/
 │           └── SKILL.md
 ├── core/
 │   ├── __init__.py
-│   ├── adversarial.py
-│   ├── closed_loop_reasoner.py
 │   ├── diagnostics.py
 │   ├── hpo.py
 │   ├── hypothesis.py
@@ -188,7 +186,6 @@ autoresearch-mlx/
 │   ├── readme_hook.py
 │   ├── research_plugins.py
 │   ├── scaffold.py
-│   ├── scientific_debugger.py
 │   ├── tracker.py
 │   ├── trainer.py
 │   ├── utils.py
@@ -203,22 +200,12 @@ autoresearch-mlx/
 │   │   ├── AGENTS.md
 │   │   ├── __init__.py
 │   │   ├── allen_cahn.py
-│   │   ├── cahn_hilliard.py
-│   │   ├── classic_fm.py
-│   │   ├── compressible_euler.py
 │   │   ├── elasticity.py
 │   │   ├── euler1d.py
-│   │   ├── gray_scott.py
-│   │   ├── hyperelasticity.py
-│   │   ├── kolmogorov_flow.py
-│   │   ├── maxwell.py
-│   │   ├── multiphase.py
 │   │   ├── multiphysics.py
-│   │   ├── nls.py
 │   │   ├── ns_etdrk4.py
 │   │   ├── pdebench.py
 │   │   ├── radiative.py
-│   │   ├── rayleigh_benard.py
 │   │   ├── shallow_water.py
 │   │   └── wavebench.py
 │   ├── benchmarks_ext.py
@@ -228,7 +215,6 @@ autoresearch-mlx/
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
-│   │   ├── classic_fm.yaml
 │   │   ├── curriculum_2009.yaml
 │   │   ├── deeponet_2021.yaml
 │   │   ├── ensemble_uq_2023.yaml
@@ -242,7 +228,6 @@ autoresearch-mlx/
 │   │   ├── memno_2025.yaml
 │   │   ├── mppde_2022.yaml
 │   │   ├── neural_ode_ude_2020.yaml
-│   │   ├── pdebench_2022.yaml
 │   │   ├── physicsnemo_2024.yaml
 │   │   ├── pikan_2025.yaml
 │   │   ├── pino_2021.yaml
@@ -253,7 +238,6 @@ autoresearch-mlx/
 │   │   ├── transolver_2024.yaml
 │   │   ├── uno_2022.yaml
 │   │   └── wno_2022.yaml
-│   ├── GAP_ANALYSIS.md
 │   ├── LICENSE
 │   ├── LITERATURE.md
 │   ├── SOTA.md
@@ -297,12 +281,20 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_curriculum_h128_l8_m24.log
 │   │   │       └── fno_burgers_curriculum_h128_l8_m24_best.npz
+│   │   ├── 54625101ce2f4fed8363ecf8c6f11b4e/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
+│   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
 │   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
 │   │   │   └── artifacts/
 │   │   │       └── mambano_burgers_h128_l8_h1_best.npz
+│   │   ├── 9410178ddfd7418b8dedb23f859c2d87/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
+│   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
 │   │   ├── 96c5b66cac274f6cb37a5ea71e5577c6/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
@@ -347,6 +339,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno2d_darcy2d_h32_l4_m8_adapt.log
 │   │   │       └── rfno2d_darcy2d_h32_l4_m8_adapt_best.npz
+│   │   ├── 569846757b1e4791a71c2ccb9801c281/
+│   │   │   └── artifacts/
+│   │   │       ├── fedonet2d_darcy_h32_l2_m8_h1.log
+│   │   │       └── fedonet2d_darcy_h32_l2_m8_h1_best.npz
 │   │   ├── 5bb14a75e85143e29f7f25087212e71a/
 │   │   │   └── artifacts/
 │   │   │       ├── fedonet2d_darcy_h32_l4.log
@@ -363,10 +359,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver2d_darcy_s16_h24_l3.log
 │   │   │       └── transolver2d_darcy_s16_h24_l3_best.npz
+│   │   ├── abc12a20d416466b95ec4e8cc2f02cc2/
+│   │   │   └── artifacts/
+│   │   │       ├── fedonet2d_darcy_h32_l2_m8_h1_adapt.log
+│   │   │       └── fedonet2d_darcy_h32_l2_m8_h1_adapt_best.npz
 │   │   ├── b0b654187e3f4bf2bc185394e871a6b3/
 │   │   │   └── artifacts/
 │   │   │       ├── fno2d_darcy_h48_l6_m12_aug.log
 │   │   │       └── fno2d_darcy_h48_l6_m12_aug_best.npz
+│   │   ├── b7cb04e62ee74c7fae9b5e8326476472/
+│   │   │   └── artifacts/
+│   │   │       ├── autogen_darcy_2d_fno2d_h1_4991.log
+│   │   │       └── autogen_darcy_2d_fno2d_h1_4991_best.npz
 │   │   ├── d26aaa4bbf92492896d0150798bd90ae/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver2d_darcy_h32_l4_s32_h1.log
@@ -375,26 +379,117 @@ autoresearch-mlx/
 │   │       └── artifacts/
 │   │           ├── transolver2d_darcy_h32_l4_s32_h1_adapt.log
 │   │           └── transolver2d_darcy_h32_l4_s32_h1_adapt_best.npz
-│   └── 415139728503581214/
-│       ├── f487c4bd48de4f4b98dd180188324a57/
-│       │   ├── artifacts/
-│       │   ├── metrics/
-│       │   │   ├── training_seconds
-│       │   │   └── val_l2_rel
-│       │   ├── params/
-│       │   │   ├── hidden_dim
-│       │   │   ├── lr
-│       │   │   └── n_layers
-│       │   ├── tags/
-│       │   │   ├── benchmark
-│       │   │   ├── exp_name
-│       │   │   ├── mlflow.runName
-│       │   │   ├── mlflow.source.name
-│       │   │   ├── mlflow.source.type
-│       │   │   ├── mlflow.user
-│       │   │   └── model
-│       │   └── meta.yaml
-│       └── meta.yaml
+│   ├── 4/
+│   │   └── 7379f0f26da342ba8b2cf5512f0e00de/
+│   │       └── artifacts/
+│   │           ├── autogen_rayleigh_benard_2d_fno2d_h1adapt_2746.log
+│   │           └── autogen_rayleigh_benard_2d_fno2d_h1adapt_2746_best.npz
+│   ├── 415139728503581214/
+│   │   ├── f487c4bd48de4f4b98dd180188324a57/
+│   │   │   ├── artifacts/
+│   │   │   ├── metrics/
+│   │   │   │   ├── training_seconds
+│   │   │   │   └── val_l2_rel
+│   │   │   ├── params/
+│   │   │   │   ├── hidden_dim
+│   │   │   │   ├── lr
+│   │   │   │   └── n_layers
+│   │   │   ├── tags/
+│   │   │   │   ├── benchmark
+│   │   │   │   ├── exp_name
+│   │   │   │   ├── mlflow.runName
+│   │   │   │   ├── mlflow.source.name
+│   │   │   │   ├── mlflow.source.type
+│   │   │   │   ├── mlflow.user
+│   │   │   │   └── model
+│   │   │   └── meta.yaml
+│   │   └── meta.yaml
+│   ├── 5/
+│   │   ├── 08d3eb38ad3543e3b3ea72b543aa0fd3/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m32_l8_f1.log
+│   │   │       └── rfno_kdv_h128_m32_l8_f1_best.npz
+│   │   ├── 12244133c4c440a0bbdd13e6c80a91f9/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_kdv_h64_l4_f1_adapt.log
+│   │   │       └── hnn_kdv_h64_l4_f1_adapt_best.npz
+│   │   ├── 16fba21f31fe40a1842e6ae9d8cee6fd/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l10_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l10_f1_best.npz
+│   │   ├── 206e3290c9a44f508b4308a471cd7f13/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h256_m24_l8_f1.log
+│   │   │       └── rfno_kdv_h256_m24_l8_f1_best.npz
+│   │   ├── 49ccb8972c394db28edb90b58067b28f/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l12_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l12_f1_best.npz
+│   │   ├── 6b087efc74dc408ab765f3f512c96f29/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l10_f1_adapt.log
+│   │   │       └── rfno_kdv_h128_m24_l10_f1_adapt_best.npz
+│   │   ├── 72998ac24aff4c4fa01764967d39643a/
+│   │   │   └── artifacts/
+│   │   │       ├── rtfno_kdv_h128_l10_m24_f1_r2.log
+│   │   │       └── rtfno_kdv_h128_l10_m24_f1_r2_best.npz
+│   │   ├── 977c50210e144f03be4b54556a353332/
+│   │   │   └── artifacts/
+│   │   │       ├── rtfno_kdv_h128_l10_m24_f1_adapt.log
+│   │   │       └── rtfno_kdv_h128_l10_m24_f1_adapt_best.npz
+│   │   ├── a52e0e23a9ed48308082fd721c02f38d/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_kdv_h256_m32_l8_f1.log
+│   │   │       └── fno_kdv_h256_m32_l8_f1_best.npz
+│   │   ├── b475d5c9b9d045ff98bca3c676a3ef2e/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_kdv_h64_l4_f1.log
+│   │   │       └── hnn_kdv_h64_l4_f1_best.npz
+│   │   ├── c3d252ccc6844db3ae9feb04346dedc4/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l12_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l12_f1_best.npz
+│   │   ├── c486e0920f374ab6aff09baa8041404f/
+│   │   │   └── artifacts/
+│   │   │       ├── ffno_kdv_h256_m32_l8_f1.log
+│   │   │       └── ffno_kdv_h256_m32_l8_f1_best.npz
+│   │   ├── c9bbe68c2b1749e8abdb2209e76e85c0/
+│   │   │   └── artifacts/
+│   │   │       ├── tfno_kdv_h128_l8_m24_f1.log
+│   │   │       └── tfno_kdv_h128_l8_m24_f1_best.npz
+│   │   ├── cbc7e7b893394cc0b47f047282caed66/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
+│   │   │       └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
+│   │   └── fa8e55dc92e746a68cf779fbc1e87755/
+│   │       └── artifacts/
+│   │           ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
+│   │           └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
+│   └── 6/
+│       ├── 41709d212b0d41b4a3fe1c6e07a94f22/
+│       │   └── artifacts/
+│       │       ├── ssno_wave_h64_l4_m16_f1.log
+│       │       └── ssno_wave_h64_l4_m16_f1_best.npz
+│       ├── 4930a7ed6016418c825e16a034ba57a1/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│       ├── 6af3c131a637401ea11f8b11a89ad060/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│       ├── a406f7d4587e4f9b8f608af03bcba888/
+│       │   └── artifacts/
+│       │       ├── ssno_wave_h64_l4_m16_f1_adapt.log
+│       │       └── ssno_wave_h64_l4_m16_f1_adapt_best.npz
+│       ├── c562ff4728c746aba70fdd7285aa0984/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│       └── f4175ebb4d344ef6b87755649bdeabb2/
+│           └── artifacts/
+│               ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│               └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
 ├── models/
 │   ├── AGENTS.md
 │   ├── __init__.py
@@ -403,7 +498,6 @@ autoresearch-mlx/
 │   ├── axial_attention.py
 │   ├── chebyshev_kan.py
 │   ├── deeponet.py
-│   ├── explosion_fno.py
 │   ├── fedonet.py
 │   ├── fno.py
 │   ├── gnot.py
@@ -453,8 +547,6 @@ autoresearch-mlx/
 ├── program.md
 ├── pyproject.toml
 ├── results.json
-├── results.json.bak_pre_burgers_removal
-├── results.json.bak_session11
 ├── test_hf.py
 ├── test_openai.py
 ├── train.py
