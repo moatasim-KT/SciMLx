@@ -586,7 +586,7 @@ def report(benchmark: Optional[str], top_n: int) -> None:
         print(f"{'═'*70}\n")
 
 
-def _build_generate_candidates(benchmark: str, top_n: int = 5) -> list[dict]:
+def _build_generate_candidates(benchmark: str, top_n: int = 5, review: bool = False) -> list[dict]:
     """Return a list of YAML-ready experiment dicts for the given benchmark.
 
     Deduplicates against results.json (done names) and experiments.yaml (queued names).
@@ -595,6 +595,7 @@ def _build_generate_candidates(benchmark: str, top_n: int = 5) -> list[dict]:
     """
     from core.loader import load_experiments
     from core.utils import REPO_ROOT
+    from core.adversarial import AdversarialReviewer
 
     rows  = _load_results(benchmark)
     done  = _done_names()
@@ -694,10 +695,22 @@ def _build_generate_candidates(benchmark: str, top_n: int = 5) -> list[dict]:
 
     # Filter skip-list and cap
     filtered = [c for c in candidates if c["name"] not in skip]
-    return filtered[:top_n]
+    results = filtered[:top_n]
+
+    if review and results:
+        print(f"  [Adversarial] Critiquing {len(results)} new candidates for {benchmark}...")
+        reviewer = AdversarialReviewer()
+        for c in results:
+            # For auto-generated suggestions, we don't have code yet, 
+            # so we describe the intent/config to the reviewer.
+            desc = f"Model: {c['model']}, Config: h={c['hidden_dim']} l={c['n_layers']} m={c['n_modes']}, Loss: {c.get('loss_type', 'l2_rel')}"
+            critique = reviewer.critique(f"# Config-only review\n{desc}", c["rationale"], benchmark)
+            c["critique"] = critique
+            
+    return results
 
 
-def generate_config_snippets(benchmark: str, top_n: int = 5, write_yaml: bool = False) -> int:
+def generate_config_snippets(benchmark: str, top_n: int = 5, write_yaml: bool = False, review: bool = False) -> int:
     """Generate experiment suggestions and optionally append them to experiments.yaml.
 
     When write_yaml=True (triggered by --generate flag), appends new YAML entries
@@ -710,7 +723,7 @@ def generate_config_snippets(benchmark: str, top_n: int = 5, write_yaml: bool = 
     rows  = _load_results(benchmark)
     best  = _best_per_benchmark(rows).get(benchmark, 1.0)
 
-    candidates = _build_generate_candidates(benchmark, top_n)
+    candidates = _build_generate_candidates(benchmark, top_n, review=review)
 
     print(f"\n# ── Auto-generated experiments for {benchmark} ─────────────────")
     print(f"# current best = {best:.6f}  |  {len(candidates)} new candidates\n")
@@ -726,6 +739,15 @@ def generate_config_snippets(benchmark: str, top_n: int = 5, write_yaml: bool = 
         if c.get("loss_type", "l2_rel") != "l2_rel":
             print(f"    loss: {c['loss_type']} alpha={c.get('h1_alpha', 0.1)}")
         print(f"    rationale: {c['rationale'][:80]}")
+        if c.get("critique"):
+            if "[AGENT_REQUEST]" in c["critique"]:
+                print(f"    critique: |")
+                print(f"      [AGENT] Manual Review Required.")
+            else:
+                print(f"    critique: |")
+                # Indent critique lines
+                for line in c["critique"].strip().splitlines():
+                    print(f"      {line}")
         print()
 
     if write_yaml:
@@ -766,7 +788,8 @@ def main() -> None:
         total = 0
         for bm in benchmarks:
             total += generate_config_snippets(bm, top_n=args.top,
-                                              write_yaml=args.write_yaml)
+                                              write_yaml=args.write_yaml,
+                                              review=True) # Always review when generating
         if args.write_yaml:
             print(f"\n✓ Total: {total} experiments appended to experiments.yaml")
     elif args.gaps:

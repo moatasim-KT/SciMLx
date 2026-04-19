@@ -13,8 +13,9 @@ Key innovations over vanilla S4NO:
 """
 
 import math
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class AdaptiveS4DLayer(nn.Module):
@@ -26,70 +27,70 @@ class AdaptiveS4DLayer(nn.Module):
         self.d_state = d_state
 
         # Discretisation step (per channel)
-        self.log_dt = mx.random.uniform(math.log(0.001), math.log(0.1), [d_model])
+        self.log_dt = nn.Parameter(
+            torch.empty(d_model).uniform_(math.log(0.001), math.log(0.1))
+        )
 
         # Adaptive real part of A: log(|damping|), always negative after negation
-        self.log_damping = mx.full([d_model], math.log(0.5))
+        self.log_damping = nn.Parameter(torch.full((d_model,), math.log(0.5)))
 
         # Imaginary part of A (fixed HiPPO-like initialization)
-        im_a = mx.broadcast_to(
-            mx.arange(d_state, dtype=mx.float32), (d_model, d_state)
-        )
-        self.a_imag = im_a  # [d_model, d_state]
+        im_a = torch.arange(d_state, dtype=torch.float32).unsqueeze(0).expand(d_model, -1)
+        self.register_buffer('a_imag', im_a)  # [d_model, d_state]
 
         # Learnable frequency scale (modulates imaginary frequencies per channel)
-        self.freq_scale = mx.ones([d_model])
+        self.freq_scale = nn.Parameter(torch.ones(d_model))
 
         # B and C matrices (complex, stored as real + imaginary)
         scale = d_state ** -0.5
-        self.b_real = mx.random.normal([d_model, d_state]) * scale
-        self.b_imag = mx.random.normal([d_model, d_state]) * scale
-        self.c_real = mx.random.normal([d_model, d_state]) * scale
-        self.c_imag = mx.random.normal([d_model, d_state]) * scale
+        self.b_real = nn.Parameter(torch.randn(d_model, d_state) * scale)
+        self.b_imag = nn.Parameter(torch.randn(d_model, d_state) * scale)
+        self.c_real = nn.Parameter(torch.randn(d_model, d_state) * scale)
+        self.c_imag = nn.Parameter(torch.randn(d_model, d_state) * scale)
 
         # D: skip connection weight
-        self.d = mx.ones([d_model])
+        self.d = nn.Parameter(torch.ones(d_model))
 
-    def _get_kernel(self, L: int) -> mx.array:
+    def _get_kernel(self, L: int) -> torch.Tensor:
         """Compute SSM convolution kernel of length L.  Returns [d_model, L]."""
-        dt = mx.exp(self.log_dt)                          # [H]
-        a_real = -mx.exp(self.log_damping)                # [H], always negative
-        a_imag = self.a_imag * mx.abs(self.freq_scale)[:, None]  # [H, N]
+        dt = torch.exp(self.log_dt)                          # [H]
+        a_real = -torch.exp(self.log_damping)                # [H], always negative
+        a_imag = self.a_imag * torch.abs(self.freq_scale).unsqueeze(-1)  # [H, N]
 
-        t = mx.arange(L, dtype=mx.float32)                # [L]
+        t = torch.arange(L, dtype=torch.float32, device=self.log_dt.device)  # [L]
 
         # Exponent: a * dt * t  →  [H, L, N]
         at_r = a_real[:, None, None] * dt[:, None, None] * t[None, :, None]
         at_i = a_imag[:, None, :] * dt[:, None, None] * t[None, :, None]
 
-        exp_r = mx.exp(at_r)          # [H, L, N]
-        cos_i = mx.cos(at_i)          # [H, L, N]
-        sin_i = mx.sin(at_i)          # [H, L, N]
+        exp_r = torch.exp(at_r)          # [H, L, N]
+        cos_i = torch.cos(at_i)          # [H, L, N]
+        sin_i = torch.sin(at_i)          # [H, L, N]
 
         # Real part of C * exp(A*dt*t) * B
-        cb_rr = (self.c_real * self.b_real)[:, None, :]   # [H, 1, N]
-        cb_ii = (self.c_imag * self.b_imag)[:, None, :]
-        cb_ri = (self.c_real * self.b_imag)[:, None, :]
-        cb_ir = (self.c_imag * self.b_real)[:, None, :]
+        cb_rr = (self.c_real * self.b_real).unsqueeze(1)   # [H, 1, N]
+        cb_ii = (self.c_imag * self.b_imag).unsqueeze(1)
+        cb_ri = (self.c_real * self.b_imag).unsqueeze(1)
+        cb_ir = (self.c_imag * self.b_real).unsqueeze(1)
 
-        k = mx.sum(
+        k = torch.sum(
             exp_r * ((cb_rr - cb_ii) * cos_i + (cb_ri + cb_ir) * sin_i),
-            axis=-1,
+            dim=-1,
         )  # [H, L]
         return k
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: [B, L, H] → [B, L, H]"""
         _, L, _ = x.shape
         k = self._get_kernel(L)                             # [H, L]
 
         # FFT convolution
-        x_ft = mx.fft.rfft(x.transpose(0, 2, 1), axis=-1)  # [B, H, L//2+1]
-        k_ft = mx.fft.rfft(k, n=L, axis=-1)                 # [H, L//2+1]
-        y_ft = x_ft * k_ft[None]
-        y = mx.fft.irfft(y_ft, n=L, axis=-1).transpose(0, 2, 1)  # [B, L, H]
+        x_ft = torch.fft.rfft(x.permute(0, 2, 1), dim=-1)  # [B, H, L//2+1]
+        k_ft = torch.fft.rfft(k, n=L, dim=-1)                 # [H, L//2+1]
+        y_ft = x_ft * k_ft.unsqueeze(0)
+        y = torch.fft.irfft(y_ft, n=L, dim=-1).permute(0, 2, 1)  # [B, L, H]
 
-        return y + x * self.d[None, None, :]
+        return y + x * self.d.unsqueeze(0).unsqueeze(0)
 
 
 class SSNOBlock1d(nn.Module):
@@ -106,8 +107,8 @@ class SSNOBlock1d(nn.Module):
         self.ssm_proj = nn.Linear(hidden_dim, hidden_dim)
 
         # Spectral conv branch (same real/imag split as FNO)
-        self.wr = mx.random.normal([n_modes, hidden_dim, hidden_dim]) * (hidden_dim ** -0.5)
-        self.wi = mx.random.normal([n_modes, hidden_dim, hidden_dim]) * (hidden_dim ** -0.5)
+        self.wr = nn.Parameter(torch.randn(n_modes, hidden_dim, hidden_dim) * (hidden_dim ** -0.5))
+        self.wi = nn.Parameter(torch.randn(n_modes, hidden_dim, hidden_dim) * (hidden_dim ** -0.5))
         self.n_modes = n_modes
         self.spec_proj = nn.Linear(hidden_dim, hidden_dim)
 
@@ -119,36 +120,36 @@ class SSNOBlock1d(nn.Module):
 
         self.norm = nn.LayerNorm(hidden_dim)
 
-    def _spectral_conv(self, x: mx.array) -> mx.array:
+    def _spectral_conv(self, x: torch.Tensor) -> torch.Tensor:
         """x: [B, N, H] → [B, N, H]  (same API as FNO SpectralConv)"""
         _, N, _ = x.shape
-        x_ft = mx.fft.rfft(x, axis=1)                       # [B, N//2+1, H]
+        x_ft = torch.fft.rfft(x, dim=1)                       # [B, N//2+1, H]
         nm = min(self.n_modes, N // 2 + 1)
 
         out_r = (
-            mx.einsum("bmc,mco->bmo", x_ft[:, :nm].real, self.wr[:nm])
-            - mx.einsum("bmc,mco->bmo", x_ft[:, :nm].imag, self.wi[:nm])
+            torch.einsum("bmc,mco->bmo", x_ft[:, :nm].real, self.wr[:nm])
+            - torch.einsum("bmc,mco->bmo", x_ft[:, :nm].imag, self.wi[:nm])
         )
         out_i = (
-            mx.einsum("bmc,mco->bmo", x_ft[:, :nm].real, self.wi[:nm])
-            + mx.einsum("bmc,mco->bmo", x_ft[:, :nm].imag, self.wr[:nm])
+            torch.einsum("bmc,mco->bmo", x_ft[:, :nm].real, self.wi[:nm])
+            + torch.einsum("bmc,mco->bmo", x_ft[:, :nm].imag, self.wr[:nm])
         )
         padlen = N // 2 + 1 - nm
         if padlen > 0:
-            out_r = mx.pad(out_r, [(0, 0), (0, padlen), (0, 0)])
-            out_i = mx.pad(out_i, [(0, 0), (0, padlen), (0, 0)])
+            out_r = F.pad(out_r, (0, 0, 0, padlen))
+            out_i = F.pad(out_i, (0, 0, 0, padlen))
         y_ft = out_r + 1j * out_i
-        return mx.fft.irfft(y_ft, n=N, axis=1)              # [B, N, H]
+        return torch.fft.irfft(y_ft, n=N, dim=1)              # [B, N, H]
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: [B, N, H] → [B, N, H]"""
         x_norm = self.norm(x)
 
-        ssm_out = nn.gelu(self.ssm_proj(self.ssm(x_norm)))    # [B, N, H]
-        spec_out = nn.gelu(self.spec_proj(self._spectral_conv(x_norm)))  # [B, N, H]
+        ssm_out = F.gelu(self.ssm_proj(self.ssm(x_norm)))    # [B, N, H]
+        spec_out = F.gelu(self.spec_proj(self._spectral_conv(x_norm)))  # [B, N, H]
         bypass = self.W(x_norm)
 
-        fused = nn.gelu(self.gate(mx.concatenate([ssm_out, spec_out], axis=-1)))
+        fused = F.gelu(self.gate(torch.cat([ssm_out, spec_out], dim=-1)))
         return x + fused + bypass
 
 
@@ -172,30 +173,33 @@ class SSNO1d(nn.Module):
     ):
         super().__init__()
         self.lift = nn.Linear(2, hidden_dim)
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             SSNOBlock1d(hidden_dim, n_modes, d_state) for _ in range(n_layers)
-        ]
+        ])
         self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, inp: mx.array) -> mx.array:
+    def forward(self, inp: torch.Tensor) -> torch.Tensor:
         """inp: [B, N, C] (standard train.py format) → [B, N, 1]"""
         if inp.ndim == 2:
             # [B, N] fallback: treat as single channel
             B, N = inp.shape
-            grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-            x = mx.stack([inp, grid], axis=-1)   # [B, N, 2]
+            grid = torch.linspace(0.0, 1.0, N, device=inp.device, dtype=inp.dtype).unsqueeze(0).expand(B, -1)
+            x = torch.stack([inp, grid], dim=-1)   # [B, N, 2]
         else:
             x = inp  # [B, N, C] — use as-is after lift projects C→hidden_dim
 
         # Re-project input channels to hidden_dim via lift (expects C=2)
         if x.shape[-1] != 2:
             # Pad or slice to C=2 for the lift layer
-            x = x[..., :2] if x.shape[-1] >= 2 else mx.pad(x, [(0,0),(0,0),(0,2-x.shape[-1])])
+            if x.shape[-1] >= 2:
+                x = x[..., :2]
+            else:
+                x = F.pad(x, (0, 2 - x.shape[-1]))
 
         x = self.lift(x)                    # [B, N, hidden_dim]
         for block in self.blocks:
             x = block(x)
 
-        x = nn.gelu(self.proj1(x))          # [B, N, hidden_dim//2]
+        x = F.gelu(self.proj1(x))          # [B, N, hidden_dim//2]
         return self.proj2(x)[:, :, 0]       # [B, N]

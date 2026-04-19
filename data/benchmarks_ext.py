@@ -41,7 +41,13 @@ from data.prepare import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d", "ns_hre_2d", "swe_2d", "allen_cahn_2d", "mhd_2d", "burgers_nu_01", "burgers_nu_001"}
+EXT_BENCHMARKS = {
+    "kdv_1d", "wave_1d", "darcy_2d", "ns_2d", "ns_hre_2d", "swe_2d", 
+    "allen_cahn_2d", "mhd_2d", "burgers_nu_01", "burgers_nu_001",
+    "couette_flow_1d", "poiseuille_flow_1d", "rayleigh_benard_2d",
+    "kolmogorov_2d", "rising_bubble_2d", "cahn_hilliard_2d",
+    "gray_scott_2d", "compressible_euler_2d", "nls_2d"
+}
 
 EXT_N_CHANNELS = {
     "kdv_1d": 1,
@@ -54,6 +60,15 @@ EXT_N_CHANNELS = {
     "mhd_2d": 2, # Vorticity (w) and Magnetic Potential (a)
     "burgers_nu_01": 1,
     "burgers_nu_001": 1,
+    "couette_flow_1d": 1,
+    "poiseuille_flow_1d": 1,
+    "rayleigh_benard_2d": 1,
+    "kolmogorov_2d": 1,
+    "rising_bubble_2d": 1,
+    "cahn_hilliard_2d": 1,
+    "gray_scott_2d": 2, # u and v
+    "compressible_euler_2d": 1, # rho
+    "nls_2d": 1, # magnitude
 }
 
 # KdV parameters
@@ -409,6 +424,49 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
             inp = _random_ic(curr_n, GRID_SIZE, rng)
             from data.prepare import solve_burgers_batch
             tgt = solve_burgers_batch(inp, nu=0.01)
+        elif benchmark == "couette_flow_1d":
+            from data.simulations.classic_fm import generate_couette_data
+            inp, tgt = generate_couette_data(curr_n, GRID_SIZE)
+        elif benchmark == "poiseuille_flow_1d":
+            from data.simulations.classic_fm import generate_poiseuille_data
+            inp, tgt = generate_poiseuille_data(curr_n, GRID_SIZE)
+        elif benchmark == "rayleigh_benard_2d":
+            from data.simulations.rayleigh_benard import solve_rb_2d
+            inp, tgt = solve_rb_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
+        elif benchmark == "kolmogorov_2d":
+            from data.simulations.kolmogorov_flow import solve_kolmogorov_2d
+            inp, tgt = solve_kolmogorov_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
+        elif benchmark == "rising_bubble_2d":
+            from data.simulations.multiphase import solve_bubble_2d
+            inp, tgt = solve_bubble_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
+        elif benchmark == "cahn_hilliard_2d":
+            from data.simulations.cahn_hilliard import solve_cahn_hilliard_2d
+            inp, tgt = solve_cahn_hilliard_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
+        elif benchmark == "gray_scott_2d":
+            from data.simulations.gray_scott import solve_gray_scott_2d
+            u_in, v_in = solve_gray_scott_2d(curr_n, res=GRID_SIZE, T=0)
+            u_out, v_out = solve_gray_scott_2d(curr_n, res=GRID_SIZE, T=100.0)
+            inp = np.stack([u_in, v_in], axis=-1)
+            tgt = np.stack([u_out, v_out], axis=-1)
+        elif benchmark == "compressible_euler_2d":
+            from data.simulations.compressible_euler import solve_euler_2d
+            inp, tgt = solve_euler_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
+        elif benchmark == "nls_2d":
+            from data.simulations.nls import solve_nls_2d
+            inp = np.random.randn(curr_n, GRID_SIZE, GRID_SIZE).astype(np.float32) # IC magnitude
+            tgt = solve_nls_2d(curr_n, res=GRID_SIZE)
+            inp = inp[..., None]
+            tgt = tgt[..., None]
         else:
             raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
             
@@ -524,6 +582,15 @@ EXT_SOTA = {
     "swe_2d":    0.0020, # FNO on SWE
     "allen_cahn_2d": 0.020, # SOTA near 0.02
     "mhd_2d":    0.0350, # MHD targets from PhysicsNeMo
+    "couette_flow_1d": 0.0001,
+    "poiseuille_flow_1d": 0.0001,
+    "rayleigh_benard_2d": 0.0450,
+    "kolmogorov_2d": 0.0150,
+    "rising_bubble_2d": 0.0350,
+    "cahn_hilliard_2d": 0.0120,
+    "gray_scott_2d": 0.0080,
+    "compressible_euler_2d": 0.0280,
+    "nls_2d": 0.0050,
 }
 
 
@@ -615,6 +682,96 @@ EXT_BENCHMARK_INFO = {
         "n_steps": MHD_NSTEPS,
         "sota_model": "TFNO",
         "notes": "Coupled fluid-magnetic dynamics",
+    },
+    "couette_flow_1d": {
+        "pde": "1D Couette Flow",
+        "domain": "y ∈ [0, 1]",
+        "ic_type": "Top plate velocity U",
+        "solver": "Analytical",
+        "t_final": None,
+        "n_steps": None,
+        "sota_model": "FNO",
+        "notes": "Tests linear shear mapping",
+    },
+    "poiseuille_flow_1d": {
+        "pde": "1D Poiseuille Flow",
+        "domain": "y ∈ [0, 1]",
+        "ic_type": "Pressure gradient G",
+        "solver": "Analytical",
+        "t_final": None,
+        "n_steps": None,
+        "sota_model": "FNO",
+        "notes": "Tests parabolic pressure mapping",
+    },
+    "rayleigh_benard_2d": {
+        "pde": "2D Rayleigh-Bénard Convection",
+        "domain": "[0, 2π]^2, periodic",
+        "ic_type": "Random temperature fluctuations",
+        "solver": "Spectral Boussinesq",
+        "t_final": 0.5,
+        "n_steps": 500,
+        "sota_model": "FNO2D",
+        "notes": "Buoyancy-driven turbulence",
+    },
+    "kolmogorov_2d": {
+        "pde": "2D Kolmogorov Flow",
+        "domain": "[0, 2π]^2, periodic",
+        "ic_type": "Random vorticity",
+        "solver": "Spectral with sinusoidal forcing",
+        "t_final": 1.0,
+        "n_steps": 1000,
+        "sota_model": "FNO2D",
+        "notes": "Chaos and energy cascade benchmark",
+    },
+    "rising_bubble_2d": {
+        "pde": "2D Rising Bubble (NS + Phase-Field)",
+        "domain": "[0, 2π]^2, periodic",
+        "ic_type": "Spherical bubble patch",
+        "solver": "Coupled spectral",
+        "t_final": 1.0,
+        "n_steps": 1000,
+        "sota_model": "FNO2D",
+        "notes": "Multiphase interface tracking",
+    },
+    "cahn_hilliard_2d": {
+        "pde": "2D Cahn-Hilliard",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "Random noise near zero",
+        "solver": "Semi-implicit spectral",
+        "t_final": 0.1,
+        "n_steps": 1000,
+        "sota_model": "FNO2D",
+        "notes": "Fourth-order phase separation",
+    },
+    "gray_scott_2d": {
+        "pde": "2D Gray-Scott",
+        "domain": "[0, 64]^2, periodic",
+        "ic_type": "Central square seed + noise",
+        "solver": "Spectral-explicit",
+        "t_final": 100.0,
+        "n_steps": 100,
+        "sota_model": "FNO2D",
+        "notes": "Reaction-diffusion pattern formation",
+    },
+    "compressible_euler_2d": {
+        "pde": "2D Compressible Euler",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "Kelvin-Helmholtz shear layer",
+        "solver": "Finite Difference + Viscosity",
+        "t_final": 0.2,
+        "n_steps": 400,
+        "sota_model": "FNO2D",
+        "notes": "Supersonic shock and KH instability",
+    },
+    "nls_2d": {
+        "pde": "2D Non-linear Schrödinger",
+        "domain": "[0, 2π]^2, periodic",
+        "ic_type": "Gaussian wave packets",
+        "solver": "Split-step spectral",
+        "t_final": 0.1,
+        "n_steps": 100,
+        "sota_model": "FNO2D",
+        "notes": "Dispersive solitons benchmark",
     },
 }
 

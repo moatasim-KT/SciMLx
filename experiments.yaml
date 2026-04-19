@@ -9,33 +9,9 @@
   budget_s: 300
   lr_schedule: onecycle
   augment: true
-  priority: 1
-  rationale: "Best FNO config (h128 l8 m24) with onecycle LR + aug — onecycle never tried on Burgers; aug gave 5% boost previously. Session-9 fix: LR schedule now selectable."
-
-- name: gnot_axial_darcy_pino
-  benchmark: darcy_2d
-  model: GNOT_Axial2d
-  hidden_dim: 32
-  n_layers: 4
-  n_head: 4
-  lr: 0.001
-  batch_size: 16
-  pino_lambda: 0.1
-  budget_s: 600
-  priority: 1
-  rationale: GNOT-Axial with PINO to close Darcy gap.
-- name: uno2d_darcy_pino
-  benchmark: darcy_2d
-  model: UNO2d
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 12
-  lr: 0.001
-  batch_size: 16
-  pino_lambda: 0.1
-  budget_s: 600
-  priority: 1
-  rationale: UNO2d multiscale representation for Darcy non-periodicity.
+  priority: 3
+  rationale: 'Best FNO config (h128 l8 m24) with onecycle LR + aug — onecycle never tried on Burgers; aug gave 5% boost previously.
+    Session-9 fix: LR schedule now selectable.'
 - name: mambano_burgers_curriculum
   benchmark: burgers_1d
   model: MambaNO
@@ -46,7 +22,7 @@
   lr: 0.001
   batch_size: 64
   budget_s: 300
-  priority: 1
+  priority: 3
   rationale: MambaNO + Curriculum Spectral Learning for Burgers shock capture.
 - name: mambano_burgers_h128_l8
   benchmark: burgers_1d
@@ -57,7 +33,7 @@
   lr: 0.001
   batch_size: 64
   budget_s: 300
-  priority: 1
+  priority: 3
   rationale: Alias-Free MambaNO (2024) for Burgers efficiency
 - name: memno_burgers_h128_l8
   benchmark: burgers_1d
@@ -68,7 +44,7 @@
   lr: 0.001
   batch_size: 64
   budget_s: 300
-  priority: 1
+  priority: 3
   rationale: MemNO (2025) for temporal memory on Burgers
 - name: mambano_ns_2d_h32_l4
   benchmark: ns_2d
@@ -103,17 +79,6 @@
   budget_s: 480
   priority: 1
   rationale: MambaNO on Allen-Cahn phase transition
-- name: fno_mhd_2d_h32_l4
-  benchmark: mhd_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  lr: 0.001
-  batch_size: 64
-  budget_s: 600
-  priority: 1
-  rationale: Baseline FNO for new MHD benchmark
 - name: fno_swe2d_h32_l4_m8
   benchmark: swe_2d
   model: FNO
@@ -244,110 +209,6 @@
   rationale: UNO (multi-scale FNO) on untouched swe_2d benchmark.
   expected: ''
   paper_ref: ''
-- name: fno_nshre2d_h64_l4_m12
-  benchmark: ns_hre_2d
-  model: FNO
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Baseline FNO for untouched ns_hre_2d benchmark.
-  expected: ''
-  paper_ref: ''
-- name: gnot2d_nshre2d_h32_l4
-  benchmark: ns_hre_2d
-  model: GNOT2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 16
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Unrun GNOT2D model on untouched ns_hre_2d benchmark.
-  expected: ''
-  paper_ref: ''
-- name: fno2d_nshre2d_h32_l4_m12
-  benchmark: ns_hre_2d
-  model: FNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Unrun FNO2D model on untouched ns_hre_2d benchmark.
-  expected: ''
-  paper_ref: ''
-- name: transolver2d_nshre2d_h32_l4
-  benchmark: ns_hre_2d
-  model: Transolver2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 16
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Transolver2D on high-Re Navier-Stokes.
-  expected: ''
-  paper_ref: ''
 - name: uno_allen_cahn_h32_l4_m12
   benchmark: allen_cahn_2d
   model: UNO
@@ -422,7 +283,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: S4NO (state-space) on burgers_1d to explore Burgers gap.
   expected: ''
   paper_ref: ''
@@ -448,7 +309,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: WNO (wavelet) on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -474,7 +335,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: UNO (U-Net FNO) on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -500,7 +361,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: GNOT (Transformer) on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -526,7 +387,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Universal Differential Equations on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -552,7 +413,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Latent ODE on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -578,7 +439,7 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: POD-DeepONet on burgers_1d.
   expected: ''
   paper_ref: ''
@@ -604,9 +465,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Doubling hidden width from 64\u2192128; more expressive feature space."
-  expected: "~0.18\u20130.20 (10\u201315% better than h=64 baseline 0.2307)"
+  priority: 3
+  rationale: Doubling hidden width from 64→128; more expressive feature space.
+  expected: ~0.18–0.20 (10–15% better than h=64 baseline 0.2307)
   paper_ref: ''
 - name: fno_h256_m16_l4
   benchmark: burgers_1d
@@ -630,7 +491,7 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Maximum practical width on Apple Silicon for 5-min budget.
   expected: May match or exceed h=128 if not step-time-limited.
   paper_ref: ''
@@ -656,9 +517,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Deeper model, same width; tests whether depth helps more than width.
-  expected: "~0.19\u20130.21"
+  expected: ~0.19–0.21
   paper_ref: ''
 - name: fno_h64_m16_l8
   benchmark: burgers_1d
@@ -682,9 +543,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Very deep; may suffer from vanishing gradients at this width.
-  expected: "Unknown \u2014 useful data point regardless."
+  expected: Unknown — useful data point regardless.
   paper_ref: ''
 - name: fno_h128_m16_l6
   benchmark: burgers_1d
@@ -708,9 +569,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Wide AND deep \u2014 best of both if memory allows."
-  expected: "~0.15\u20130.18 if 5-min budget is enough to converge."
+  priority: 3
+  rationale: Wide AND deep — best of both if memory allows.
+  expected: ~0.15–0.18 if 5-min budget is enough to converge.
   paper_ref: ''
 - name: fno_h64_m24_l4
   benchmark: burgers_1d
@@ -734,9 +595,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: More Fourier modes; captures more frequencies in Burgers shock.
-  expected: "~0.20\u20130.22; modes alone rarely dominate over width."
+  expected: ~0.20–0.22; modes alone rarely dominate over width.
   paper_ref: ''
 - name: fno_h64_m32_l4
   benchmark: burgers_1d
@@ -760,9 +621,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Maximum modes (= GRID_SIZE//2); includes all spatial frequencies.
-  expected: "~0.19\u20130.22"
+  expected: ~0.19–0.22
   paper_ref: ''
 - name: fno_h128_m24_l6
   benchmark: burgers_1d
@@ -788,7 +649,7 @@
   parent_name: ''
   priority: 3
   rationale: Combined wide+deep+more-modes if earlier sweeps confirm these help.
-  expected: "~0.14\u20130.17 (targets SOTA ~0.01\u20130.05 range with good training)"
+  expected: ~0.14–0.17 (targets SOTA ~0.01–0.05 range with good training)
   paper_ref: ''
 - name: uno_h64_l1
   benchmark: burgers_1d
@@ -812,9 +673,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Shallow UNO; fast per-step \u2192 more training iterations in 5 min."
-  expected: "~0.18\u20130.22; U-Net structure may help even with 1 block/level."
+  priority: 3
+  rationale: Shallow UNO; fast per-step → more training iterations in 5 min.
+  expected: ~0.18–0.22; U-Net structure may help even with 1 block/level.
   paper_ref: ''
 - name: uno_h64_l2
   benchmark: burgers_1d
@@ -838,9 +699,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Standard UNO depth; matches Rahman et al. (2022) paper config.
-  expected: "~0.17\u20130.20; reference paper reports ~20% over flat FNO."
+  expected: ~0.17–0.20; reference paper reports ~20% over flat FNO.
   paper_ref: ''
 - name: uno_h128_l2
   benchmark: burgers_1d
@@ -864,9 +725,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Wider UNO; bottleneck uses 4\xD7128=512 channels."
-  expected: "~0.15\u20130.18 if not memory/time constrained."
+  priority: 3
+  rationale: Wider UNO; bottleneck uses 4×128=512 channels.
+  expected: ~0.15–0.18 if not memory/time constrained.
   paper_ref: ''
 - name: uno_h64_l3
   benchmark: burgers_1d
@@ -890,9 +751,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Deeper UNO; 9 total FNO blocks (3 per level).
-  expected: "~0.17\u20130.20; may be slower per step."
+  expected: ~0.17–0.20; may be slower per step.
   paper_ref: ''
 - name: uno_h128_l1_m24
   benchmark: burgers_1d
@@ -918,7 +779,7 @@
   parent_name: ''
   priority: 3
   rationale: Wide UNO with more modes; tests if UNO benefits from extra freq info.
-  expected: "~0.14\u20130.18"
+  expected: ~0.14–0.18
   paper_ref: ''
 - name: wno_h64_lvl3_l4
   benchmark: burgers_1d
@@ -942,9 +803,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: WNO baseline; 3 Haar levels decomposes N=64 to 8-pt approx scale.
-  expected: "~0.20\u20130.25; may match FNO for Burgers shock."
+  expected: ~0.20–0.25; may match FNO for Burgers shock.
   paper_ref: ''
 - name: wno_h128_lvl3_l4
   benchmark: burgers_1d
@@ -968,9 +829,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Wider WNO.
-  expected: "~0.17\u20130.22"
+  expected: ~0.17–0.22
   paper_ref: ''
 - name: wno_h64_lvl4_l4
   benchmark: burgers_1d
@@ -994,9 +855,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "4 Haar levels \u2192 4-pt approx scale; more multi-scale info."
-  expected: "~0.18\u20130.23; risk of losing spatial resolution."
+  priority: 3
+  rationale: 4 Haar levels → 4-pt approx scale; more multi-scale info.
+  expected: ~0.18–0.23; risk of losing spatial resolution.
   paper_ref: ''
 - name: wno_h64_lvl2_l6
   benchmark: burgers_1d
@@ -1022,7 +883,7 @@
   parent_name: ''
   priority: 3
   rationale: Fewer decomp levels but deeper; focuses on fine-scale features.
-  expected: "~0.20\u20130.25"
+  expected: ~0.20–0.25
   paper_ref: ''
 - name: fno_h128_pino1e3
   benchmark: burgers_1d
@@ -1046,9 +907,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: PINO with very small lambda; physics regularises without dominating.
-  expected: "Should improve over pure-data if \u03BB is well-tuned."
+  expected: Should improve over pure-data if λ is well-tuned.
   paper_ref: ''
 - name: fno_h128_pino1e2
   benchmark: burgers_1d
@@ -1072,9 +933,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "PINO \u03BB=0.01; standard starting point in Li et al. PINO paper."
-  expected: "~0.15\u20130.20 if residual loss is well-scaled."
+  priority: 3
+  rationale: PINO λ=0.01; standard starting point in Li et al. PINO paper.
+  expected: ~0.15–0.20 if residual loss is well-scaled.
   paper_ref: ''
 - name: fno_h128_pino1e1
   benchmark: burgers_1d
@@ -1099,7 +960,7 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: "PINO \u03BB=0.1; physics loss may start to dominate data loss."
+  rationale: PINO λ=0.1; physics loss may start to dominate data loss.
   expected: May worsen if physics loss gradient magnitudes are large.
   paper_ref: ''
 - name: uno_h64_pino1e2
@@ -1152,7 +1013,7 @@
   parent_name: ''
   priority: 4
   rationale: Wide UNO + PINO; tests whether physics loss helps a wide model.
-  expected: "~0.13\u20130.17 (optimistic target)"
+  expected: ~0.13–0.17 (optimistic target)
   paper_ref: ''
 - name: fno_h128_lr3e4
   benchmark: burgers_1d
@@ -1282,7 +1143,7 @@
   parent_name: ''
   priority: 3
   rationale: Wider DeepONet; prior run (h=64 old arch) got 0.808.
-  expected: "New LayerNorm DeepONet should get ~0.10\u20130.15."
+  expected: New LayerNorm DeepONet should get ~0.10–0.15.
   paper_ref: ''
 - name: deeponet_h256_l4
   benchmark: burgers_1d
@@ -1308,7 +1169,7 @@
   parent_name: ''
   priority: 4
   rationale: Very wide DeepONet branch/trunk.
-  expected: "~0.08\u20130.12 if convergence is fast enough."
+  expected: ~0.08–0.12 if convergence is fast enough.
   paper_ref: ''
 - name: pod_deeponet_h64
   benchmark: burgers_1d
@@ -1334,7 +1195,7 @@
   parent_name: ''
   priority: 4
   rationale: POD basis + branch coefficient learning; low-rank approximation.
-  expected: "~0.10\u20130.20 depending on how well the shared basis is learned."
+  expected: ~0.10–0.20 depending on how well the shared basis is learned.
   paper_ref: ''
 - name: pod_deeponet_h128
   benchmark: burgers_1d
@@ -1360,60 +1221,7 @@
   parent_name: ''
   priority: 5
   rationale: Wider POD-DeepONet.
-  expected: "~0.08\u20130.15"
-  paper_ref: ''
-- name: darcy_fno_h64_m12_l4
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 5
-  rationale: "FNO on darcy_2d; safe 2D config (h\u226432, m\u22648). Current best\
-    \ is 0.1041 \u2014 testing if more budget + correct solver helps."
-  expected: ''
-  paper_ref: ''
-- name: darcy_fno_h128_m12_l4
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 6
-  rationale: Second darcy_2d sweep with same safe 2D config for reproducibility.
-  expected: ''
+  expected: ~0.08–0.15
   paper_ref: ''
 - name: fno_h128_bs16
   benchmark: burgers_1d
@@ -1438,8 +1246,7 @@
   budget_s: 1200
   parent_name: ''
   priority: 5
-  rationale: "Smaller batch \u2192 more gradient steps in 5 min; noisier gradients\
-    \ but better epoch coverage."
+  rationale: Smaller batch → more gradient steps in 5 min; noisier gradients but better epoch coverage.
   expected: May help convergence if bandwidth is the bottleneck.
   paper_ref: ''
 - name: fno_h128_bs64
@@ -1465,7 +1272,7 @@
   budget_s: 1200
   parent_name: ''
   priority: 5
-  rationale: "Larger batch \u2192 smoother gradients, fewer steps per epoch."
+  rationale: Larger batch → smoother gradients, fewer steps per epoch.
   expected: May hurt convergence in fixed-time budget.
   paper_ref: ''
 - name: fno_h128_m16_l8
@@ -1490,9 +1297,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Extend best config (h=128,l=6\u21920.1852): does l=8 add more?"
-  expected: "~0.16\u20130.18; step time ~35ms so still ~8500 steps."
+  priority: 3
+  rationale: 'Extend best config (h=128,l=6→0.1852): does l=8 add more?'
+  expected: ~0.16–0.18; step time ~35ms so still ~8500 steps.
   paper_ref: ''
 - name: fno_h256_m16_l6
   benchmark: burgers_1d
@@ -1516,9 +1323,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: 'Wide AND deep: h=256 (2nd best) + l=6 (best depth).'
-  expected: "~0.16\u20130.18; slower per step (~45ms) but still meaningful."
+  expected: ~0.16–0.18; slower per step (~45ms) but still meaningful.
   paper_ref: ''
 - name: fno_h128_m24_l6_v2
   benchmark: burgers_1d
@@ -1542,9 +1349,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Best depth config + more Fourier modes (24 vs 16).
-  expected: "~0.17\u20130.19; more modes capture higher-freq Burgers features."
+  expected: ~0.17–0.19; more modes capture higher-freq Burgers features.
   paper_ref: ''
 - name: fno_h128_m32_l6
   benchmark: burgers_1d
@@ -1568,9 +1375,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Max modes (N//2=32) at best depth.
-  expected: "~0.17\u20130.19; all spatial frequencies included."
+  expected: ~0.17–0.19; all spatial frequencies included.
   paper_ref: ''
 - name: fno_h128_l6_lr3e4
   benchmark: burgers_1d
@@ -1594,9 +1401,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: 'Best arch (h=128,l=6) with lower LR: smoother late convergence.'
-  expected: "~0.17\u20130.19; may help in the warmdown phase."
+  expected: ~0.17–0.19; may help in the warmdown phase.
   paper_ref: ''
 - name: fno_h128_l6_lr3e3
   benchmark: burgers_1d
@@ -1620,9 +1427,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: 'Best arch (h=128,l=6) with higher LR: faster early convergence.'
-  expected: "~0.16\u20130.18 if GRAD_CLIP=1.0 keeps it stable."
+  expected: ~0.16–0.18 if GRAD_CLIP=1.0 keeps it stable.
   paper_ref: ''
 - name: fno_h128_l6_pino_fixed
   benchmark: burgers_1d
@@ -1646,11 +1453,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "PINO on best arch with FIXED normalised physics loss. Previous runs\
-    \ (\u03BB=0.01/0.001) failed because residual was unnormalised; now fixed to relative-L2\
-    \ scaling."
-  expected: "~0.15\u20130.18 if physics loss genuinely guides training."
+  priority: 3
+  rationale: PINO on best arch with FIXED normalised physics loss. Previous runs (λ=0.01/0.001) failed because residual was
+    unnormalised; now fixed to relative-L2 scaling.
+  expected: ~0.15–0.18 if physics loss genuinely guides training.
   paper_ref: ''
 - name: fno_h128_l6_pino_small
   benchmark: burgers_1d
@@ -1674,9 +1480,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "PINO with fixed normalisation, \u03BB=0.01 (conservative)."
-  expected: "~0.15\u20130.18."
+  priority: 3
+  rationale: PINO with fixed normalisation, λ=0.01 (conservative).
+  expected: ~0.15–0.18.
   paper_ref: ''
 - name: wno_h128_l6_fixed
   benchmark: burgers_1d
@@ -1700,10 +1506,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: WNO with FIXED Haar transform (reshape-based instead of stride-2 slicing,
-    which produced near-zero gradients). Wider and deeper than original failed run.
-  expected: "~0.20\u20130.25 if gradient fix resolves the learning failure."
+  priority: 3
+  rationale: WNO with FIXED Haar transform (reshape-based instead of stride-2 slicing, which produced near-zero gradients).
+    Wider and deeper than original failed run.
+  expected: ~0.20–0.25 if gradient fix resolves the learning failure.
   paper_ref: ''
 - name: uno_h128_l2_wide
   benchmark: burgers_1d
@@ -1727,10 +1533,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "h=64 UNO lost to FNO (0.222 vs 0.185). h=128 matches the winning FNO\
-    \ width \u2014 bottleneck has 512ch."
-  expected: "~0.17\u20130.20; UNO paper claims ~20% over FNO at matched capacity."
+  priority: 3
+  rationale: h=64 UNO lost to FNO (0.222 vs 0.185). h=128 matches the winning FNO width — bottleneck has 512ch.
+  expected: ~0.17–0.20; UNO paper claims ~20% over FNO at matched capacity.
   paper_ref: ''
 - name: fno_h128_l6_bs16
   benchmark: burgers_1d
@@ -1755,8 +1560,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: "Best arch + small batch \u2192 ~2\xD7 more gradient steps per minute."
-  expected: "~0.16\u20130.18; higher gradient noise may help escape local optima."
+  rationale: Best arch + small batch → ~2× more gradient steps per minute.
+  expected: ~0.16–0.18; higher gradient noise may help escape local optima.
   paper_ref: ''
 - name: fno_h128_m20_l6
   benchmark: burgers_1d
@@ -1780,9 +1585,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: 'Mode sweep: m=20 between 16 (0.185) and 24 (0.165).'
-  expected: "~0.170\u20130.185; fine-tuning the mode cutoff."
+  expected: ~0.170–0.185; fine-tuning the mode cutoff.
   paper_ref: ''
 - name: fno_h128_m22_l6
   benchmark: burgers_1d
@@ -1806,9 +1611,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: 'Mode sweep: m=22.'
-  expected: "~0.165\u20130.180."
+  expected: ~0.165–0.180.
   paper_ref: ''
 - name: fno_h128_m26_l6
   benchmark: burgers_1d
@@ -1832,9 +1637,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: 'Mode sweep: m=26 (just above best m=24).'
-  expected: "~0.160\u20130.170 if m=24 was not yet the true peak."
+  expected: ~0.160–0.170 if m=24 was not yet the true peak.
   paper_ref: ''
 - name: fno_h128_m28_l6
   benchmark: burgers_1d
@@ -1858,9 +1663,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: 'Mode sweep: m=28 (approaching m=32 failure zone).'
-  expected: "~0.165\u20130.180; approaching aliasing instability."
+  expected: ~0.165–0.180; approaching aliasing instability.
   paper_ref: ''
 - name: fno_h256_m24_l6
   benchmark: burgers_1d
@@ -1884,10 +1689,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Best modes (m=24) + widest model (h=256) + best depth (l=6). h=256+m=16\
-    \ got 0.185; m=24 boosted h=128 by 11% \u2192 may do same here."
-  expected: "~0.145\u20130.165; most likely path to <0.15."
+  priority: 3
+  rationale: Best modes (m=24) + widest model (h=256) + best depth (l=6). h=256+m=16 got 0.185; m=24 boosted h=128 by 11%
+    → may do same here.
+  expected: ~0.145–0.165; most likely path to <0.15.
   paper_ref: ''
 - name: fno_h128_m24_l8
   benchmark: burgers_1d
@@ -1911,9 +1716,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Best modes + deeper (l=8). l=8 alone gave 0.187; with m=24 may compound.
-  expected: "~0.155\u20130.165."
+  expected: ~0.155–0.165.
   paper_ref: ''
 - name: fno_h128_m24_bs16
   benchmark: burgers_1d
@@ -1937,9 +1742,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Best config + smaller batch \u2192 ~2\xD7 more gradient steps in 5 min."
-  expected: "~0.150\u20130.165; noise may help or hinder."
+  priority: 3
+  rationale: Best config + smaller batch → ~2× more gradient steps in 5 min.
+  expected: ~0.150–0.165; noise may help or hinder.
   paper_ref: ''
 - name: fno_h128_m24_lr2e3
   benchmark: burgers_1d
@@ -1963,9 +1768,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: Best config + moderately higher LR (2e-3 between 1e-3 and 3e-3).
-  expected: "~0.155\u20130.170."
+  expected: ~0.155–0.170.
   paper_ref: ''
 - name: fno_h256_m24_l8
   benchmark: burgers_1d
@@ -1989,10 +1794,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: 'Maximum capacity: wide + deep + best modes. Step time ~60ms so ~5000
-    steps; may be step-time-limited.'
-  expected: "~0.140\u20130.160 if not compute-limited."
+  priority: 3
+  rationale: 'Maximum capacity: wide + deep + best modes. Step time ~60ms so ~5000 steps; may be step-time-limited.'
+  expected: ~0.140–0.160 if not compute-limited.
   paper_ref: ''
 - name: fno_h128_m24_l6_wd1e3
   benchmark: burgers_1d
@@ -2016,10 +1820,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Best config + 10\xD7 higher weight decay (1e-3 vs default 1e-4). More\
-    \ regularisation may reduce overfitting to training noise."
-  expected: "~0.155\u20130.170."
+  priority: 3
+  rationale: Best config + 10× higher weight decay (1e-3 vs default 1e-4). More regularisation may reduce overfitting to training
+    noise.
+  expected: ~0.155–0.170.
   paper_ref: ''
 - name: rfno_h128_m24_l8
   benchmark: burgers_1d
@@ -2043,10 +1847,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: RFNO at same config as FNO best (h=128,m=24,l=8). Tests whether Pre-LN
-    residuals alone improve over FNO 0.1553.
-  expected: "~0.140\u20130.155 if normalisation helps; may match FNO."
+  priority: 3
+  rationale: RFNO at same config as FNO best (h=128,m=24,l=8). Tests whether Pre-LN residuals alone improve over FNO 0.1553.
+  expected: ~0.140–0.155 if normalisation helps; may match FNO.
   paper_ref: ''
 - name: rfno_h128_m24_l10
   benchmark: burgers_1d
@@ -2070,10 +1873,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "RFNO at l=10 \u2014 FNO degraded to 0.169 here due to fewer steps. Residuals\
-    \ may allow l=10 to actually converge better."
-  expected: "~0.135\u20130.150 if residuals unlock deeper models."
+  priority: 3
+  rationale: RFNO at l=10 — FNO degraded to 0.169 here due to fewer steps. Residuals may allow l=10 to actually converge better.
+  expected: ~0.135–0.150 if residuals unlock deeper models.
   paper_ref: ''
 - name: rfno_h128_m24_l12
   benchmark: burgers_1d
@@ -2097,9 +1899,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "RFNO at l=12 \u2014 FNO collapsed to 0.217. Residuals are the fix."
-  expected: "~0.130\u20130.150 if depth scaling is unlocked."
+  priority: 3
+  rationale: RFNO at l=12 — FNO collapsed to 0.217. Residuals are the fix.
+  expected: ~0.130–0.150 if depth scaling is unlocked.
   paper_ref: ''
 - name: rfno_h128_m24_l6
   benchmark: burgers_1d
@@ -2123,10 +1925,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "RFNO at shallower l=6 \u2014 ablation to isolate the Pre-LN effect vs\
-    \ depth. FNO l=6 got 0.1648."
-  expected: "~0.150\u20130.165."
+  priority: 3
+  rationale: RFNO at shallower l=6 — ablation to isolate the Pre-LN effect vs depth. FNO l=6 got 0.1648.
+  expected: ~0.150–0.165.
   paper_ref: ''
 - name: rfno_h128_m24_l16
   benchmark: burgers_1d
@@ -2150,10 +1951,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Push RFNO to l=16. Each block ~35ms \u2192 ~8500 steps in 5min but only\
-    \ ~5300 iterations. Residuals may compensate."
-  expected: "~0.125\u20130.145 if depth keeps scaling."
+  priority: 3
+  rationale: Push RFNO to l=16. Each block ~35ms → ~8500 steps in 5min but only ~5300 iterations. Residuals may compensate.
+  expected: ~0.125–0.145 if depth keeps scaling.
   paper_ref: ''
 - name: afno_h128_m24_l8
   benchmark: burgers_1d
@@ -2177,11 +1977,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: 'AFNO at same config as FNO best. Non-linear Fourier mixing + softshrink
-    sparsity. Hypothesis: MLP in Fourier space captures more complex shock frequency
-    interactions than linear maps.'
-  expected: "~0.13\u20130.15"
+  priority: 3
+  rationale: 'AFNO at same config as FNO best. Non-linear Fourier mixing + softshrink sparsity. Hypothesis: MLP in Fourier
+    space captures more complex shock frequency interactions than linear maps.'
+  expected: ~0.13–0.15
   paper_ref: afno-2022
 - name: afno_h128_m24_l10
   benchmark: burgers_1d
@@ -2205,10 +2004,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: AFNO with Pre-LN residuals should scale to l=10 (FNO degraded here).
-    Non-linear mixing + depth should compound benefits.
-  expected: "~0.12\u20130.14"
+  priority: 3
+  rationale: AFNO with Pre-LN residuals should scale to l=10 (FNO degraded here). Non-linear mixing + depth should compound
+    benefits.
+  expected: ~0.12–0.14
   paper_ref: afno-2022
 - name: afno_h128_m24_l12
   benchmark: burgers_1d
@@ -2232,9 +2031,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
+  priority: 3
   rationale: 'AFNO deep: l=12 with Pre-LN residuals. FNO collapsed at l=12 (0.217).'
-  expected: "~0.12\u20130.14"
+  expected: ~0.12–0.14
   paper_ref: afno-2022
 - name: afno_h128_m24_l8_sp0
   benchmark: burgers_1d
@@ -2258,10 +2057,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "AFNO without softshrink (sparsity=0) \u2014 ablation to isolate MLP\
-    \ contribution from sparsity regularisation."
-  expected: "~0.13\u20130.16 \u2014 isolates the MLP benefit"
+  priority: 3
+  rationale: AFNO without softshrink (sparsity=0) — ablation to isolate MLP contribution from sparsity regularisation.
+  expected: ~0.13–0.16 — isolates the MLP benefit
   paper_ref: afno-2022
 - name: fno_h128_m24_l8_h1
   benchmark: burgers_1d
@@ -2285,10 +2083,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "H1 Sobolev loss on best FNO config. Shock fronts have large |\u2202\
-    u/\u2202x|; H1 loss directly penalises gradient errors. \u03B1=0.1 is U-FNO default."
-  expected: "~0.13\u20130.15 if H1 targets shock well"
+  priority: 3
+  rationale: H1 Sobolev loss on best FNO config. Shock fronts have large |∂u/∂x|; H1 loss directly penalises gradient errors.
+    α=0.1 is U-FNO default.
+  expected: ~0.13–0.15 if H1 targets shock well
   paper_ref: h1-sobolev-loss
 - name: fno_h128_m24_l8_h1_a001
   benchmark: burgers_1d
@@ -2312,9 +2110,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "H1 with mild \u03B1=0.01 \u2014 avoids over-regularising smooth background."
-  expected: "~0.14\u20130.16"
+  priority: 3
+  rationale: H1 with mild α=0.01 — avoids over-regularising smooth background.
+  expected: ~0.14–0.16
   paper_ref: h1-sobolev-loss
 - name: rfno_h128_m24_l8_h1
   benchmark: burgers_1d
@@ -2338,10 +2136,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: RFNO (Pre-LN residual) + H1 loss. Both independently may help; combination
-    might compound the gains.
-  expected: "~0.12\u20130.14"
+  priority: 3
+  rationale: RFNO (Pre-LN residual) + H1 loss. Both independently may help; combination might compound the gains.
+  expected: ~0.12–0.14
   paper_ref: h1-sobolev-loss
 - name: afno_h128_m24_l8_h1
   benchmark: burgers_1d
@@ -2365,10 +2162,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: 'AFNO + H1 loss: non-linear Fourier mixing + frequency-weighted error.
-    Best combination of architecture and loss innovations.'
-  expected: "~0.11\u20130.13"
+  priority: 3
+  rationale: 'AFNO + H1 loss: non-linear Fourier mixing + frequency-weighted error. Best combination of architecture and loss
+    innovations.'
+  expected: ~0.11–0.13
   paper_ref: h1-sobolev-loss
 - name: fno_kdv_h128_m24_l8
   benchmark: kdv_1d
@@ -2393,9 +2190,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: 'Establish FNO baseline on KdV. Soliton dynamics are quasi-periodic so
-    FNO''s Fourier basis is appropriate. SOTA: ~0.01.'
-  expected: "~0.02\u20130.08 (FNO good match for periodic KdV)"
+  rationale: 'Establish FNO baseline on KdV. Soliton dynamics are quasi-periodic so FNO''s Fourier basis is appropriate. SOTA:
+    ~0.01.'
+  expected: ~0.02–0.08 (FNO good match for periodic KdV)
   paper_ref: ffno-2023
 - name: rfno_kdv_h128_m24_l8
   benchmark: kdv_1d
@@ -2420,8 +2217,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: "RFNO on KdV \u2014 Pre-LN residuals may help capture multi-soliton dynamics."
-  expected: "~0.01\u20130.05"
+  rationale: RFNO on KdV — Pre-LN residuals may help capture multi-soliton dynamics.
+  expected: ~0.01–0.05
   paper_ref: rfno-2024
 - name: fno_wave_h64_m24_l4
   benchmark: wave_1d
@@ -2446,9 +2243,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: 'Establish FNO baseline on linear wave equation. This is easy for FNO
-    (linear PDE, periodic). SOTA: ~0.005.'
-  expected: "~0.005\u20130.02 (FNO near-exact for linear PDEs)"
+  rationale: 'Establish FNO baseline on linear wave equation. This is easy for FNO (linear PDE, periodic). SOTA: ~0.005.'
+  expected: ~0.005–0.02 (FNO near-exact for linear PDEs)
   paper_ref: ''
 - name: fno_h128_m24_l10
   benchmark: burgers_1d
@@ -2472,9 +2268,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Depth trend: l=4(0.208)\u2192l=6(0.165)\u2192l=8(0.155). Does l=10 continue?"
-  expected: "~0.140\u20130.155 if depth trend continues."
+  priority: 3
+  rationale: 'Depth trend: l=4(0.208)→l=6(0.165)→l=8(0.155). Does l=10 continue?'
+  expected: ~0.140–0.155 if depth trend continues.
   paper_ref: ''
 - name: fno_h128_m24_l12
   benchmark: burgers_1d
@@ -2498,9 +2294,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Push depth further. Each FNOBlock is ~40ms; l=12 ~4800 steps in 5 min.
-  expected: "~0.135\u20130.155 if depth keeps helping; may saturate."
+  expected: ~0.135–0.155 if depth keeps helping; may saturate.
   paper_ref: ''
 - name: fno_h128_m22_l8
   benchmark: burgers_1d
@@ -2524,10 +2320,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: m=22 slightly beat m=24 at l=6 (0.1643 vs 0.1648). Test if that advantage
-    persists or disappears at l=8.
-  expected: "~0.150\u20130.158."
+  priority: 3
+  rationale: m=22 slightly beat m=24 at l=6 (0.1643 vs 0.1648). Test if that advantage persists or disappears at l=8.
+  expected: ~0.150–0.158.
   paper_ref: ''
 - name: fno_h128_m24_l8_bs16
   benchmark: burgers_1d
@@ -2551,10 +2346,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Best depth config + half batch \u2192 ~2\xD7 gradient steps. bs=16 gave\
-    \ 0.160 at l=6; may help more at l=8."
-  expected: "~0.145\u20130.158."
+  priority: 3
+  rationale: Best depth config + half batch → ~2× gradient steps. bs=16 gave 0.160 at l=6; may help more at l=8.
+  expected: ~0.145–0.158.
   paper_ref: ''
 - name: fno_h128_m24_l10_lr5e4
   benchmark: burgers_1d
@@ -2578,10 +2372,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: Deeper models often need lower LR to converge. Pair l=10 with lr=5e-4
-    for more stable optimisation.
-  expected: "~0.135\u20130.150."
+  priority: 3
+  rationale: Deeper models often need lower LR to converge. Pair l=10 with lr=5e-4 for more stable optimisation.
+  expected: ~0.135–0.150.
   paper_ref: ''
 - name: fno_h128_m24_l8_lr5e4
   benchmark: burgers_1d
@@ -2605,10 +2398,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Best config + lower LR. lr=1e-3 may be slightly too aggressive for 5-min\
-    \ budget \u2014 5e-4 gives more careful convergence."
-  expected: "~0.148\u20130.158."
+  priority: 3
+  rationale: Best config + lower LR. lr=1e-3 may be slightly too aggressive for 5-min budget — 5e-4 gives more careful convergence.
+  expected: ~0.148–0.158.
   paper_ref: ''
 - name: fno_h128_m24_l12_bs16
   benchmark: burgers_1d
@@ -2632,10 +2424,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "l=12 + bs=16 trades step size for step count \u2014 may help very deep\
-    \ model escape early plateau."
-  expected: "~0.130\u20130.150."
+  priority: 3
+  rationale: l=12 + bs=16 trades step size for step count — may help very deep model escape early plateau.
+  expected: ~0.130–0.150.
   paper_ref: ''
 - name: afno_v2_h128_m24_l8
   benchmark: burgers_1d
@@ -2659,11 +2450,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "AFNO v2 (fixed complex coupling) at FNO best config. Previous AFNO failed\
-    \ (0.56\u20130.72) due to independent real/imag MLP \u2014 now fixed by concatenating\
-    \ [xr;xi] \u2192 2C input."
-  expected: "~0.12\u20130.15 (should now match or beat FNO)"
+  priority: 3
+  rationale: AFNO v2 (fixed complex coupling) at FNO best config. Previous AFNO failed (0.56–0.72) due to independent real/imag
+    MLP — now fixed by concatenating [xr;xi] → 2C input.
+  expected: ~0.12–0.15 (should now match or beat FNO)
   paper_ref: afno-2022
 - name: afno_v2_h128_m24_l10
   benchmark: burgers_1d
@@ -2687,10 +2477,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: 'AFNO v2 at l=10. Pre-LN residuals in AFNOBlock should unlock depth that
-    FNO cannot reach (FNO degraded at l=10: 0.169).'
-  expected: "~0.11\u20130.14"
+  priority: 3
+  rationale: 'AFNO v2 at l=10. Pre-LN residuals in AFNOBlock should unlock depth that FNO cannot reach (FNO degraded at l=10:
+    0.169).'
+  expected: ~0.11–0.14
   paper_ref: afno-2022
 - name: ffno_h128_m32_l8
   benchmark: burgers_1d
@@ -2714,11 +2504,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "FFNO: diagonal per-mode-per-channel weights \u2192 128\xD7 cheaper spectral\
-    \ params than FNO. Enables m=32 (max modes) with same param budget. Key hypothesis:\
-    \ more modes + diagonal = better frequency coverage without over-parameterisation."
-  expected: "~0.13\u20130.15"
+  priority: 3
+  rationale: 'FFNO: diagonal per-mode-per-channel weights → 128× cheaper spectral params than FNO. Enables m=32 (max modes)
+    with same param budget. Key hypothesis: more modes + diagonal = better frequency coverage without over-parameterisation.'
+  expected: ~0.13–0.15
   paper_ref: ffno-2023
 - name: ffno_h256_m32_l8
   benchmark: burgers_1d
@@ -2742,11 +2531,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: FFNO with wide channels (h=256). FNO h=256 was step-time-limited (slow
-    spectral conv); FFNO's diagonal weights are much cheaper so h=256 is feasible.
-    Full channel mixing comes from pointwise Linear.
-  expected: "~0.11\u20130.14 \u2014 wider FFNO should beat narrow FNO"
+  priority: 3
+  rationale: FFNO with wide channels (h=256). FNO h=256 was step-time-limited (slow spectral conv); FFNO's diagonal weights
+    are much cheaper so h=256 is feasible. Full channel mixing comes from pointwise Linear.
+  expected: ~0.11–0.14 — wider FFNO should beat narrow FNO
   paper_ref: ffno-2023
 - name: ffno_h256_m24_l8
   benchmark: burgers_1d
@@ -2770,10 +2558,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: FFNO h=256 at FNO optimal m=24. Combines width advantage of diagonal
-    weights with proven mode count.
-  expected: "~0.12\u20130.14"
+  priority: 3
+  rationale: FFNO h=256 at FNO optimal m=24. Combines width advantage of diagonal weights with proven mode count.
+  expected: ~0.12–0.14
   paper_ref: ffno-2023
 - name: ffno_h512_m24_l8
   benchmark: burgers_1d
@@ -2797,10 +2584,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "FFNO at h=512 \u2014 only feasible because diagonal spectral weights\
-    \ add O(m*C) not O(m*C\xB2) params. Tests extreme width on Apple Silicon."
-  expected: "~0.10\u20130.13 if width keeps helping"
+  priority: 3
+  rationale: FFNO at h=512 — only feasible because diagonal spectral weights add O(m*C) not O(m*C²) params. Tests extreme
+    width on Apple Silicon.
+  expected: ~0.10–0.13 if width keeps helping
   paper_ref: ffno-2023
 - name: ffno_h256_m32_l10
   benchmark: burgers_1d
@@ -2824,10 +2611,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "FFNO wide+deep+max-modes. FFNO blocks are faster than FNO blocks (no\
-    \ einsum over in_c\xD7out_c) so l=10 may still get enough steps."
-  expected: "~0.10\u20130.13"
+  priority: 3
+  rationale: FFNO wide+deep+max-modes. FFNO blocks are faster than FNO blocks (no einsum over in_c×out_c) so l=10 may still
+    get enough steps.
+  expected: ~0.10–0.13
   paper_ref: ffno-2023
 - name: ffno_h128_m48_l8
   benchmark: burgers_1d
@@ -2851,10 +2638,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "FFNO at m=48 (3\xD7 FNO max modes). Only feasible with diagonal weights\
-    \ \u2014 FNO's full spectral matrix at m=48 would be 12\xD7 larger."
-  expected: "~0.12\u20130.15 \u2014 very high-frequency coverage test"
+  priority: 3
+  rationale: FFNO at m=48 (3× FNO max modes). Only feasible with diagonal weights — FNO's full spectral matrix at m=48 would
+    be 12× larger.
+  expected: ~0.12–0.15 — very high-frequency coverage test
   paper_ref: ffno-2023
 - name: afno_v2_h256_m24_l8
   benchmark: burgers_1d
@@ -2878,10 +2665,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "AFNO v2 wider channels (h=256). BlockDiagMLP operates on 2C=512 features\
-    \ \u2014 tests whether AFNO benefits from wider hidden dim."
-  expected: "~0.11\u20130.14"
+  priority: 3
+  rationale: AFNO v2 wider channels (h=256). BlockDiagMLP operates on 2C=512 features — tests whether AFNO benefits from wider
+    hidden dim.
+  expected: ~0.11–0.14
   paper_ref: afno-2022
 - name: ffno_kdv_h256_m32_l8
   benchmark: kdv_1d
@@ -2906,9 +2693,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: "FFNO on KdV. Soliton dynamics involve many harmonics \u2192 high mode\
-    \ count is critical. FFNO enables m=32 at h=256 cheaply."
-  expected: "~0.01\u20130.04"
+  rationale: FFNO on KdV. Soliton dynamics involve many harmonics → high mode count is critical. FFNO enables m=32 at h=256
+    cheaply.
+  expected: ~0.01–0.04
   paper_ref: ffno-2023
 - name: rfno_kdv_h128_m24_l10
   benchmark: kdv_1d
@@ -2933,10 +2720,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "RFNO beat FNO on KdV at l=8. RFNO at l=10: Pre-LN residuals enable deeper\
-    \ stacks. KdV is smoother than Burgers \u2192 less step-time concern; l=10 should\
-    \ still converge well."
-  expected: "~0.001\u20130.002 (continued improvement)"
+  rationale: 'RFNO beat FNO on KdV at l=8. RFNO at l=10: Pre-LN residuals enable deeper stacks. KdV is smoother than Burgers
+    → less step-time concern; l=10 should still converge well.'
+  expected: ~0.001–0.002 (continued improvement)
   paper_ref: rfno-2024
 - name: rfno_kdv_h256_m24_l8
   benchmark: kdv_1d
@@ -2961,9 +2747,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: RFNO wider (h=256) on KdV. FNO h=256 was step-time-limited on Burgers;
-    KdV step times are shorter (~37ms) so h=256 is feasible.
-  expected: "~0.001\u20130.002"
+  rationale: RFNO wider (h=256) on KdV. FNO h=256 was step-time-limited on Burgers; KdV step times are shorter (~37ms) so
+    h=256 is feasible.
+  expected: ~0.001–0.002
   paper_ref: rfno-2024
 - name: rfno_kdv_h128_m32_l8
   benchmark: kdv_1d
@@ -2988,9 +2774,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "RFNO with more modes (m=32) on KdV. Solitons involve many harmonics\
-    \ \u2014 m=32 captures full spectrum up to Nyquist."
-  expected: "~0.001\u20130.002"
+  rationale: RFNO with more modes (m=32) on KdV. Solitons involve many harmonics — m=32 captures full spectrum up to Nyquist.
+  expected: ~0.001–0.002
   paper_ref: rfno-2024
 - name: fno_kdv_h256_m32_l8
   benchmark: kdv_1d
@@ -3015,9 +2800,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: FNO wide+max-modes on KdV. Tests whether FNO can match RFNO with wider
-    channels (h=256) instead of residual connections.
-  expected: "~0.001\u20130.003"
+  rationale: FNO wide+max-modes on KdV. Tests whether FNO can match RFNO with wider channels (h=256) instead of residual connections.
+  expected: ~0.001–0.003
   paper_ref: ''
 - name: rfno_kdv_h128_m24_l12
   benchmark: kdv_1d
@@ -3042,9 +2826,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: Deep RFNO on KdV (l=12). FNO collapsed at l=12 on Burgers but KdV is
-    smoother. Pre-LN residuals should enable this depth.
-  expected: "~0.0008\u20130.0015"
+  rationale: Deep RFNO on KdV (l=12). FNO collapsed at l=12 on Burgers but KdV is smoother. Pre-LN residuals should enable
+    this depth.
+  expected: ~0.0008–0.0015
   paper_ref: rfno-2024
 - name: fno_wave_h128_m24_l8
   benchmark: wave_1d
@@ -3069,8 +2853,7 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Full-capacity FNO on wave equation. Linear PDE \u2192 FNO's linear spectral\
-    \ conv is theoretically exact. SOTA: ~0.005."
+  rationale: 'Full-capacity FNO on wave equation. Linear PDE → FNO''s linear spectral conv is theoretically exact. SOTA: ~0.005.'
   expected: <0.001 (linear PDE should be near-exact for FNO)
   paper_ref: ''
 - name: rfno_wave_h128_m24_l8
@@ -3122,9 +2905,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: 'Lightweight FNO baseline on wave: quick result to confirm benchmark
-    is working and data is learnable.'
-  expected: "~0.003\u20130.01"
+  rationale: 'Lightweight FNO baseline on wave: quick result to confirm benchmark is working and data is learnable.'
+  expected: ~0.003–0.01
   paper_ref: ''
 - name: fno_wave_h128_m24_l8_v2
   benchmark: wave_1d
@@ -3149,9 +2931,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: Re-run of fno_wave_h128 with fixed wave ICs (ut0=0). Previous run used
-    random ut0 making the problem ill-posed.
-  expected: "<0.001 \u2014 should be near-exact for FNO on linear wave PDE"
+  rationale: Re-run of fno_wave_h128 with fixed wave ICs (ut0=0). Previous run used random ut0 making the problem ill-posed.
+  expected: <0.001 — should be near-exact for FNO on linear wave PDE
   paper_ref: ''
 - name: fno_h128_m24_l8_aug
   benchmark: burgers_1d
@@ -3175,11 +2956,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Spatial shift augmentation on best FNO config. Random roll of u0+uT\
-    \ exploits periodic translation symmetry. Effective dataset size \u221E at zero\
-    \ solver cost."
-  expected: "~0.12\u20130.14 (10-20% over baseline 0.155)"
+  priority: 3
+  rationale: Spatial shift augmentation on best FNO config. Random roll of u0+uT exploits periodic translation symmetry. Effective
+    dataset size ∞ at zero solver cost.
+  expected: ~0.12–0.14 (10-20% over baseline 0.155)
   paper_ref: augmentation-2023
 - name: rfno_h128_m24_l8_aug
   benchmark: burgers_1d
@@ -3203,10 +2983,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: RFNO + spatial shift augmentation. Tests whether augmentation compounds
-    with residual connections.
-  expected: "~0.12\u20130.14"
+  priority: 3
+  rationale: RFNO + spatial shift augmentation. Tests whether augmentation compounds with residual connections.
+  expected: ~0.12–0.14
   paper_ref: augmentation-2023
 - name: rfno_kdv_h128_m24_l8_aug
   benchmark: kdv_1d
@@ -3231,9 +3010,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "KdV RFNO + augmentation. KdV is Galilean-invariant so spatial shifts\
-    \ are physically valid. Already near-SOTA \u2014 push lower."
-  expected: "~0.001\u20130.0015"
+  rationale: KdV RFNO + augmentation. KdV is Galilean-invariant so spatial shifts are physically valid. Already near-SOTA
+    — push lower.
+  expected: ~0.001–0.0015
   paper_ref: augmentation-2023
 - name: fno_h128_m24_l8_aug_ckpt
   benchmark: burgers_1d
@@ -3257,65 +3036,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "Best augmented config + checkpoint saving. Enables ensemble inference\
-    \ (run N times, average predictions \u2192 UQ)."
-  expected: "~0.12\u20130.14"
+  priority: 3
+  rationale: Best augmented config + checkpoint saving. Enables ensemble inference (run N times, average predictions → UQ).
+  expected: ~0.12–0.14
   paper_ref: ensemble-uq-2023
-- name: fno_darcy2d_fix_h32_m8_l4
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 1
-  rationale: "Baseline FNO on corrected Darcy 2D benchmark. prepare.py solver used\
-    \ mean(a) only and fixed-seed f \u2192 val\u22480.998. This fix: Richardson iteration\
-    \ with full a(x,y); f tied to data seed."
-  expected: "~0.05\u20130.15 (SOTA 0.0108 with FNO h=32 on proper Darcy)"
-  paper_ref: ''
-- name: fno_darcy2d_fix_h64_m12_l4
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 2
-  rationale: Larger FNO on corrected Darcy 2D to approach SOTA 0.0108.
-  expected: "~0.02\u20130.08"
-  paper_ref: ''
 - name: fno_ns2d_fix_h32_m8_l4
   benchmark: ns_2d
   model: FNO
@@ -3339,9 +3063,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Baseline FNO on corrected NS 2D benchmark. prepare.py solver: IC scale=1.0\
-    \ \u2192 CFL\u224861 \u2192 NaN. This fix: IC scale=0.1 \u2192 CFL\u22480.6, n_steps=1000."
-  expected: "~0.05\u20130.20 (NS is harder than Darcy at T=1)"
+  rationale: 'Baseline FNO on corrected NS 2D benchmark. prepare.py solver: IC scale=1.0 → CFL≈61 → NaN. This fix: IC scale=0.1
+    → CFL≈0.6, n_steps=1000.'
+  expected: ~0.05–0.20 (NS is harder than Darcy at T=1)
   paper_ref: ''
 - name: fno_ns2d_fix_h32_m8_l4
   benchmark: ns_2d
@@ -3367,7 +3091,7 @@
   parent_name: ''
   priority: 2
   rationale: Larger FNO on corrected NS 2D benchmark.
-  expected: "~0.03\u20130.10"
+  expected: ~0.03–0.10
   paper_ref: ''
 - name: s4no_h64_l4_burgers
   benchmark: burgers_1d
@@ -3391,10 +3115,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: S4D (Diagonal S4) on Burgers. State-space model captures global interactions
-    with O(N log N) complexity.
-  expected: "~0.15\u20130.25"
+  priority: 3
+  rationale: S4D (Diagonal S4) on Burgers. State-space model captures global interactions with O(N log N) complexity.
+  expected: ~0.15–0.25
   paper_ref: ssm-s4-2022
 - name: s4no_h128_l6_burgers
   benchmark: burgers_1d
@@ -3420,7 +3143,7 @@
   parent_name: ''
   priority: 3
   rationale: Wider/deeper S4D on Burgers.
-  expected: "~0.12\u20130.20"
+  expected: ~0.12–0.20
   paper_ref: ssm-s4-2022
 - name: gnot_h64_l3_burgers
   benchmark: burgers_1d
@@ -3445,9 +3168,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: Simplified GNOT (self-attention) on Burgers. Transformer architecture
-    for operator learning.
-  expected: "~0.15\u20130.25"
+  rationale: Simplified GNOT (self-attention) on Burgers. Transformer architecture for operator learning.
+  expected: ~0.15–0.25
   paper_ref: gnot-2023
 - name: ns2d_fno_h32_l4_m8
   benchmark: ns_2d
@@ -3472,9 +3194,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: Smaller FNO gets more steps in budget; wave_1d showed h=64 l=4 wins over
-    h=128 l=8
-  expected: "0.010\u20130.013"
+  rationale: Smaller FNO gets more steps in budget; wave_1d showed h=64 l=4 wins over h=128 l=8
+  expected: 0.010–0.013
   paper_ref: ''
 - name: ns2d_rfno2d_h32_l4_m8
   benchmark: ns_2d
@@ -3500,7 +3221,7 @@
   parent_name: ''
   priority: 2
   rationale: RFNO2D pre-LN stability; safe 2D config transferred to NS.
-  expected: "0.010\u20130.014"
+  expected: 0.010–0.014
   paper_ref: ''
 - name: ns2d_fno_h128_l6_m16
   benchmark: ns_2d
@@ -3526,59 +3247,7 @@
   parent_name: ''
   priority: 1
   rationale: Medium-size FNO; balance between capacity and training steps for 2D
-  expected: "0.010\u20130.015"
-  paper_ref: ''
-- name: darcy2d_rfno2d_h32_l4_m8
-  benchmark: darcy_2d
-  model: RFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: RFNO2D safe 2D config; pre-LN stability for Darcy net
-  expected: "0.05\u20130.10"
-  paper_ref: ''
-- name: darcy2d_fno_h32_l4_m8
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: "FNO h=32 \u2014 goldilocks safe size for 2D budget"
-  expected: "0.05\u20130.12"
+  expected: 0.010–0.015
   paper_ref: ''
 - name: euler1d_fno_h64_l4_m16
   benchmark: euler_1d
@@ -3603,9 +3272,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: First baseline on compressible Euler 1D; multi-channel FNO auto-routed
-    to FNO_MC
-  expected: "0.05\u20130.20"
+  rationale: First baseline on compressible Euler 1D; multi-channel FNO auto-routed to FNO_MC
+  expected: 0.05–0.20
   paper_ref: ''
 - name: euler1d_rfno_h128_l8_m24
   benchmark: euler_1d
@@ -3631,7 +3299,7 @@
   parent_name: ''
   priority: 2
   rationale: RFNO for multi-channel Euler; best KdV arch transferred
-  expected: "0.02\u20130.10"
+  expected: 0.02–0.10
   paper_ref: ''
 - name: swe2d_fno_h64_l4_m12
   benchmark: swe_2d
@@ -3656,9 +3324,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: First baseline on 2D shallow water; analytic solver makes data generation
-    instant
-  expected: "0.005\u20130.05"
+  rationale: First baseline on 2D shallow water; analytic solver makes data generation instant
+  expected: 0.005–0.05
   paper_ref: ''
 - name: allen_cahn_fno_h64_l4_m12
   benchmark: allen_cahn_2d
@@ -3683,9 +3350,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: First baseline on Allen-Cahn phase field; ETDRK2 solver generates data
-    in ~16s
-  expected: "0.02\u20130.10"
+  rationale: First baseline on Allen-Cahn phase field; ETDRK2 solver generates data in ~16s
+  expected: 0.02–0.10
   paper_ref: ''
 - name: burgers_rfno_h128_l8_m24_aug
   benchmark: burgers_1d
@@ -3709,10 +3375,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: RFNO + augmentation combo; aug alone gave best Burgers (0.1468), RFNO
-    alone 0.1618
-  expected: "0.13\u20130.15"
+  priority: 3
+  rationale: RFNO + augmentation combo; aug alone gave best Burgers (0.1468), RFNO alone 0.1618
+  expected: 0.13–0.15
   paper_ref: ''
 - name: tfno_burgers_h128_l8_m24_r05
   benchmark: burgers_1d
@@ -3736,10 +3401,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Tucker TFNO baseline on Burgers (rank_ratio=0.5). Low-rank regularization\
-    \ may help generalise; fewer spectral params \u2192 more steps."
-  expected: "0.13\u20130.17 (TFNO matched FNO on Darcy; unknown for Burgers)"
+  priority: 3
+  rationale: Tucker TFNO baseline on Burgers (rank_ratio=0.5). Low-rank regularization may help generalise; fewer spectral
+    params → more steps.
+  expected: 0.13–0.17 (TFNO matched FNO on Darcy; unknown for Burgers)
   paper_ref: ''
 - name: tfno_burgers_h128_l8_m24_r075
   benchmark: burgers_1d
@@ -3763,8 +3428,8 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "High-rank Tucker (rank_ratio=0.75) \u2014 near-full FNO with mild regularization."
+  priority: 3
+  rationale: High-rank Tucker (rank_ratio=0.75) — near-full FNO with mild regularization.
   expected: Similar to FNO (0.1468); tests whether mild Tucker hurts
   paper_ref: ''
 - name: rtfno_burgers_h128_l10_m24
@@ -3789,10 +3454,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: RTFNO = Tucker spectral + Pre-LN residual. Unlock depth-10 with dual
-    stability.
-  expected: "0.12\u20130.15 (combining RFNO stability gains with Tucker regularization)"
+  priority: 3
+  rationale: RTFNO = Tucker spectral + Pre-LN residual. Unlock depth-10 with dual stability.
+  expected: 0.12–0.15 (combining RFNO stability gains with Tucker regularization)
   paper_ref: ''
 - name: cpfno_burgers_h128_l8_m24_r8
   benchmark: burgers_1d
@@ -3816,10 +3480,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: 'CP-FNO: extreme spectral compression (rank=8). How low can spectral
-    rank go?'
-  expected: "0.20\u20130.35 (rank-8 may be too aggressive; useful lower bound)"
+  priority: 3
+  rationale: 'CP-FNO: extreme spectral compression (rank=8). How low can spectral rank go?'
+  expected: 0.20–0.35 (rank-8 may be too aggressive; useful lower bound)
   paper_ref: ''
 - name: tfno_kdv_h128_l8_m24
   benchmark: kdv_1d
@@ -3844,9 +3507,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Tucker TFNO on KdV. Soliton dynamics are low-rank in spectral space\
-    \ \u2192 natural fit."
-  expected: "~0.002\u20130.005 (our RFNO SOTA 0.0020; TFNO may match or improve)"
+  rationale: Tucker TFNO on KdV. Soliton dynamics are low-rank in spectral space → natural fit.
+  expected: ~0.002–0.005 (our RFNO SOTA 0.0020; TFNO may match or improve)
   paper_ref: ''
 - name: rtfno_kdv_h128_l10_m24
   benchmark: kdv_1d
@@ -3871,63 +3533,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "RTFNO on KdV: deeper model with Tucker+Pre-LN \u2014 push KdV SOTA further."
-  expected: "0.0015\u20130.0025"
-  paper_ref: ''
-- name: tfno2d_darcy_h128_m24_l4
-  benchmark: darcy_2d
-  model: TFNO2D
-  hidden_dim: 128
-  n_layers: 4
-  n_modes: 24
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 1
-  rationale: "Tucker TFNO2D on Darcy. Paper reports Tucker beats FNO2D (0.0094 vs\
-    \ 0.0108). Darcy permeability fields are inherently low-rank \u2192 ideal for\
-    \ Tucker."
-  expected: "0.05\u20130.12 (our FNO2D h=32 got 0.1469; h=128 + Tucker should improve)"
-  paper_ref: ''
-- name: tfno2d_darcy_h64_m16_l4
-  benchmark: darcy_2d
-  model: TFNO2D
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 16
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 1
-  rationale: "Smaller Tucker TFNO2D on Darcy \u2014 validate Tucker benefit at moderate\
-    \ size."
-  expected: "0.10\u20130.15"
+  rationale: 'RTFNO on KdV: deeper model with Tucker+Pre-LN — push KdV SOTA further.'
+  expected: 0.0015–0.0025
   paper_ref: ''
 - name: tfno2d_ns_h64_m12_l4
   benchmark: ns_2d
@@ -3952,9 +3559,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "Tucker TFNO2D on NS \u2014 our FNO2D got 0.0152 \u2248 SOTA (0.0128);\
-    \ Tucker may close gap."
-  expected: "0.010\u20130.015"
+  rationale: Tucker TFNO2D on NS — our FNO2D got 0.0152 ≈ SOTA (0.0128); Tucker may close gap.
+  expected: 0.010–0.015
   paper_ref: ''
 - name: transolver_burgers_h64_l4_s32
   benchmark: burgers_1d
@@ -3978,10 +3584,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: Transolver baseline on Burgers. Physics slices may separate shock from
-    smooth region.
-  expected: "0.15\u20130.25 (attention-based; unknown on Burgers)"
+  priority: 3
+  rationale: Transolver baseline on Burgers. Physics slices may separate shock from smooth region.
+  expected: 0.15–0.25 (attention-based; unknown on Burgers)
   paper_ref: ''
 - name: transolver_burgers_h128_l6_s32
   benchmark: burgers_1d
@@ -4005,10 +3610,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Wider deeper Transolver on Burgers \u2014 closer to paper's default\
-    \ config."
-  expected: "0.12\u20130.20"
+  priority: 3
+  rationale: Wider deeper Transolver on Burgers — closer to paper's default config.
+  expected: 0.12–0.20
   paper_ref: ''
 - name: transolver_kdv_h64_l4_s32
   benchmark: kdv_1d
@@ -4033,9 +3637,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Transolver on KdV: solitons are spatially localized \u2192 natural physics\
-    \ slice structure."
-  expected: "0.003\u20130.010"
+  rationale: 'Transolver on KdV: solitons are spatially localized → natural physics slice structure.'
+  expected: 0.003–0.010
   paper_ref: ''
 - name: transolver_wave_h64_l4_s32
   benchmark: wave_1d
@@ -4060,62 +3663,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "Transolver on wave_1d \u2014 wave fronts may form coherent physics slices."
-  expected: "0.001\u20130.005"
-  paper_ref: ''
-- name: transolver2d_darcy_h64_l4_s64
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 1
-  rationale: "Transolver2D on Darcy \u2014 paper's reported SOTA architecture (0.0084\
-    \ vs FNO 0.0108)."
-  expected: "0.05\u20130.10 (2D attention more expensive; slice_num=64 for 64\xD7\
-    64 grid)"
-  paper_ref: ''
-- name: transolver2d_darcy_h128_l4_s64
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 128
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 1200
-  parent_name: ''
-  priority: 2
-  rationale: "Wider Transolver2D \u2014 closer to paper dim=256; may be step-limited."
-  expected: "0.04\u20130.10"
+  rationale: Transolver on wave_1d — wave fronts may form coherent physics slices.
+  expected: 0.001–0.005
   paper_ref: ''
 - name: transolver2d_ns_h64_l4_s64
   benchmark: ns_2d
@@ -4140,9 +3689,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "Transolver2D on NS \u2014 attention over vorticity slices; paper reports\
-    \ strong NS results."
-  expected: "0.010\u20130.016"
+  rationale: Transolver2D on NS — attention over vorticity slices; paper reports strong NS results.
+  expected: 0.010–0.016
   paper_ref: ''
 - name: time_deeponet_wave_h64_l4
   benchmark: wave_1d
@@ -4167,9 +3715,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "TimeDeepONet on wave_1d. Temporal gating (branch2) naturally separates\
-    \ IC encoding from time-evolution operator \u2014 natural fit for wave propagation."
-  expected: "0.001\u20130.010 (DeepONet got 0.808; temporal gating should help significantly)"
+  rationale: TimeDeepONet on wave_1d. Temporal gating (branch2) naturally separates IC encoding from time-evolution operator
+    — natural fit for wave propagation.
+  expected: 0.001–0.010 (DeepONet got 0.808; temporal gating should help significantly)
   paper_ref: ''
 - name: time_deeponet_wave_h128_l4
   benchmark: wave_1d
@@ -4194,8 +3742,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Wider TimeDeepONet on wave_1d \u2014 more expressive temporal gating."
-  expected: "0.001\u20130.005"
+  rationale: Wider TimeDeepONet on wave_1d — more expressive temporal gating.
+  expected: 0.001–0.005
   paper_ref: ''
 - name: dual_deeponet_wave_h64_l4
   benchmark: wave_1d
@@ -4220,9 +3768,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "DualBranch: encode u0 and du0/dt separately \u2014 matches paper's two-branch\
-    \ structure. Wave equation has natural (u, v=du/dt) state pair."
-  expected: "0.001\u20130.010"
+  rationale: 'DualBranch: encode u0 and du0/dt separately — matches paper''s two-branch structure. Wave equation has natural
+    (u, v=du/dt) state pair.'
+  expected: 0.001–0.010
   paper_ref: ''
 - name: time_deeponet_burgers_h64_l4
   benchmark: burgers_1d
@@ -4246,10 +3794,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "TimeDeepONet on Burgers \u2014 temporal gating may help generalize across\
-    \ time horizons."
-  expected: "0.15\u20130.30"
+  priority: 3
+  rationale: TimeDeepONet on Burgers — temporal gating may help generalize across time horizons.
+  expected: 0.15–0.30
   paper_ref: ''
 - name: time_deeponet_kdv_h64_l4
   benchmark: kdv_1d
@@ -4274,9 +3821,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "TimeDeepONet on KdV solitons \u2014 temporal operator should capture\
-    \ soliton dynamics."
-  expected: "0.003\u20130.010"
+  rationale: TimeDeepONet on KdV solitons — temporal operator should capture soliton dynamics.
+  expected: 0.003–0.010
   paper_ref: ''
 - name: hnn_wave_h64_l4
   benchmark: wave_1d
@@ -4301,10 +3847,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "HamiltonianNO on wave_1d. Wave equation is Hamiltonian: H = (1/2)\u222B\
-    (ut\xB2 + c\xB2ux\xB2)dx. Symplectic inductive bias should give exact energy conservation\
-    \ at inference."
-  expected: "0.001\u20130.010 (wave is well-matched to HNN inductive bias)"
+  rationale: 'HamiltonianNO on wave_1d. Wave equation is Hamiltonian: H = (1/2)∫(ut² + c²ux²)dx. Symplectic inductive bias
+    should give exact energy conservation at inference.'
+  expected: 0.001–0.010 (wave is well-matched to HNN inductive bias)
   paper_ref: ''
 - name: hnn_wave_h128_l4
   benchmark: wave_1d
@@ -4329,9 +3874,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "Wider HNN on wave_1d \u2014 more expressive (q,p) encoder and Hamiltonian\
-    \ MLP."
-  expected: "0.001\u20130.005"
+  rationale: Wider HNN on wave_1d — more expressive (q,p) encoder and Hamiltonian MLP.
+  expected: 0.001–0.005
   paper_ref: ''
 - name: hnn_kdv_h64_l4
   benchmark: kdv_1d
@@ -4356,9 +3900,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "HNN on KdV. KdV is Hamiltonian: H[u] = \u222B(ux\xB2 - u\xB3/3)dx. Solitons\
-    \ conserve energy \u2014 HNN prior matches perfectly."
-  expected: "0.002\u20130.008 (may approach or beat RFNO SOTA 0.0020)"
+  rationale: 'HNN on KdV. KdV is Hamiltonian: H[u] = ∫(ux² - u³/3)dx. Solitons conserve energy — HNN prior matches perfectly.'
+  expected: 0.002–0.008 (may approach or beat RFNO SOTA 0.0020)
   paper_ref: ''
 - name: energy_fno_wave_h64_l8_m24
   benchmark: wave_1d
@@ -4383,9 +3926,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: 'EnergyConservingFNO: standard FNO + soft energy conservation loss. Lightweight
-    energy bias; no autodiff overhead of full HNN.'
-  expected: "0.000\u20130.002 (FNO already 0.000992; soft energy may push further)"
+  rationale: 'EnergyConservingFNO: standard FNO + soft energy conservation loss. Lightweight energy bias; no autodiff overhead
+    of full HNN.'
+  expected: 0.000–0.002 (FNO already 0.000992; soft energy may push further)
   paper_ref: ''
 - name: energy_fno_kdv_h128_l8_m24
   benchmark: kdv_1d
@@ -4410,9 +3953,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "EnergyFNO on KdV \u2014 energy regularization on top of our SOTA RFNO\
-    \ config."
-  expected: "0.0015\u20130.0025"
+  rationale: EnergyFNO on KdV — energy regularization on top of our SOTA RFNO config.
+  expected: 0.0015–0.0025
   paper_ref: ''
 - name: hnn_burgers_h64_l4
   benchmark: burgers_1d
@@ -4437,9 +3979,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 3
-  rationale: "HNN on Burgers \u2014 Burgers IS dissipative (energy decays), so HNN\
-    \ conservation bias may conflict. Useful ablation to measure the effect."
-  expected: "0.20\u20130.40 (mismatch expected; quantify energy-conservation penalty)"
+  rationale: HNN on Burgers — Burgers IS dissipative (energy decays), so HNN conservation bias may conflict. Useful ablation
+    to measure the effect.
+  expected: 0.20–0.40 (mismatch expected; quantify energy-conservation penalty)
   paper_ref: ''
 - name: neural_ode_wave_h64_l4_s20
   benchmark: wave_1d
@@ -4464,9 +4006,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "NeuralODE on wave_1d. Learns \u2202u/\u2202t = F(u,x); integrates 20\
-    \ RK4 steps. Wave is smooth and amenable to ODE integration \u2014 natural fit."
-  expected: "0.001\u20130.010"
+  rationale: NeuralODE on wave_1d. Learns ∂u/∂t = F(u,x); integrates 20 RK4 steps. Wave is smooth and amenable to ODE integration
+    — natural fit.
+  expected: 0.001–0.010
   paper_ref: ''
 - name: neural_ode_wave_h64_l4_s40
   benchmark: wave_1d
@@ -4491,8 +4033,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "More integration steps (40) \u2014 more accurate RK4 for wave propagation."
-  expected: "0.0005\u20130.005"
+  rationale: More integration steps (40) — more accurate RK4 for wave propagation.
+  expected: 0.0005–0.005
   paper_ref: ''
 - name: neural_ode_kdv_h64_l4_s20
   benchmark: kdv_1d
@@ -4517,9 +4059,8 @@
   budget_s: 1200
   parent_name: ''
   priority: 1
-  rationale: "NeuralODE on KdV. Soliton dynamics are smooth and time-reversible \u2014\
-    \ excellent match for continuous-time integration."
-  expected: "0.002\u20130.010"
+  rationale: NeuralODE on KdV. Soliton dynamics are smooth and time-reversible — excellent match for continuous-time integration.
+  expected: 0.002–0.010
   paper_ref: ''
 - name: ude_burgers_h32_l3_s20
   benchmark: burgers_1d
@@ -4543,11 +4084,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Universal DE on Burgers. Known: -u*ux (nonlinear advection via FFT).\
-    \ NN correction: \u03BD*uxx + model error. Physics prior should massively reduce\
-    \ parameter count and improve generalization."
-  expected: "0.05\u20130.15 (UDE should outperform pure data-driven with fewer params)"
+  priority: 3
+  rationale: 'Universal DE on Burgers. Known: -u*ux (nonlinear advection via FFT). NN correction: ν*uxx + model error. Physics
+    prior should massively reduce parameter count and improve generalization.'
+  expected: 0.05–0.15 (UDE should outperform pure data-driven with fewer params)
   paper_ref: ''
 - name: ude_burgers_h64_l4_s30
   benchmark: burgers_1d
@@ -4571,10 +4111,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Wider UDE on Burgers with 30 integration steps \u2014 more expressive\
-    \ correction."
-  expected: "0.04\u20130.12"
+  priority: 3
+  rationale: Wider UDE on Burgers with 30 integration steps — more expressive correction.
+  expected: 0.04–0.12
   paper_ref: ''
 - name: ude_burgers_fixed_h64_l3
   benchmark: burgers_1d
@@ -4598,10 +4137,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: 'UDE re-run after CFL fix: 2/3 dealiasing, n_steps=50 (dt=0.02<1/32),
-    tendency clip.'
-  expected: "0.05\u20130.15"
+  priority: 3
+  rationale: 'UDE re-run after CFL fix: 2/3 dealiasing, n_steps=50 (dt=0.02<1/32), tendency clip.'
+  expected: 0.05–0.15
   paper_ref: ''
 - name: ude_burgers_fixed_h128_l4
   benchmark: burgers_1d
@@ -4625,9 +4163,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
+  priority: 3
   rationale: Wider UDE re-run after CFL fix.
-  expected: "0.04\u20130.12"
+  expected: 0.04–0.12
   paper_ref: ''
 - name: latent_ode_wave_h64_l4_s20
   benchmark: wave_1d
@@ -4652,9 +4190,9 @@
   budget_s: 1200
   parent_name: ''
   priority: 2
-  rationale: "LatentODE: encode u0 \u2192 latent, integrate in low-dim space, decode.\
-    \ Memory-efficient; latent space captures dominant modes."
-  expected: "0.001\u20130.010"
+  rationale: 'LatentODE: encode u0 → latent, integrate in low-dim space, decode. Memory-efficient; latent space captures dominant
+    modes.'
+  expected: 0.001–0.010
   paper_ref: ''
 - name: latent_ode_burgers_h64_l4_s20
   benchmark: burgers_1d
@@ -4678,10 +4216,9 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "LatentODE on Burgers \u2014 latent dynamics absorb the multi-scale shock\
-    \ structure."
-  expected: "0.10\u20130.20"
+  priority: 3
+  rationale: LatentODE on Burgers — latent dynamics absorb the multi-scale shock structure.
+  expected: 0.10–0.20
   paper_ref: ''
 - name: neural_ode_burgers_h64_l4_s20
   benchmark: burgers_1d
@@ -4705,10 +4242,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 2
-  rationale: "NeuralODE on Burgers \u2014 learns full tendency; compare vs UDE (which\
-    \ uses known advection). Ablates the value of the physics prior."
-  expected: "0.10\u20130.20"
+  priority: 3
+  rationale: NeuralODE on Burgers — learns full tendency; compare vs UDE (which uses known advection). Ablates the value of
+    the physics prior.
+  expected: 0.10–0.20
   paper_ref: ''
 - name: fno_burgers_h128_l8_m24_h1_sobolev
   benchmark: burgers_1d
@@ -4732,10 +4269,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: 'H1 Sobolev loss on Burgers: spectral bias analysis shows high-freq error
-    dominant across 5+ runs. H1 directly penalises derivative residuals.'
-  expected: "0.12\u20130.14"
+  priority: 3
+  rationale: 'H1 Sobolev loss on Burgers: spectral bias analysis shows high-freq error dominant across 5+ runs. H1 directly
+    penalises derivative residuals.'
+  expected: 0.12–0.14
   paper_ref: ''
 - name: fno_burgers_h64_l4_m16_wave_transfer
   benchmark: burgers_1d
@@ -4759,11 +4296,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "Cross-benchmark transfer: FNO h=64 l=4 m=16 achieved 0.0010 on wave_1d.\
-    \ Smaller model \u2192 more training steps in budget \u2014 may close the gap\
-    \ on Burgers."
-  expected: "0.12\u20130.17"
+  priority: 3
+  rationale: 'Cross-benchmark transfer: FNO h=64 l=4 m=16 achieved 0.0010 on wave_1d. Smaller model → more training steps
+    in budget — may close the gap on Burgers.'
+  expected: 0.12–0.17
   paper_ref: ''
 - name: rfno_burgers_h128_l8_m24_h1_sobolev
   benchmark: burgers_1d
@@ -4787,36 +4323,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: 'RFNO + H1 Sobolev loss: RFNO''s pre-LN stabilises deep models; H1 targets
-    high-freq spectral bias. Combines both top interventions.'
-  expected: "0.11\u20130.14"
-  paper_ref: ''
-- name: fno_darcy2d_h32_l4_m8
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 32
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Darcy fix on safe 2D config (h=32 l=4 m=8).
-  expected: "0.05\u20130.15"
+  priority: 3
+  rationale: 'RFNO + H1 Sobolev loss: RFNO''s pre-LN stabilises deep models; H1 targets high-freq spectral bias. Combines
+    both top interventions.'
+  expected: 0.11–0.14
   paper_ref: ''
 - name: fno_burgers_h128_l8_m24_lr5e4
   benchmark: burgers_1d
@@ -4840,10 +4350,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "LR sweep: current best uses lr=1e-3. lr=5e-4 gives slower warmup \u2014\
-    \ may avoid early instability and find a better loss basin."
-  expected: "0.13\u20130.15"
+  priority: 3
+  rationale: 'LR sweep: current best uses lr=1e-3. lr=5e-4 gives slower warmup — may avoid early instability and find a better
+    loss basin.'
+  expected: 0.13–0.15
   paper_ref: ''
 - name: rfno_burgers_h128_l10_m24
   benchmark: burgers_1d
@@ -4867,10 +4377,10 @@
   resume_from: ''
   budget_s: 1200
   parent_name: ''
-  priority: 1
-  rationale: "RFNO l=10 on Burgers: pre-LN allows deeper nets. RFNO h=128 l=8 is SOTA\
-    \ on KdV \u2014 test if l=10 helps on Burgers shocks."
-  expected: "0.12\u20130.15"
+  priority: 3
+  rationale: 'RFNO l=10 on Burgers: pre-LN allows deeper nets. RFNO h=128 l=8 is SOTA on KdV — test if l=10 helps on Burgers
+    shocks.'
+  expected: 0.12–0.15
   paper_ref: ''
 - name: euler1d_fno_mc_h128_l8_m24
   benchmark: euler_1d
@@ -4895,9 +4405,9 @@
   budget_s: 480
   parent_name: ''
   priority: 2
-  rationale: "FNO_MC is the recommended model for euler_1d (3-channel: rho, u, p).\
-    \ h=128 l=8 m=24 \u2014 same config that dominates 1D benchmarks."
-  expected: "0.02\u20130.10"
+  rationale: 'FNO_MC is the recommended model for euler_1d (3-channel: rho, u, p). h=128 l=8 m=24 — same config that dominates
+    1D benchmarks.'
+  expected: 0.02–0.10
   paper_ref: ''
 - name: euler1d_rfno_h64_l8_m24
   benchmark: euler_1d
@@ -4922,62 +4432,8 @@
   budget_s: 480
   parent_name: ''
   priority: 2
-  rationale: "RFNO pre-LN residual for compressible Euler shocks \u2014 stable deep\
-    \ training."
-  expected: "0.02\u20130.10"
-  paper_ref: ''
-- name: rfno2d_darcy2d_h32_l4_m8
-  benchmark: darcy_2d
-  model: RFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 32
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 2
-  rationale: RFNO2D scale-up on Darcy fix (safe config). Pre-LN residual should help
-    close the gap.
-  expected: "0.04\u20130.10"
-  paper_ref: ''
-- name: fno_darcy2d_h32_l4_m8_h1
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 32
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: h1
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 2
-  rationale: 'FNO h=32 + H1 loss on Darcy: safe 2D config.'
-  expected: "0.04\u20130.10"
+  rationale: RFNO pre-LN residual for compressible Euler shocks — stable deep training.
+  expected: 0.02–0.10
   paper_ref: ''
 - name: fno_ns2d_h32_l4_m8
   benchmark: ns_2d
@@ -5003,7 +4459,7 @@
   parent_name: ''
   priority: 2
   rationale: 'Scale FNO on NS: safe 2D config.'
-  expected: "0.010\u20130.015"
+  expected: 0.010–0.015
   paper_ref: ''
 - name: rfno2d_ns2d_h32_l4_m8
   benchmark: ns_2d
@@ -5029,7 +4485,7 @@
   parent_name: ''
   priority: 2
   rationale: 'RFNO2D on NS 2D: safe config.'
-  expected: "0.010\u20130.015"
+  expected: 0.010–0.015
   paper_ref: ''
 - name: swe2d_rfno2d_h32_l4_m8
   benchmark: swe_2d
@@ -5055,7 +4511,7 @@
   parent_name: ''
   priority: 2
   rationale: 'RFNO2D on Shallow Water: safe config.'
-  expected: "0.005\u20130.05"
+  expected: 0.005–0.05
   paper_ref: ''
 - name: swe2d_fno_h128_l4_m12
   benchmark: swe_2d
@@ -5081,7 +4537,7 @@
   parent_name: ''
   priority: 2
   rationale: 'Wider FNO (h=128) on SWE: test if more capacity helps wave dynamics.'
-  expected: "0.002\u20130.05"
+  expected: 0.002–0.05
   paper_ref: ''
 - name: allen_cahn_rfno2d_h32_l4_m8
   benchmark: allen_cahn_2d
@@ -5107,7 +4563,7 @@
   parent_name: ''
   priority: 2
   rationale: 'RFNO2D on Allen-Cahn: safe config.'
-  expected: "0.02\u20130.10"
+  expected: 0.02–0.10
   paper_ref: ''
 - name: allen_cahn_fno_h128_l4_m12
   benchmark: allen_cahn_2d
@@ -5133,7 +4589,7 @@
   parent_name: ''
   priority: 2
   rationale: 'FNO h=128 on Allen-Cahn: more width for capturing sharp phase interfaces.'
-  expected: "0.02\u20130.10"
+  expected: 0.02–0.10
   paper_ref: ''
 - name: rfno_wave_h64_l8_m24
   benchmark: wave_1d
@@ -5158,9 +4614,8 @@
   budget_s: 300
   parent_name: ''
   priority: 2
-  rationale: "RFNO on Wave: already at 5\xD7 better than SOTA with FNO. RFNO's pre-LN\
-    \ may allow deeper training to push further."
-  expected: "0.0005\u20130.002"
+  rationale: 'RFNO on Wave: already at 5× better than SOTA with FNO. RFNO''s pre-LN may allow deeper training to push further.'
+  expected: 0.0005–0.002
   paper_ref: ''
 - name: rfno_kdv_h128_l8_m24_aug
   benchmark: kdv_1d
@@ -5185,9 +4640,9 @@
   budget_s: 300
   parent_name: ''
   priority: 2
-  rationale: 'RFNO + spatial augmentation on KdV: augmentation was the single biggest
-    win on Burgers (+38%). Current SOTA KdV best (0.002) uses no aug.'
-  expected: "0.001\u20130.002"
+  rationale: 'RFNO + spatial augmentation on KdV: augmentation was the single biggest win on Burgers (+38%). Current SOTA
+    KdV best (0.002) uses no aug.'
+  expected: 0.001–0.002
   paper_ref: ''
 - name: fno_burgers_h128_l8_m24_curriculum_v2
   benchmark: burgers_1d
@@ -5211,10 +4666,10 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
-  rationale: 'Curriculum Learning for Burgers (v2): start with smooth low-frequency
-    ICs and increase difficulty. (Fix: enabled curriculum flag).'
-  expected: "~0.13\u20130.14"
+  priority: 3
+  rationale: 'Curriculum Learning for Burgers (v2): start with smooth low-frequency ICs and increase difficulty. (Fix: enabled
+    curriculum flag).'
+  expected: ~0.13–0.14
   paper_ref: ''
 - name: s4d_burgers_h64_l6_p1
   benchmark: burgers_1d
@@ -5238,10 +4693,10 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
-  rationale: S4D (Diagonal SSM) on Burgers. SSMs capture long-range dependencies via
-    state-space modeling. Novel bias for Burgers shock dynamics.
-  expected: "~0.10\u20130.15"
+  priority: 3
+  rationale: S4D (Diagonal SSM) on Burgers. SSMs capture long-range dependencies via state-space modeling. Novel bias for
+    Burgers shock dynamics.
+  expected: ~0.10–0.15
   paper_ref: ''
 - name: transolver_burgers_h128_l6_s32_h4
   benchmark: burgers_1d
@@ -5265,63 +4720,10 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
-  rationale: 'Transolver baseline on Burgers: physics slices may separate shock from
-    smooth regions better than global spectral convolution.'
-  expected: "~0.08\u20130.12"
-  paper_ref: ''
-- name: transolver2d_darcy_h64_l4_s64
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 64
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Transolver2D on Darcy fix. Reported SOTA on Darcy/NS. Testing if Physics
-    Attention beats FNO2D h=32/64.
-  expected: "~0.10\u20130.14"
-  paper_ref: ''
-- name: transolver2d_darcy_h128_l4_s64
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 128
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 64
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: 'Wider Transolver2D: approaching paper''s default capacity.'
-  expected: "~0.05\u20130.09"
+  priority: 3
+  rationale: 'Transolver baseline on Burgers: physics slices may separate shock from smooth regions better than global spectral
+    convolution.'
+  expected: ~0.08–0.12
   paper_ref: ''
 - name: s4d_kdv_h128_l6_p1
   benchmark: kdv_1d
@@ -5346,63 +4748,9 @@
   budget_s: 300
   parent_name: ''
   priority: 1
-  rationale: 'S4D on KdV: Oscillatory HIPPO basis should match soliton dynamics efficiently.
-    Testing if SSM can beat RFNO on KdV.'
-  expected: "~0.002\u20130.005"
-  paper_ref: ''
-- name: fno_darcy2d_h32_m12_l4_480s
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: '2D rebalancing: small model + 480s budget. wave_1d shows smaller+steps
-    beats larger+fewer. m=12 > m=8 baseline.'
-  expected: ''
-  paper_ref: ''
-- name: rfno2d_darcy2d_h32_m12_l4_480s
-  benchmark: darcy_2d
-  model: RFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 12
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: "RFNO2D on Darcy 2D with 480s budget. Pre-LN residual stability matters\
-    \ for 2D spectral conv. RFNO2D won KdV \u2014 test on Darcy."
-  expected: ''
+  rationale: 'S4D on KdV: Oscillatory HIPPO basis should match soliton dynamics efficiently. Testing if SSM can beat RFNO
+    on KdV.'
+  expected: ~0.002–0.005
   paper_ref: ''
 - name: fno_ns2d_h32_m12_l4_480s
   benchmark: ns_2d
@@ -5427,35 +4775,7 @@
   budget_s: 480
   parent_name: ''
   priority: 1
-  rationale: NS 2D near SOTA (0.0152 vs 0.0128). m=12 vs m=8 baseline + 480s budget
-    may push past SOTA.
-  expected: ''
-  paper_ref: ''
-- name: fno_darcy2d_h64_m8_l4_480s
-  benchmark: darcy_2d
-  model: FNO
-  hidden_dim: 64
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: 'Capacity vs steps tradeoff: h=64 vs h=32 at 480s on Darcy 2D. Tests
-    if higher capacity compensates for fewer steps.'
+  rationale: NS 2D near SOTA (0.0152 vs 0.0128). m=12 vs m=8 baseline + 480s budget may push past SOTA.
   expected: ''
   paper_ref: ''
 - name: ssno_burgers_h128_l8_m24
@@ -5480,9 +4800,9 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
-  rationale: "SSNO on Burgers: adaptive S4D damping + spectral conv dual-branch. Paper\
-    \ claims 0.0070 \u2014 would be first result beating SOTA on Burgers."
+  priority: 3
+  rationale: 'SSNO on Burgers: adaptive S4D damping + spectral conv dual-branch. Paper claims 0.0070 — would be first result
+    beating SOTA on Burgers.'
   expected: ''
   paper_ref: ''
 - name: ssno_burgers_h64_l6_m16
@@ -5507,9 +4827,9 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 2
-  rationale: "Smaller SSNO on Burgers \u2014 more steps in budget, tests if SSNO follows\
-    \ wave_1d pattern where smaller = more training iterations."
+  priority: 3
+  rationale: Smaller SSNO on Burgers — more steps in budget, tests if SSNO follows wave_1d pattern where smaller = more training
+    iterations.
   expected: ''
   paper_ref: ''
 - name: ssno_kdv_h128_l8_m24
@@ -5535,8 +4855,7 @@
   budget_s: 300
   parent_name: ''
   priority: 2
-  rationale: 'SSNO on KdV: SSM long-range memory should match soliton propagation.
-    Baseline is RFNO 0.0020.'
+  rationale: 'SSNO on KdV: SSM long-range memory should match soliton propagation. Baseline is RFNO 0.0020.'
   expected: ''
   paper_ref: ''
 - name: ssno_wave_h64_l4_m16
@@ -5588,9 +4907,8 @@
   budget_s: 600
   parent_name: ''
   priority: 1
-  rationale: "NS 2D: same winning config (h=32 m=8 l=4) but 600s budget = 25% more\
-    \ steps. wave_1d showed more steps > bigger model. Gap is only 1.2\xD7 \u2014\
-    \ extra steps may close it."
+  rationale: 'NS 2D: same winning config (h=32 m=8 l=4) but 600s budget = 25% more steps. wave_1d showed more steps > bigger
+    model. Gap is only 1.2× — extra steps may close it.'
   expected: ''
   paper_ref: ''
 - name: fno_ns2d_h32_m8_l4_h1loss
@@ -5616,8 +4934,8 @@
   budget_s: 480
   parent_name: ''
   priority: 1
-  rationale: "NS 2D with H1 loss: vorticity has sharp gradients. H1 penalises \u2202\
-    u/\u2202x errors \u2014 should help the 0.003 gap to SOTA on vorticity field."
+  rationale: 'NS 2D with H1 loss: vorticity has sharp gradients. H1 penalises ∂u/∂x errors — should help the 0.003 gap to
+    SOTA on vorticity field.'
   expected: ''
   paper_ref: ''
 - name: rfno2d_ns2d_h32_m8_l4_480s
@@ -5643,36 +4961,10 @@
   budget_s: 480
   parent_name: ''
   priority: 1
-  rationale: "RFNO2D on NS 2D: pre-LN residuals may stabilise vorticity dynamics better\
-    \ than FNO. RFNO2D won KdV (solitons) \u2014 worth testing on vorticity."
+  rationale: 'RFNO2D on NS 2D: pre-LN residuals may stabilise vorticity dynamics better than FNO. RFNO2D won KdV (solitons)
+    — worth testing on vorticity.'
   expected: ''
   paper_ref: ''
-- name: agent_rfno2d_nshre_h32_l4_m8
-  benchmark: ns_hre_2d
-  model: RFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Exploring Pre-LN residuals (RFNO2D) on high-Re NS on safe config.
-  expected: ''
-  paper_ref: rfno-2024
 - name: agent_rfno2d_ns2d_h32_l4_m8
   benchmark: ns_2d
   model: RFNO2D
@@ -5699,32 +4991,6 @@
   rationale: Trying RFNO2D to close NS 2D gap on safe config.
   expected: ''
   paper_ref: rfno-2024
-- name: agent_rfno2d_darcy_h32_l4_m8
-  benchmark: darcy_2d
-  model: RFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Exploring RFNO2D stability on Darcy 2D (fixed).
-  expected: ''
-  paper_ref: rfno-2024
 - name: ssno_burgers_h128_l8_lr3e4
   benchmark: burgers_1d
   model: SSNO
@@ -5747,9 +5013,9 @@
   resume_from: ''
   budget_s: 300
   parent_name: ''
-  priority: 1
-  rationale: Previous SSNO (h128) got 80.5 error. Lowering LR to 3e-4 to stabilize
-    deep SSM layers for Burgers gap closing toward 0.007.
+  priority: 3
+  rationale: Previous SSNO (h128) got 80.5 error. Lowering LR to 3e-4 to stabilize deep SSM layers for Burgers gap closing
+    toward 0.007.
   expected: ''
   paper_ref: ''
 - name: pacmann_burge_baseline
@@ -5936,188 +5202,6 @@
   paper_ref: ''
 - name: vsmno_wavebench_2d_h32_l2_m8
   benchmark: wavebench_2d
-  model: VSMNO2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: hybriddecoderdeeponet_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: HybridDecoderDeepONet2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: attentionenhancedfno_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: AttentionEnhancedFNO2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: hybridfnodeeponet_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: HybridFNODeepONet2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: fedonet_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: FEDONet2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: hano_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: HANO2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: sno_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: SNO2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  n_levels: 3
-  n_head: 4
-  slice_num: 32
-  lr: 0.001
-  batch_size: 64
-  grad_clip: 1.0
-  pino_lambda: 0.0
-  loss_type: l2_rel
-  h1_alpha: 0.1
-  augment: false
-  curriculum: false
-  save_ckpt: false
-  resume: false
-  resume_from: ''
-  budget_s: 480
-  parent_name: ''
-  priority: 1
-  rationale: Phase 3 Full Sweep
-  expected: ''
-  paper_ref: ''
-- name: vsmno_multiphysics_2d_h32_l2_m8
-  benchmark: multiphysics_2d
   model: VSMNO2D
   hidden_dim: 32
   n_layers: 2
@@ -6699,7 +5783,7 @@
   loss_type: l2_rel
   augment: true
   budget_s: 600
-  priority: 1
+  priority: 3
   rationale: GNOT Baseline + Augmentation (Priority 1 for Burgers Gap)
 - name: transolver_burgers_h128_l6_s32_h1
   benchmark: burgers_1d
@@ -6714,7 +5798,7 @@
   h1_alpha: 0.1
   augment: true
   budget_s: 600
-  priority: 1
+  priority: 3
   rationale: Transolver + H1 Loss + Augmentation (NeurIPS 2024 SOTA logic)
 - name: ssno_burgers_h128_l8_a01_aug
   benchmark: burgers_1d
@@ -6728,7 +5812,7 @@
   h1_alpha: 0.1
   augment: true
   budget_s: 600
-  priority: 1
+  priority: 3
   rationale: SSNO Dual-branch + H1 + Augmentation (Paper claims 0.007)
 - name: fno_burgers_h128_l8_m24_h1_strong
   benchmark: burgers_1d
@@ -6742,7 +5826,7 @@
   h1_alpha: 1.0
   augment: true
   budget_s: 600
-  priority: 1
+  priority: 3
   rationale: Maximally regularized FNO baseline to isolate H1 impact
 - name: hnn_kdv_stable_h64_l4
   benchmark: kdv_1d
@@ -6766,42 +5850,6 @@
   budget_s: 300
   priority: 1
   rationale: Stable HNN on Wave to verify performance impact of step-size scaling
-- name: transolver2d_darcy_h32_l4_s32_h1
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 32
-  n_layers: 4
-  n_head: 4
-  slice_num: 32
-  lr: 0.0005
-  batch_size: 16
-  loss_type: h1
-  h1_alpha: 0.1
-  budget_s: 600
-  priority: 1
-  rationale: "Transolver2D on Darcy with H1 loss — physics attention over spatial slices suited for heterogeneous a(x). Fixed h=64->32 per 2D constraint."
-- name: fno2d_darcy_h48_l6_m12_aug
-  benchmark: darcy_2d
-  model: FNO2D
-  hidden_dim: 48
-  n_layers: 6
-  n_modes: 12
-  lr: 0.001
-  batch_size: 32
-  augment: true
-  budget_s: 1200
-  priority: 2
-  rationale: Optimized FNO2D modes and augmentation for Darcy scaling
-- name: fedonet2d_darcy_h32_l4
-  benchmark: darcy_2d
-  model: FEDONet2D
-  hidden_dim: 32
-  n_layers: 4
-  lr: 0.001
-  batch_size: 16
-  budget_s: 600
-  priority: 1
-  rationale: "FEDONet2D on Darcy — achieved best results on elasticity/pdebench; h=32 per 2D constraint. Fixed from h=64 which crashes ModelRegistry safety check."
 - name: rfno2d_ns2d_h32_l6_m8_h1
   benchmark: ns_2d
   model: RFNO2D
@@ -6814,8 +5862,7 @@
   h1_alpha: 0.01
   budget_s: 600
   priority: 3
-  rationale: Residual FNO2D + H1 loss for turbulence gradients; closing the 1.1x gap
-    to 0.0128
+  rationale: Residual FNO2D + H1 loss for turbulence gradients; closing the 1.1x gap to 0.0128
 - name: fno2d_ns2d_h32_l4_m10_600s
   benchmark: ns_2d
   model: FNO2D
@@ -6826,8 +5873,7 @@
   batch_size: 64
   budget_s: 600
   priority: 3
-  rationale: Increased spectral resolution sweep (m=10) for high-frequency vortex
-    capture
+  rationale: Increased spectral resolution sweep (m=10) for high-frequency vortex capture
 - name: transolver2d_ns2d_h32_l4_s32
   benchmark: ns_2d
   model: Transolver2D
@@ -6885,9 +5931,8 @@
   batch_size: 64
   loss_type: l2_rel
   budget_s: 600
-  priority: 1
-  rationale: Transolver with deeper layers (l=8) and increased slicing to capture
-    Burgers shocks better than GNOT baseline
+  priority: 3
+  rationale: Transolver with deeper layers (l=8) and increased slicing to capture Burgers shocks better than GNOT baseline
 - name: ssno_burgers_h64_l4_lowlr
   benchmark: burgers_1d
   model: SSNO
@@ -6896,20 +5941,8 @@
   lr: 0.0001
   batch_size: 64
   budget_s: 600
-  priority: 1
-  rationale: Stability-first SSNO attempt with lower learning rate to investigate
-    paper's 0.007 claim on Burgers
-- name: fno_mhd_2d_fix_h32_l4
-  benchmark: mhd_2d
-  model: FNO
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  lr: 0.001
-  batch_size: 64
-  budget_s: 600
-  priority: 1
-  rationale: 'Remediation: Verified 2-channel input for MHD 2D after registry fix'
+  priority: 3
+  rationale: Stability-first SSNO attempt with lower learning rate to investigate paper's 0.007 claim on Burgers
 - name: gnot_ffno_burgers_h128_l8
   benchmark: burgers_1d
   model: GNOT_FFNO
@@ -6919,9 +5952,8 @@
   lr: 0.0005
   batch_size: 64
   budget_s: 900
-  priority: 1
-  rationale: 'Phase 8: GNOT-FFNO Hybrid with learnable spectral-attention gating for
-    shock capture'
+  priority: 3
+  rationale: 'Phase 8: GNOT-FFNO Hybrid with learnable spectral-attention gating for shock capture'
 - name: fno_burgers_curriculum_step1
   benchmark: burgers_nu_01
   model: FNO
@@ -6957,7 +5989,7 @@
   budget_s: 600
   parent_name: fno_burgers_curriculum_step2
   resume: true
-  priority: 1
+  priority: 3
   rationale: 'Phase 8 Curriculum Stage 3: final target viscosity shock capture'
 - name: wno_gnot_burgers_h96_l6
   benchmark: burgers_1d
@@ -6968,9 +6000,8 @@
   lr: 0.0005
   batch_size: 64
   budget_s: 900
-  priority: 1
-  rationale: 'Phase 9: Multi-scale Wavelet-Transformer hybrid for Haar-localized shock
-    capture'
+  priority: 3
+  rationale: 'Phase 9: Multi-scale Wavelet-Transformer hybrid for Haar-localized shock capture'
 - name: wno_burgers_l8_nu0.01
   benchmark: burgers_nu_001
   model: WNO
@@ -6991,9 +6022,9 @@
   lr: 0.001
   batch_size: 64
   budget_s: 600
-  priority: 1
-  rationale: 'Phase 10: Kolmogorov-Arnold Spectral Operator (KAN-FNO) for sharp shock
-    capture (Springer 2025 PIKAN review implementation)'
+  priority: 3
+  rationale: 'Phase 10: Kolmogorov-Arnold Spectral Operator (KAN-FNO) for sharp shock capture (Springer 2025 PIKAN review
+    implementation)'
 - name: kan_fno_burgers_adaptive_h64_l4
   benchmark: burgers_1d
   model: KAN_FNO
@@ -7003,9 +6034,8 @@
   refine_grid: true
   lr: 0.001
   budget_s: 600
-  priority: 1
-  rationale: 'Phase 11: Benchmark Adaptive Grid Extension. Starting coarse (G=5) and
-    refining to G=10 and G=20.'
+  priority: 3
+  rationale: 'Phase 11: Benchmark Adaptive Grid Extension. Starting coarse (G=5) and refining to G=10 and G=20.'
 - name: cpikan_fno_burgers_h64_l4
   benchmark: burgers_1d
   model: cPIKAN_FNO
@@ -7015,7 +6045,7 @@
   cheb_degree: 5
   lr: 0.001
   budget_s: 600
-  priority: 1
+  priority: 3
   rationale: 'Phase 11: Chebyshev PIKAN variant (robust recursive polynomial basis).'
 - name: modified_kan_fno_burgers_h64_l4
   benchmark: burgers_1d
@@ -7025,9 +6055,8 @@
   n_modes: 24
   lr: 0.001
   budget_s: 600
-  priority: 1
-  rationale: 'Phase 11: Modified KAN with input-projection encoders to mitigate spectral
-    bias.'
+  priority: 3
+  rationale: 'Phase 11: Modified KAN with input-projection encoders to mitigate spectral bias.'
 - name: mambano1d_burge_baseline
   benchmark: burgers_1d
   model: MambaNO1d
@@ -7037,74 +6066,6 @@
   budget_s: 300
   priority: 3
   rationale: Auto-generated baseline for MambaNO1d on burgers_1d
-
-# ── New experiments from improvement plan ────────────────────────────────────
-
-# QW-3: Transolver2D with fixed slice_num=16 for darcy_2d (all slice_num=32 runs diverged)
-- name: transolver2d_darcy_s16_h24_l3
-  benchmark: darcy_2d
-  model: Transolver2D
-  hidden_dim: 24
-  n_layers: 3
-  n_modes: 8
-  slice_num: 16
-  budget_s: 480
-  priority: 1
-  rationale: 'Fix: all prior Transolver2D darcy runs diverged (val>1.4) due to slice_num=32 being too large for 2D grid. slice_num=16 reduces physics slices to match 64x64 resolution.'
-
-# QW-4: H1 Sobolev loss for darcy_2d — targets steep permeability gradients
-- name: fno2d_darcy_h32_l4_m8_h1
-  benchmark: darcy_2d
-  model: FNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  loss_type: h1
-  h1_alpha: 0.5
-  budget_s: 480
-  priority: 1
-  rationale: 'H1 Sobolev loss on darcy_2d. Darcy permeability field has steep spatial gradients. H1 loss penalises gradient errors directly. 2D H1 via rfft2 already validated in losses.py.'
-
-- name: fno2d_darcy_h32_l4_m12_h1_aug
-  benchmark: darcy_2d
-  model: FNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 12
-  loss_type: h1
-  h1_alpha: 0.5
-  augment: true
-  budget_s: 600
-  priority: 1
-  rationale: 'H1 loss + augmentation on darcy_2d. Slightly wider (m=12) with longer budget for convergence.'
-
-# QW-4b: Adaptive H1 loss for darcy_2d
-- name: fno2d_darcy_h32_l4_m8_h1adaptive
-  benchmark: darcy_2d
-  model: FNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  loss_type: h1_adaptive
-  h1_alpha: 0.1
-  budget_s: 480
-  priority: 1
-  rationale: 'Adaptive H1 loss auto-scales alpha so gradient term contributes ~30% of total loss. Avoids over-regularising late training.'
-
-# QW-4c: FEDONet2D (won elasticity_2d and pdebench_2d) on darcy_2d with H1
-- name: fedonet2d_darcy_h32_l2_m8_h1
-  benchmark: darcy_2d
-  model: FEDONet2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  loss_type: h1
-  h1_alpha: 0.3
-  budget_s: 480
-  priority: 1
-  rationale: 'FEDONet2D already best on elasticity_2d (0.007734) and pdebench_2d (0.002602). Apply to darcy_2d with H1 loss targeting gradient errors.'
-
-# QW-5: GNOT_FFNO on burgers_1d with H1 loss + longer budget
 - name: gnot_ffno_burgers_h128_l6_m24_h1_b600
   benchmark: burgers_1d
   model: GNOT_FFNO
@@ -7115,10 +6076,9 @@
   h1_alpha: 0.2
   budget_s: 600
   lr: 0.0005
-  priority: 2
-  rationale: 'GNOT_FFNO got 0.204 on burgers — best non-FNO architecture. Gated spectral-attention + H1 loss targeting shock gradient. Lower LR (5e-4) for stability. Longer budget (600s).'
-
-# QW-5: EnergyConservingFNO1d — Hamiltonian inductive bias for pre-shock burgers phase
+  priority: 3
+  rationale: GNOT_FFNO got 0.204 on burgers — best non-FNO architecture. Gated spectral-attention + H1 loss targeting shock
+    gradient. Lower LR (5e-4) for stability. Longer budget (600s).
 - name: hnn_burgers_h64_l4_m16
   benchmark: burgers_1d
   model: EnergyFNO
@@ -7126,10 +6086,9 @@
   n_layers: 4
   n_modes: 16
   budget_s: 480
-  priority: 2
-  rationale: 'EnergyConservingFNO1d never tried on burgers_1d. Hamiltonian structure should capture pre-shock Hamiltonian dynamics. Similar model won on wave_1d (0.005192).'
-
-# QW-5: SSNO1d with careful low-LR initialisation to prevent divergence
+  priority: 3
+  rationale: EnergyConservingFNO1d never tried on burgers_1d. Hamiltonian structure should capture pre-shock Hamiltonian dynamics.
+    Similar model won on wave_1d (0.005192).
 - name: ssno_burgers_h128_l4_m16_lr1e4
   benchmark: burgers_1d
   model: SSNO
@@ -7139,57 +6098,9 @@
   lr: 0.0001
   grad_clip: 3.0
   budget_s: 480
-  priority: 2
-  rationale: 'SSNO1d prior runs: 80.52 (catastrophic) and 0.190 (ok). Low LR (1e-4) + tighter grad_clip (3.0) to stabilise S4D-spectral dual-branch. Dual-branch architecture is theoretically sound for shock capture.'
-
-# QW-5: AttentionEnhancedFNO2D on multiphysics_2d (only 1 run on this benchmark)
-- name: attentionfno2d_multiphysics_h32_l4_m8
-  benchmark: multiphysics_2d
-  model: AttentionEnhancedFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  budget_s: 480
-  priority: 2
-  rationale: 'multiphysics_2d has only 1 kept result (0.692273). AttentionEnhancedFNO2D already works on wavebench_2d. Multi-physics coupling may benefit from attention between field components.'
-
-# Extra: TFNO2D Tucker on darcy_2d (paper reports 0.0094, better parameter efficiency)
-- name: tfno2d_darcy_h32_l4_m8_tucker
-  benchmark: darcy_2d
-  model: TFNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  budget_s: 480
-  priority: 1
-  rationale: 'TFNO2D Tucker decomposition reduces parameter count 30-40%, fitting more capacity within M1 memory constraints. Paper reports TFNO2D beating FNO2D on Darcy (0.0094 vs 0.013).'
-
-# Extra: FEDONet2D on multiphysics_2d (won 2 other 2D benchmarks)
-- name: fedonet2d_multiphysics_h32_l2_m8
-  benchmark: multiphysics_2d
-  model: FEDONet2D
-  hidden_dim: 32
-  n_layers: 2
-  n_modes: 8
-  budget_s: 480
-  priority: 2
-  rationale: 'FEDONet2D best on elasticity_2d and pdebench_2d. Apply to multiphysics_2d to test if finite-element hybrid decoder handles multi-physics coupling.'
-
-# Extra: EMA + H1 combined on darcy_2d (tests EMA benefit for 2D)
-- name: fno2d_darcy_h32_l4_m8_ema_h1
-  benchmark: darcy_2d
-  model: FNO2D
-  hidden_dim: 32
-  n_layers: 4
-  n_modes: 8
-  loss_type: h1
-  h1_alpha: 0.3
-  ema_decay: 0.999
-  budget_s: 480
-  priority: 2
-  rationale: 'Test EMA (0.999 decay) combined with H1 loss on darcy_2d. EMA should stabilise oscillations near the permeability boundary.'
-
-# Phase 2: Burgers 1D Optimization Ablation Study (TASK-003)
+  priority: 3
+  rationale: 'SSNO1d prior runs: 80.52 (catastrophic) and 0.190 (ok). Low LR (1e-4) + tighter grad_clip (3.0) to stabilise
+    S4D-spectral dual-branch. Dual-branch architecture is theoretically sound for shock capture.'
 - name: fno_burgers_baseline_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7199,9 +6110,8 @@
   curriculum: false
   ema_decay: 0.0
   budget_s: 1800
-  priority: 1
-  rationale: "Ablation Baseline: FNO h128 l8 m24 without enhancements."
-
+  priority: 3
+  rationale: 'Ablation Baseline: FNO h128 l8 m24 without enhancements.'
 - name: fno_burgers_curriculum_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7211,9 +6121,8 @@
   curriculum: true
   ema_decay: 0.0
   budget_s: 1800
-  priority: 1
-  rationale: "Ablation: Baseline + Spectral Curriculum."
-
+  priority: 3
+  rationale: 'Ablation: Baseline + Spectral Curriculum.'
 - name: fno_burgers_ema_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7223,9 +6132,8 @@
   curriculum: false
   ema_decay: 0.999
   budget_s: 1800
-  priority: 1
-  rationale: "Ablation: Baseline + EMA (0.999)."
-
+  priority: 3
+  rationale: 'Ablation: Baseline + EMA (0.999).'
 - name: fno_burgers_curriculum_ema_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7235,10 +6143,8 @@
   curriculum: true
   ema_decay: 0.999
   budget_s: 1800
-  priority: 1
-  rationale: "Ablation: Baseline + Curriculum + EMA."
-
-# TASK-001: SOTA Closure - Burgers
+  priority: 3
+  rationale: 'Ablation: Baseline + Curriculum + EMA.'
 - name: fno_burgers_sota_h128_l8_m24_h1adaptive_ensemble5
   benchmark: burgers_1d
   model: FNO
@@ -7250,5 +6156,2034 @@
   loss_type: h1_adaptive
   snapshot_ensemble: 5
   budget_s: 3600
+  priority: 3
+  rationale: Combining all enhancements to target SOTA gap on burgers_1d.
+- name: explosionfno_burge_baseline
+  benchmark: burgers_1d
+  model: ExplosionFNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 300
+  priority: 3
+  rationale: Auto-generated baseline for ExplosionFNO on burgers_1d
+  critique: null
+- name: autogen_burgers_1d_fno_h1_4985
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 3
+  rationale: 'auto_suggest: H1 loss on best model (FNO, val=0.1468)'
+  critique: '[Adversarial] ACCEPT. H1 Sobolev loss is the optimal choice for Burgers to capture sharp shock gradients and
+    reduce spectral bias.'
+- name: autogen_burgers_1d_fno_h1adapt_4985
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 3
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. H1 Sobolev loss is the optimal choice for Burgers to capture sharp shock gradients and
+    reduce spectral bias.'
+- name: autogen_burgers_1d_fno_ema_4985
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 3
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. FNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_burgers_1d_rfno_deep_4985
+  benchmark: burgers_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 3
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+  critique: '[Adversarial] ACCEPT. H1 Sobolev loss is the optimal choice for Burgers to capture sharp shock gradients and
+    reduce spectral bias.'
+- name: autogen_darcy_2d_fno2d_h1_4991
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
   priority: 1
-  rationale: "Combining all enhancements to target SOTA gap on burgers_1d."
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=1.0000)'
+  critique: '[Adversarial] ACCEPT. H1 loss ensures smooth pressure gradients, physically consistent with Darcy flow.'
+- name: autogen_darcy_2d_fno2d_h1adapt_4991
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. H1 loss ensures smooth pressure gradients, physically consistent with Darcy flow.'
+- name: autogen_darcy_2d_fedonet2d_4991
+  benchmark: darcy_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on darcy_2d'
+  critique: '[Adversarial] ACCEPT. FEDONet is well-suited for Darcy pressure fields with heterogeneous permeability. Priority
+    baseline.'
+- name: autogen_darcy_2d_transolver2d_4991
+  benchmark: darcy_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on darcy_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_darcy_2d_fno2d_ema_4991
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_darcy_2d_rfno2d_deep_4991
+  benchmark: darcy_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+  critique: '[Adversarial] REJECT. darcy_2d is memory-constrained on MLX. Config (h=32, l=6) exceeds safe limit (h=32, l=4).
+    High risk of OOM before training starts.'
+- name: autogen_ns_2d_fno2d_h1_4996
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.0143)'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_ns_2d_fno2d_h1adapt_4996
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_ns_2d_fedonet2d_4996
+  benchmark: ns_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on ns_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_ns_2d_attentionenhancedfno2d_4996
+  benchmark: ns_2d
+  model: AttentionEnhancedFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: AttentionEnhancedFNO2D not yet tried on ns_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_ns_2d_fno2d_ema_4996
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_ns_2d_rfno2d_deep_4996
+  benchmark: ns_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+  critique: '[Adversarial] REJECT. ns_2d is memory-constrained on MLX. Config (h=32, l=6) exceeds safe limit (h=32, l=4).
+    High risk of OOM before training starts.'
+- name: autogen_allen_cahn_2d_fno2d_h1_5003
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.0628)'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_allen_cahn_2d_fno2d_h1adapt_5003
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_allen_cahn_2d_fedonet2d_5003
+  benchmark: allen_cahn_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on allen_cahn_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_allen_cahn_2d_transolver2d_5003
+  benchmark: allen_cahn_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on allen_cahn_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_allen_cahn_2d_fno2d_ema_5003
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_allen_cahn_2d_rfno2d_deep_5003
+  benchmark: allen_cahn_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+  critique: '[Adversarial] REJECT. allen_cahn_2d is memory-constrained on MLX. Config (h=32, l=6) exceeds safe limit (h=32,
+    l=4). High risk of OOM before training starts.'
+- name: autogen_multiphysics_2d_fno2d_h1_5011
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=1.0000)'
+  critique: '[Adversarial] REVISE. FNO2D has historically returned 1.0 error on Multiphysics. Architecture lacks the multi-scale
+    coupling needed for this benchmark. Suggest FEDONet or GNOT instead.'
+- name: autogen_multiphysics_2d_fno2d_h1adapt_5011
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] REVISE. FNO2D has historically returned 1.0 error on Multiphysics. Architecture lacks the multi-scale
+    coupling needed for this benchmark. Suggest FEDONet or GNOT instead.'
+- name: autogen_multiphysics_2d_fedonet2d_5011
+  benchmark: multiphysics_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on multiphysics_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_multiphysics_2d_transolver2d_5011
+  benchmark: multiphysics_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on multiphysics_2d'
+  critique: '[Adversarial] RUN. Configuration is nominal. Monitoring spectral bias in early epochs recommended.'
+- name: autogen_multiphysics_2d_fno2d_ema_5011
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] REVISE. FNO2D has historically returned 1.0 error on Multiphysics. Architecture lacks the multi-scale
+    coupling needed for this benchmark. Suggest FEDONet or GNOT instead.'
+- name: autogen_multiphysics_2d_rfno2d_deep_5011
+  benchmark: multiphysics_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+  critique: '[Adversarial] REJECT. multiphysics_2d is memory-constrained on MLX. Config (h=32, l=6) exceeds safe limit (h=32,
+    l=4). High risk of OOM before training starts.'
+- name: autogen_kdv_1d_rfno_h1_5019
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (RFNO, val=0.0020)'
+  critique: '[Adversarial] ACCEPT. RFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_kdv_1d_rfno_h1adapt_5019
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. RFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_kdv_1d_gnot_5019
+  benchmark: kdv_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: GNOT not yet tried on kdv_1d'
+  critique: '[Adversarial] ACCEPT. GNOT configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_kdv_1d_uno_5019
+  benchmark: kdv_1d
+  model: UNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: UNO not yet tried on kdv_1d'
+  critique: '[Adversarial] ACCEPT. UNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_kdv_1d_rfno_ema_5019
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. RFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_kdv_1d_rfno_deep_5019
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+  critique: '[Adversarial] ACCEPT. RFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_fno_h1_5025
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO, val=0.0010)'
+  critique: '[Adversarial] ACCEPT. FNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_fno_h1adapt_5025
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. FNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_gnot_5025
+  benchmark: wave_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: GNOT not yet tried on wave_1d'
+  critique: '[Adversarial] ACCEPT. GNOT configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_tfno_5025
+  benchmark: wave_1d
+  model: TFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: TFNO not yet tried on wave_1d'
+  critique: '[Adversarial] ACCEPT. TFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_fno_ema_5025
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. FNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_wave_1d_rfno_deep_5025
+  benchmark: wave_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+  critique: '[Adversarial] ACCEPT. RFNO configuration is within stable bounds for 1D. Rationale aligns with current SOTA gap
+    analysis.'
+- name: autogen_rayleigh_benard_2d_fno2d_h1_2746
+  benchmark: rayleigh_benard_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=1.0000)'
+  critique: '[Adversarial] ACCEPT. FNO2D with buoyancy-aware rationale is a solid baseline for RB convection.'
+- name: autogen_rayleigh_benard_2d_fno2d_h1adapt_2746
+  benchmark: rayleigh_benard_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. FNO2D with buoyancy-aware rationale is a solid baseline for RB convection.'
+- name: autogen_rayleigh_benard_2d_fedonet2d_2746
+  benchmark: rayleigh_benard_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on rayleigh_benard_2d'
+  critique: '[Adversarial] ACCEPT. FNO2D with buoyancy-aware rationale is a solid baseline for RB convection.'
+- name: autogen_rayleigh_benard_2d_transolver2d_2746
+  benchmark: rayleigh_benard_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on rayleigh_benard_2d'
+  critique: '[Adversarial] ACCEPT. FNO2D with buoyancy-aware rationale is a solid baseline for RB convection.'
+- name: autogen_rayleigh_benard_2d_fno2d_ema_2746
+  benchmark: rayleigh_benard_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. FNO2D with buoyancy-aware rationale is a solid baseline for RB convection.'
+- name: autogen_rayleigh_benard_2d_rfno2d_deep_2746
+  benchmark: rayleigh_benard_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+  critique: '[Adversarial] REJECT. rayleigh_benard_2d is memory-constrained on MLX. Config (h=32, l=6) exceeds safe limit
+    (h=32, l=4).'
+- name: autogen_couette_flow_1d_fno_h1_2755
+  benchmark: couette_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO, val=1.0000)'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_couette_flow_1d_fno_h1adapt_2755
+  benchmark: couette_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_couette_flow_1d_gnot_2755
+  benchmark: couette_flow_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: GNOT not yet tried on couette_flow_1d'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_couette_flow_1d_rfno_2755
+  benchmark: couette_flow_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO not yet tried on couette_flow_1d'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_couette_flow_1d_fno_ema_2755
+  benchmark: couette_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_couette_flow_1d_rfno_deep_2755
+  benchmark: couette_flow_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_fno_h1_2761
+  benchmark: poiseuille_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO, val=1.0000)'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_fno_h1adapt_2761
+  benchmark: poiseuille_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_gnot_2761
+  benchmark: poiseuille_flow_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: GNOT not yet tried on poiseuille_flow_1d'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_rfno_2761
+  benchmark: poiseuille_flow_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO not yet tried on poiseuille_flow_1d'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_fno_ema_2761
+  benchmark: poiseuille_flow_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: autogen_poiseuille_flow_1d_rfno_deep_2761
+  benchmark: poiseuille_flow_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+  critique: '[Adversarial] ACCEPT. Fundamental FM problem with analytical solution. Excellent for verifying basic operator
+    mapping.'
+- name: fedonet2d_darcy_h32_l4_m8_ema_h1
+  benchmark: darcy_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  budget_s: 3600
+  priority: 1
+  rationale: FEDONet2D won elasticity+pdebench. First try on darcy + full training stack (h1_adaptive+EMA+curriculum)
+- name: hano2d_darcy_h32_l4_m8_ema_h1
+  benchmark: darcy_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 1
+  rationale: HANO2D won elasticity — try on darcy with adaptive H1 for permeability gradients
+- name: tfno2d_darcy_h32_l4_m8_ema_h1
+  benchmark: darcy_2d
+  model: TFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 1
+  rationale: Tucker FNO lower param count — may help in memory-constrained darcy
+- name: sno2d_darcy_h32_l4_m8_ema_h1
+  benchmark: darcy_2d
+  model: SNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 1
+  rationale: SNO2D won wavebench — spectral normalization may help Darcy permeability field
+- name: fedonet2d_allen_cahn_h32_l4_m8_h1_ema
+  benchmark: allen_cahn_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: true
+  budget_s: 3600
+  priority: 1
+  rationale: Phase interfaces need gradient loss. FEDONet2D + h1_adaptive + curriculum for Allen-Cahn
+- name: hano2d_allen_cahn_h32_l4_m8_h1_ema
+  benchmark: allen_cahn_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 1
+  rationale: HANO attention captures interface location; h1_adaptive for sharp phase fronts
+- name: fedonet2d_swe_h32_l4_m8_ema
+  benchmark: swe_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: l2_rel
+  ema_decay: 0.999
+  snapshot_ensemble: 3
+  budget_s: 3600
+  priority: 1
+  rationale: FEDONet2D top-2D model — not yet tried on SWE. EMA + ensemble for stability.
+- name: hano2d_swe_h32_l4_m8_ema
+  benchmark: swe_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: l2_rel
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 1
+  rationale: HANO2D won elasticity — first test on SWE
+- name: rfno_kdv_spectral_h128_l8_m32_ema
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  loss_type: spectral
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 1
+  rationale: KDV solitons need high-freq accuracy; spectral loss + m=32 + EMA
+- name: rfno_kdv_h1_h128_l8_m24_ema_ens
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  ema_decay: 0.999
+  snapshot_ensemble: 3
+  budget_s: 1800
+  priority: 1
+  rationale: H1 + EMA + ensemble on best kdv config — all new training features combined
+- name: fno2d_radiative_probe_h16_l2
+  benchmark: radiative_2d
+  model: FNO2D
+  hidden_dim: 16
+  n_layers: 2
+  n_modes: 4
+  loss_type: l2_rel
+  budget_s: 3600
+  priority: 1
+  rationale: 'Diagnostic: verify radiative_2d data pipeline before larger runs (all 7 prev results val=1.0)'
+- name: fno2d_mhd_probe_h16_l2
+  benchmark: mhd_2d
+  model: FNO2D
+  hidden_dim: 16
+  n_layers: 2
+  n_modes: 4
+  loss_type: l2_rel
+  budget_s: 3600
+  priority: 1
+  rationale: 'Diagnostic: verify mhd_2d data pipeline (all 2 prior results val=1.0)'
+- name: ffno_kdv_h256_m32_l8_f1
+  benchmark: kdv_1d
+  model: FFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: ffno_kdv_h256_m32_l8
+  rationale: '[ClosedLoop] Follow-up to ffno_kdv_h256_m32_l8 (val=0.0053). val=0.0053 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0053 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h128_m24_l10_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h128_m24_l10
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h128_m24_l10 (val=0.0026). val=0.0026 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0026 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h128_m32_l8_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h128_m32_l8
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h128_m32_l8 (val=0.0024). val=0.0024 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0024 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h256_m24_l8_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h256_m24_l8
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h256_m24_l8 (val=0.0038). val=0.0038 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0038 — reasonable but below best. Try full training stack.
+- name: fno_kdv_h256_m32_l8_f1
+  benchmark: kdv_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: fno_kdv_h256_m32_l8
+  rationale: '[ClosedLoop] Follow-up to fno_kdv_h256_m32_l8 (val=0.0060). val=0.0060 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0060 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h128_m24_l12_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h128_m24_l12
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h128_m24_l12 (val=0.0033). val=0.0033 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0033 — reasonable but below best. Try full training stack.
+- name: dual_deeponet_wave_h64_l4_f1
+  benchmark: wave_1d
+  model: DualDeepONet
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: dual_deeponet_wave_h64_l4
+  rationale: '[ClosedLoop] Follow-up to dual_deeponet_wave_h64_l4 (val=0.0823). val=0.0823 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0823 — reasonable but below best. Try full training stack.
+- name: energy_fno_kdv_h128_l8_m24_f1
+  benchmark: kdv_1d
+  model: EnergyFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: energy_fno_kdv_h128_l8_m24
+  rationale: '[ClosedLoop] Follow-up to energy_fno_kdv_h128_l8_m24 (val=0.0028). val=0.0028 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0028 — reasonable but below best. Try full training stack.
+- name: energy_fno_wave_h64_l8_m24_f1
+  benchmark: wave_1d
+  model: EnergyFNO
+  hidden_dim: 64
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: energy_fno_wave_h64_l8_m24
+  rationale: '[ClosedLoop] Follow-up to energy_fno_wave_h64_l8_m24 (val=0.0015). val=0.0015 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0015 — reasonable but below best. Try full training stack.
+- name: hnn_kdv_h64_l4_f1
+  benchmark: kdv_1d
+  model: HNN
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: hnn_kdv_h64_l4
+  rationale: '[ClosedLoop] Follow-up to hnn_kdv_h64_l4 (val=nan). val=nan — reasonable but below best. Try full training stack.'
+  critique: val=nan — reasonable but below best. Try full training stack.
+- name: hnn_wave_h128_l4_f1
+  benchmark: wave_1d
+  model: HNN
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: hnn_wave_h128_l4
+  rationale: '[ClosedLoop] Follow-up to hnn_wave_h128_l4 (val=0.0117). val=0.0117 — reasonable but below best. Try full training
+    stack.'
+  critique: val=0.0117 — reasonable but below best. Try full training stack.
+- name: hnn_wave_h64_l4_f1
+  benchmark: wave_1d
+  model: HNN
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: hnn_wave_h64_l4
+  rationale: '[ClosedLoop] Follow-up to hnn_wave_h64_l4 (val=0.0579). val=0.0579 — reasonable but below best. Try full training
+    stack.'
+  critique: val=0.0579 — reasonable but below best. Try full training stack.
+- name: neural_ode_kdv_h64_l4_s20_f1
+  benchmark: kdv_1d
+  model: NeuralODE
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: neural_ode_kdv_h64_l4_s20
+  rationale: '[ClosedLoop] Follow-up to neural_ode_kdv_h64_l4_s20 (val=0.0077). val=0.0077 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0077 — reasonable but below best. Try full training stack.
+- name: neural_ode_wave_h64_l4_s20_f1
+  benchmark: wave_1d
+  model: NeuralODE
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: neural_ode_wave_h64_l4_s20
+  rationale: '[ClosedLoop] Follow-up to neural_ode_wave_h64_l4_s20 (val=0.0686). val=0.0686 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0686 — reasonable but below best. Try full training stack.
+- name: rtfno_kdv_h128_l10_m24_f1
+  benchmark: kdv_1d
+  model: RTFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rtfno_kdv_h128_l10_m24
+  rationale: '[ClosedLoop] Follow-up to rtfno_kdv_h128_l10_m24 (val=0.0057). val=0.0057 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0057 — reasonable but below best. Try full training stack.
+- name: tfno_kdv_h128_l8_m24_f1
+  benchmark: kdv_1d
+  model: TFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: tfno_kdv_h128_l8_m24
+  rationale: '[ClosedLoop] Follow-up to tfno_kdv_h128_l8_m24 (val=0.0034). val=0.0034 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0034 — reasonable but below best. Try full training stack.
+- name: time_deeponet_wave_h128_l4_f1
+  benchmark: wave_1d
+  model: TimeDeepONet
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: time_deeponet_wave_h128_l4
+  rationale: '[ClosedLoop] Follow-up to time_deeponet_wave_h128_l4 (val=0.0022). val=0.0022 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0022 — reasonable but below best. Try full training stack.
+- name: time_deeponet_wave_h64_l4_f1
+  benchmark: wave_1d
+  model: TimeDeepONet
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: time_deeponet_wave_h64_l4
+  rationale: '[ClosedLoop] Follow-up to time_deeponet_wave_h64_l4 (val=0.0020). val=0.0020 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0020 — reasonable but below best. Try full training stack.
+- name: transolver_kdv_h64_l4_s32_f1
+  benchmark: kdv_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: transolver_kdv_h64_l4_s32
+  rationale: '[ClosedLoop] Follow-up to transolver_kdv_h64_l4_s32 (val=0.0223). val=0.0223 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0223 — reasonable but below best. Try full training stack.
+- name: euler1d_fno_mc_h128_l8_m24_f1
+  benchmark: euler_1d
+  model: FNO_MC
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: euler1d_fno_mc_h128_l8_m24
+  rationale: '[ClosedLoop] Follow-up to euler1d_fno_mc_h128_l8_m24 (val=0.0031). val=0.0031 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0031 — reasonable but below best. Try full training stack.
+- name: fno_darcy2d_fix_h64_m12_l4_f1
+  benchmark: darcy_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: false
+  snapshot_ensemble: 0
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_darcy2d_fix_h64_m12_l4
+  rationale: '[ClosedLoop] Follow-up to fno_darcy2d_fix_h64_m12_l4 (val=0.3251). val=0.3251 — poor convergence (>2x baseline).
+    | diag_high_freq_error=0.11 → try h1_adaptive loss. | Adding EMA=0.999 (3-8% free improvement).'
+  critique: val=0.3251 — poor convergence (>2x baseline). | diag_high_freq_error=0.11 → try h1_adaptive loss. | Adding EMA=0.999
+    (3-8% free improvement).
+  h1_alpha: 0.1
+- name: latent_ode_wave_h64_l4_s20_f1
+  benchmark: wave_1d
+  model: LatentODE
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: latent_ode_wave_h64_l4_s20
+  rationale: '[ClosedLoop] Follow-up to latent_ode_wave_h64_l4_s20 (val=0.0125). val=0.0125 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0125 — reasonable but below best. Try full training stack.
+- name: fno_wave_h128_m24_l8_v2_f1
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: fno_wave_h128_m24_l8_v2
+  rationale: '[ClosedLoop] Follow-up to fno_wave_h128_m24_l8_v2 (val=0.0053). val=0.0053 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0053 — reasonable but below best. Try full training stack.
+- name: neural_ode_wave_h64_l4_s40_f1
+  benchmark: wave_1d
+  model: NeuralODE
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: neural_ode_wave_h64_l4_s40
+  rationale: '[ClosedLoop] Follow-up to neural_ode_wave_h64_l4_s40 (val=0.0714). val=0.0714 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0714 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h128_l8_m24_aug_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h128_l8_m24_aug
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h128_l8_m24_aug (val=0.0051). val=0.0051 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0051 — reasonable but below best. Try full training stack.
+- name: rfno_kdv_h128_m24_l8_aug_f1
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_kdv_h128_m24_l8_aug
+  rationale: '[ClosedLoop] Follow-up to rfno_kdv_h128_m24_l8_aug (val=0.0041). val=0.0041 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0041 — reasonable but below best. Try full training stack.
+- name: s4d_kdv_h128_l6_p1_f1
+  benchmark: kdv_1d
+  model: S4NO
+  hidden_dim: 128
+  n_layers: 6
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: s4d_kdv_h128_l6_p1
+  rationale: '[ClosedLoop] Follow-up to s4d_kdv_h128_l6_p1 (val=0.0274). val=0.0274 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0274 — reasonable but below best. Try full training stack.
+- name: rfno_wave_h64_l8_m24_f1
+  benchmark: wave_1d
+  model: RFNO
+  hidden_dim: 64
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: rfno_wave_h64_l8_m24
+  rationale: '[ClosedLoop] Follow-up to rfno_wave_h64_l8_m24 (val=0.0048). val=0.0048 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0048 — reasonable but below best. Try full training stack.
+- name: swe2d_fno_h128_l4_m12_f1
+  benchmark: swe_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: swe2d_fno_h128_l4_m12
+  rationale: '[ClosedLoop] Follow-up to swe2d_fno_h128_l4_m12 (val=0.0623). val=0.0623 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0623 — reasonable but below best. Try full training stack.
+- name: swe2d_fno_h64_l4_m12_f1
+  benchmark: swe_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: swe2d_fno_h64_l4_m12
+  rationale: '[ClosedLoop] Follow-up to swe2d_fno_h64_l4_m12 (val=0.0113). val=0.0113 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0113 — reasonable but below best. Try full training stack.
+- name: tfno2d_ns_h64_m12_l4_f1
+  benchmark: ns_2d
+  model: TFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: tfno2d_ns_h64_m12_l4
+  rationale: '[ClosedLoop] Follow-up to tfno2d_ns_h64_m12_l4 (val=0.0290). val=0.0290 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0290 — reasonable but below best. Try full training stack.
+- name: time_deeponet_kdv_h64_l4_f1
+  benchmark: kdv_1d
+  model: TimeDeepONet
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: time_deeponet_kdv_h64_l4
+  rationale: '[ClosedLoop] Follow-up to time_deeponet_kdv_h64_l4 (val=0.0086). val=0.0086 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0086 — reasonable but below best. Try full training stack.
+- name: transolver_wave_h64_l4_s32_f1
+  benchmark: wave_1d
+  model: Transolver
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: transolver_wave_h64_l4_s32
+  rationale: '[ClosedLoop] Follow-up to transolver_wave_h64_l4_s32 (val=0.0547). val=0.0547 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0547 — reasonable but below best. Try full training stack.
+- name: fno_darcy2d_h32_m12_l4_480s_f1
+  benchmark: darcy_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_darcy2d_h32_m12_l4_480s
+  rationale: '[ClosedLoop] Follow-up to fno_darcy2d_h32_m12_l4_480s (val=0.1687). val=0.1687 — below best, marginal run. |
+    EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error weighting. | Add curriculum=True for
+    spectral ramp-up.'
+  critique: val=0.1687 — below best, marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error
+    weighting. | Add curriculum=True for spectral ramp-up.
+- name: fno_darcy2d_h64_m8_l4_480s_f1
+  benchmark: darcy_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: false
+  snapshot_ensemble: 0
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_darcy2d_h64_m8_l4_480s
+  rationale: '[ClosedLoop] Follow-up to fno_darcy2d_h64_m8_l4_480s (val=0.4572). val=0.4572 — poor convergence (>2x baseline).
+    | diag_high_freq_error=0.15 → try h1_adaptive loss. | Adding EMA=0.999 (3-8% free improvement).'
+  critique: val=0.4572 — poor convergence (>2x baseline). | diag_high_freq_error=0.15 → try h1_adaptive loss. | Adding EMA=0.999
+    (3-8% free improvement).
+  h1_alpha: 0.1
+- name: fno_ns2d_h32_m12_l4_480s_f1
+  benchmark: ns_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_ns2d_h32_m12_l4_480s
+  rationale: '[ClosedLoop] Follow-up to fno_ns2d_h32_m12_l4_480s (val=0.0153). val=0.0153 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0153 — reasonable but below best. Try full training stack.
+- name: fno_ns2d_h32_m8_l4_h1loss_f1
+  benchmark: ns_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: h1
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_ns2d_h32_m8_l4_h1loss
+  rationale: '[ClosedLoop] Follow-up to fno_ns2d_h32_m8_l4_h1loss (val=0.0251). val=0.0251 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0251 — reasonable but below best. Try full training stack.
+  h1_alpha: 0.1
+- name: ssno_kdv_h128_l8_m24_f1
+  benchmark: kdv_1d
+  model: SSNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: ssno_kdv_h128_l8_m24
+  rationale: '[ClosedLoop] Follow-up to ssno_kdv_h128_l8_m24 (val=0.0111). val=0.0111 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0111 — reasonable but below best. Try full training stack.
+- name: ssno_wave_h64_l4_m16_f1
+  benchmark: wave_1d
+  model: SSNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: ssno_wave_h64_l4_m16
+  rationale: '[ClosedLoop] Follow-up to ssno_wave_h64_l4_m16 (val=0.0084). val=0.0084 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0084 — reasonable but below best. Try full training stack.
+- name: fno_darcy2d_h32_l4_m8_h1_f1
+  benchmark: darcy_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: h1
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_darcy2d_h32_l4_m8_h1
+  rationale: '[ClosedLoop] Follow-up to fno_darcy2d_h32_l4_m8_h1 (val=0.1445). val=0.1445 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.1445 — reasonable but below best. Try full training stack.
+  h1_alpha: 0.1
+- name: attentionenhancedfno_wavebench_2d_h32_l2_m8_f1
+  benchmark: wavebench_2d
+  model: AttentionEnhancedFNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: attentionenhancedfno_wavebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to attentionenhancedfno_wavebench_2d_h32_l2_m8 (val=0.2951). val=0.2951 — below best,
+    marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error weighting. | Add curriculum=True
+    for spectral ramp-up. | diag_high_freq=0.1'
+  critique: val=0.2951 — below best, marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error
+    weighting. | Add curriculum=True for spectral ramp-up. | diag_high_freq=0.18 → h1_adaptive loss.
+  h1_alpha: 0.1
+- name: hnn_wave_stable_h128_l4_f1
+  benchmark: wave_1d
+  model: HNN
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.0005
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 1800
+  priority: 1
+  parent_name: hnn_wave_stable_h128_l4
+  rationale: '[ClosedLoop] Follow-up to hnn_wave_stable_h128_l4 (val=0.0052). val=0.0052 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0052 — reasonable but below best. Try full training stack.
+- name: fno_swe2d_h32_l4_m8_f1
+  benchmark: swe_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno_swe2d_h32_l4_m8
+  rationale: '[ClosedLoop] Follow-up to fno_swe2d_h32_l4_m8 (val=0.0553). val=0.0553 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0553 — reasonable but below best. Try full training stack.
+- name: rfno2d_swe2d_h32_l4_m8_f1
+  benchmark: swe_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: rfno2d_swe2d_h32_l4_m8
+  rationale: '[ClosedLoop] Follow-up to rfno2d_swe2d_h32_l4_m8 (val=0.0288). val=0.0288 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0288 — reasonable but below best. Try full training stack.
+- name: rfno2d_ns2d_h32_m8_l4_480s_f1
+  benchmark: ns_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: rfno2d_ns2d_h32_m8_l4_480s
+  rationale: '[ClosedLoop] Follow-up to rfno2d_ns2d_h32_m8_l4_480s (val=0.0268). val=0.0268 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0268 — reasonable but below best. Try full training stack.
+- name: agent_rfno2d_ns2d_h32_l4_m8_f1
+  benchmark: ns_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: agent_rfno2d_ns2d_h32_l4_m8
+  rationale: '[ClosedLoop] Follow-up to agent_rfno2d_ns2d_h32_l4_m8 (val=0.0269). val=0.0269 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0269 — reasonable but below best. Try full training stack.
+- name: hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1
+  benchmark: wavebench_2d
+  model: HybridFNODeepONet2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hybridfnodeeponet_wavebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hybridfnodeeponet_wavebench_2d_h32_l2_m8 (val=0.0105). val=0.0105 — reasonable but
+    below best. Try full training stack.'
+  critique: val=0.0105 — reasonable but below best. Try full training stack.
+- name: fedonet_wavebench_2d_h32_l2_m8_f1
+  benchmark: wavebench_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fedonet_wavebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to fedonet_wavebench_2d_h32_l2_m8 (val=0.0121). val=0.0121 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0121 — reasonable but below best. Try full training stack.
+- name: hano_wavebench_2d_h32_l2_m8_f1
+  benchmark: wavebench_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hano_wavebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hano_wavebench_2d_h32_l2_m8 (val=0.0259). val=0.0259 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0259 — reasonable but below best. Try full training stack.
+- name: vsmno_wavebench_2d_h32_l2_m8_f1
+  benchmark: wavebench_2d
+  model: VSMNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: vsmno_wavebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to vsmno_wavebench_2d_h32_l2_m8 (val=0.0181). val=0.0181 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0181 — reasonable but below best. Try full training stack.
+- name: hybridfnodeeponet_pdebench_2d_h32_l2_m8_f1
+  benchmark: pdebench_2d
+  model: HybridFNODeepONet2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hybridfnodeeponet_pdebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hybridfnodeeponet_pdebench_2d_h32_l2_m8 (val=0.0090). val=0.0090 — reasonable but
+    below best. Try full training stack.'
+  critique: val=0.0090 — reasonable but below best. Try full training stack.
+- name: hano_pdebench_2d_h32_l2_m8_f1
+  benchmark: pdebench_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hano_pdebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hano_pdebench_2d_h32_l2_m8 (val=0.0043). val=0.0043 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0043 — reasonable but below best. Try full training stack.
+- name: sno_pdebench_2d_h32_l2_m8_f1
+  benchmark: pdebench_2d
+  model: SNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: sno_pdebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to sno_pdebench_2d_h32_l2_m8 (val=0.0034). val=0.0034 — reasonable but below best. Try
+    full training stack.'
+  critique: val=0.0034 — reasonable but below best. Try full training stack.
+- name: vsmno_pdebench_2d_h32_l2_m8_f1
+  benchmark: pdebench_2d
+  model: VSMNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: vsmno_pdebench_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to vsmno_pdebench_2d_h32_l2_m8 (val=0.0067). val=0.0067 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0067 — reasonable but below best. Try full training stack.
+- name: attentionenhancedfno_elasticity_2d_h32_l2_m8_f1
+  benchmark: elasticity_2d
+  model: AttentionEnhancedFNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: attentionenhancedfno_elasticity_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to attentionenhancedfno_elasticity_2d_h32_l2_m8 (val=0.0109). val=0.0109 — reasonable
+    but below best. Try full training stack.'
+  critique: val=0.0109 — reasonable but below best. Try full training stack.
+- name: hybridfnodeeponet_elasticity_2d_h32_l2_m8_f1
+  benchmark: elasticity_2d
+  model: HybridFNODeepONet2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hybridfnodeeponet_elasticity_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hybridfnodeeponet_elasticity_2d_h32_l2_m8 (val=0.0105). val=0.0105 — reasonable but
+    below best. Try full training stack.'
+  critique: val=0.0105 — reasonable but below best. Try full training stack.
+- name: hano_elasticity_2d_h32_l2_m8_f1
+  benchmark: elasticity_2d
+  model: HANO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: hano_elasticity_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to hano_elasticity_2d_h32_l2_m8 (val=0.1636). val=0.1636 — below best, marginal run.
+    | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error weighting. | Add curriculum=True
+    for spectral ramp-up.'
+  critique: val=0.1636 — below best, marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error
+    weighting. | Add curriculum=True for spectral ramp-up.
+- name: sno_elasticity_2d_h32_l2_m8_f1
+  benchmark: elasticity_2d
+  model: SNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: sno_elasticity_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to sno_elasticity_2d_h32_l2_m8 (val=0.0088). val=0.0088 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0088 — reasonable but below best. Try full training stack.
+- name: vsmno_elasticity_2d_h32_l2_m8_f1
+  benchmark: elasticity_2d
+  model: VSMNO2D
+  hidden_dim: 32
+  n_layers: 2
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: vsmno_elasticity_2d_h32_l2_m8
+  rationale: '[ClosedLoop] Follow-up to vsmno_elasticity_2d_h32_l2_m8 (val=0.0116). val=0.0116 — reasonable but below best.
+    Try full training stack.'
+  critique: val=0.0116 — reasonable but below best. Try full training stack.
+- name: fedonet2d_darcy_h32_l4_f1
+  benchmark: darcy_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 12
+  lr: 0.001
+  loss_type: h1_adaptive
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fedonet2d_darcy_h32_l4
+  rationale: '[ClosedLoop] Follow-up to fedonet2d_darcy_h32_l4 (val=0.2735). val=0.2735 — below best, marginal run. | EMA
+    not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error weighting. | Add curriculum=True for spectral
+    ramp-up. | diag_high_freq=0.1'
+  critique: val=0.2735 — below best, marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error
+    weighting. | Add curriculum=True for spectral ramp-up. | diag_high_freq=0.11 → h1_adaptive loss.
+  h1_alpha: 0.1
+- name: ns2d_fno_h32_l4_m8_f1
+  benchmark: ns_2d
+  model: FNO
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: l2_rel
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: ns2d_fno_h32_l4_m8
+  rationale: '[ClosedLoop] Follow-up to ns2d_fno_h32_l4_m8 (val=0.0215). val=0.0215 — reasonable but below best. Try full
+    training stack.'
+  critique: val=0.0215 — reasonable but below best. Try full training stack.
+- name: fno2d_darcy_h32_l4_m8_h1_f1
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  lr: 0.001
+  loss_type: h1
+  ema_decay: 0.999
+  curriculum: true
+  snapshot_ensemble: 3
+  grad_clip: 1.0
+  patience: 5
+  budget_s: 3600
+  priority: 1
+  parent_name: fno2d_darcy_h32_l4_m8_h1
+  rationale: '[ClosedLoop] Follow-up to fno2d_darcy_h32_l4_m8_h1 (val=0.1504). val=0.1504 — below best, marginal run. | EMA
+    not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error weighting. | Add curriculum=True for spectral
+    ramp-up.'
+  critique: val=0.1504 — below best, marginal run. | EMA not used — add ema_decay=0.999. | Add snapshot_ensemble=3 for inverse-val-error
+    weighting. | Add curriculum=True for spectral ramp-up.
+  h1_alpha: 0.5

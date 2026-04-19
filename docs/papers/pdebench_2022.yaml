@@ -1,0 +1,43 @@
+paper_id: pdebench_2022
+title: "PDEBench: An Extensive Benchmark for Scientific Machine Learning"
+authors: ["Takamoto et al."]
+year: 2022
+venue: "NeurIPS"
+link: "https://arxiv.org/abs/2210.07182"
+
+benchmarks:
+  - name: "rayleigh_benard_2d"
+    type: "2D Buoyancy-driven Flow"
+    description: "Thermal convection in a fluid layer heated from below (Boussinesq approximation)."
+    sota_val_l2_rel: 0.0450
+    metric: "val_l2_rel"
+    baseline_model: "FNO2D"
+    notes: "High multi-scale complexity; chaotic at high Rayleigh numbers."
+
+  - name: "cahn_hilliard_2d"
+    type: "2D Phase Separation"
+    description: "Fourth-order PDE describing the process of phase separation in binary fluid mixtures."
+    sota_val_l2_rel: 0.0120
+    metric: "val_l2_rel"
+    baseline_model: "FNO2D"
+    notes: "Requires stable computation of high-order gradients."
+
+  - name: "compressible_euler_2d"
+    type: "2D Fluid Dynamics"
+    description: "Supersonic compressible flow with Kelvin-Helmholtz instability."
+    sota_val_l2_rel: 0.0280
+    metric: "val_l2_rel"
+    baseline_model: "FNO2D"
+    notes: "Discontinuous shock waves; tests handling of discontinuities."
+
+  - name: "gray_scott_2d"
+    type: "2D Reaction-Diffusion"
+    description: "Non-linear reaction-diffusion system producing Turing patterns."
+    sota_val_l2_rel: 0.0080
+    metric: "val_l2_rel"
+    baseline_model: "FNO2D"
+    notes: "Pattern formation dynamics; sensitive to initialization."
+
+sciml_innovations:
+  - "Provides standardized datasets and metrics for a wide range of SciML problems."
+  - "Establishes FNO and U-Net baselines across multiple physics domains."

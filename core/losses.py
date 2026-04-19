@@ -24,34 +24,34 @@ References:
 """
 
 import math
-import mlx.core as mx
+import torch
 
 
 # ── Spectral derivative helpers ───────────────────────────────────────────────
 
-def spectral_grad_1d(u: mx.array) -> mx.array:
+def spectral_grad_1d(u: torch.Tensor) -> torch.Tensor:
     """1D spectral derivative ∂u/∂x via FFT.  u: [B, N] → ∂u/∂x: [B, N]."""
     B, N = u.shape
-    k    = mx.arange(N // 2 + 1, dtype=mx.float32)
-    u_ft = mx.fft.rfft(u, axis=1)
+    k    = torch.arange(N // 2 + 1, dtype=torch.float32, device=u.device)
+    u_ft = torch.fft.rfft(u, dim=1)
     # Multiply by ik: real part = -imag*k, imag part = real*k
     du_ft_r = -u_ft.imag * k[None, :]
     du_ft_i =  u_ft.real * k[None, :]
-    return mx.fft.irfft(du_ft_r + 1j * du_ft_i, n=N, axis=1)
+    return torch.fft.irfft(du_ft_r + 1j * du_ft_i, n=N, dim=1)
 
 
-def spectral_grad2_1d(u: mx.array) -> mx.array:
+def spectral_grad2_1d(u: torch.Tensor) -> torch.Tensor:
     """Second spectral derivative ∂²u/∂x².  u: [B, N] → [B, N]."""
     B, N = u.shape
-    k    = mx.arange(N // 2 + 1, dtype=mx.float32)
-    u_ft = mx.fft.rfft(u, axis=1)
+    k    = torch.arange(N // 2 + 1, dtype=torch.float32, device=u.device)
+    u_ft = torch.fft.rfft(u, dim=1)
     # Multiply by -k²
     d2u_ft_r = -(k ** 2)[None, :] * u_ft.real
     d2u_ft_i = -(k ** 2)[None, :] * u_ft.imag
-    return mx.fft.irfft(d2u_ft_r + 1j * d2u_ft_i, n=N, axis=1)
+    return torch.fft.irfft(d2u_ft_r + 1j * d2u_ft_i, n=N, dim=1)
 
 
-def _spectral_grad_2d(u: mx.array):
+def _spectral_grad_2d(u: torch.Tensor):
     """2D spectral gradients ∂u/∂x and ∂u/∂y.
 
     u: [B, N1, N2] — single-channel 2D field.
@@ -61,12 +61,12 @@ def _spectral_grad_2d(u: mx.array):
     domain [0, 1]² so k = 2π × integer wavenumber.
     """
     B, N1, N2 = u.shape
-    u_hat = mx.fft.rfft2(u, axes=(1, 2))  # [B, N1, N2//2+1] complex
+    u_hat = torch.fft.rfft2(u, dim=(1, 2))  # [B, N1, N2//2+1] complex
 
     # Integer wavenumbers matching numpy.fft.fftfreq(N)*N semantics
     kx_int = [k if k <= N1 // 2 else k - N1 for k in range(N1)]
-    kx = mx.array(kx_int, dtype=mx.float32).reshape(1, N1, 1) * (2.0 * math.pi)
-    ky = (mx.arange(N2 // 2 + 1, dtype=mx.float32).reshape(1, 1, N2 // 2 + 1)
+    kx = torch.tensor(kx_int, dtype=torch.float32, device=u.device).reshape(1, N1, 1) * (2.0 * math.pi)
+    ky = (torch.arange(N2 // 2 + 1, dtype=torch.float32, device=u.device).reshape(1, 1, N2 // 2 + 1)
           * (2.0 * math.pi))
 
     # Multiply by ik: (a + ib)(ik) = -b*k + ia*k
@@ -75,28 +75,28 @@ def _spectral_grad_2d(u: mx.array):
     du_dy_hat_r = -u_hat.imag * ky
     du_dy_hat_i =  u_hat.real * ky
 
-    du_dx = mx.fft.irfft2(du_dx_hat_r + 1j * du_dx_hat_i, s=(N1, N2), axes=(1, 2))
-    du_dy = mx.fft.irfft2(du_dy_hat_r + 1j * du_dy_hat_i, s=(N1, N2), axes=(1, 2))
+    du_dx = torch.fft.irfft2(du_dx_hat_r + 1j * du_dx_hat_i, s=(N1, N2), dim=(1, 2))
+    du_dy = torch.fft.irfft2(du_dy_hat_r + 1j * du_dy_hat_i, s=(N1, N2), dim=(1, 2))
     return du_dx, du_dy
 
 
 # ── Core loss implementations ─────────────────────────────────────────────────
 
-def relative_l2(pred: mx.array, y: mx.array) -> mx.array:
+def relative_l2(pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Relative L2 loss (current default).
 
     mean_batch( ‖pred − y‖₂ / ‖y‖₂ )
     """
     axes      = tuple(range(1, y.ndim))
     diff      = pred - y
-    data_loss = mx.mean(
-        mx.sqrt(mx.mean(diff ** 2, axis=axes))
-        / (mx.sqrt(mx.mean(y   ** 2, axis=axes)) + 1e-8)
+    data_loss = torch.mean(
+        torch.sqrt(torch.mean(diff ** 2, dim=axes))
+        / (torch.sqrt(torch.mean(y   ** 2, dim=axes)) + 1e-8)
     )
     return data_loss
 
 
-def h1_loss(pred: mx.array, y: mx.array, alpha: float = 0.1) -> mx.array:
+def h1_loss(pred: torch.Tensor, y: torch.Tensor, alpha: float = 0.1) -> torch.Tensor:
     """H1 Sobolev loss: relative L2 + α · relative L2 of first derivative.
 
     Penalises high-frequency errors more than L2 alone.  Particularly useful
@@ -115,18 +115,18 @@ def h1_loss(pred: mx.array, y: mx.array, alpha: float = 0.1) -> mx.array:
         diff   = pred - y
         d_diff = spectral_grad_1d(diff)
         d_y    = spectral_grad_1d(y)
-        grad_loss = mx.mean(
-            mx.sqrt(mx.mean(d_diff ** 2, axis=(1,)))
-            / (mx.sqrt(mx.mean(d_y ** 2, axis=(1,))) + 1e-8)
+        grad_loss = torch.mean(
+            torch.sqrt(torch.mean(d_diff ** 2, dim=(1,)))
+            / (torch.sqrt(torch.mean(d_y ** 2, dim=(1,))) + 1e-8)
         )
     elif y.ndim == 3:
         # 2D path: compute ∂/∂x and ∂/∂y gradients
         diff  = pred - y
         dx, dy     = _spectral_grad_2d(diff)
         dx_y, dy_y = _spectral_grad_2d(y)
-        diff_norm = mx.sqrt(mx.mean(dx ** 2 + dy ** 2, axis=(1, 2)))
-        y_norm    = mx.sqrt(mx.mean(dx_y ** 2 + dy_y ** 2, axis=(1, 2)))
-        grad_loss = mx.mean(diff_norm / (y_norm + 1e-8))
+        diff_norm = torch.sqrt(torch.mean(dx ** 2 + dy ** 2, dim=(1, 2)))
+        y_norm    = torch.sqrt(torch.mean(dx_y ** 2 + dy_y ** 2, dim=(1, 2)))
+        grad_loss = torch.mean(diff_norm / (y_norm + 1e-8))
     else:
         # Higher-dimensional: fall back to L2 (multi-channel 2D etc.)
         return l2
@@ -134,13 +134,13 @@ def h1_loss(pred: mx.array, y: mx.array, alpha: float = 0.1) -> mx.array:
     return l2 + alpha * grad_loss
 
 
-def h1_strong_loss(pred: mx.array, y: mx.array) -> mx.array:
+def h1_strong_loss(pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """H1 loss with α=1.0 — equal weighting of L2 and H1 terms."""
     return h1_loss(pred, y, alpha=1.0)
 
 
-def h2_loss(pred: mx.array, y: mx.array,
-            alpha: float = 0.1, beta: float = 0.01) -> mx.array:
+def h2_loss(pred: torch.Tensor, y: torch.Tensor,
+            alpha: float = 0.1, beta: float = 0.01) -> torch.Tensor:
     """H2 Sobolev loss: L2 + α·H1 + β·H2.
 
     Adds a second-derivative penalty.  Smooths more aggressively.
@@ -158,19 +158,19 @@ def h2_loss(pred: mx.array, y: mx.array,
     d2_y  = spectral_grad2_1d(y)
 
     l2   = relative_l2(pred, y)
-    h1t  = mx.mean(
-        mx.sqrt(mx.mean(d1 ** 2, axis=axes))
-        / (mx.sqrt(mx.mean(d1_y ** 2, axis=axes)) + 1e-8)
+    h1t  = torch.mean(
+        torch.sqrt(torch.mean(d1 ** 2, dim=axes))
+        / (torch.sqrt(torch.mean(d1_y ** 2, dim=axes)) + 1e-8)
     )
-    h2t  = mx.mean(
-        mx.sqrt(mx.mean(d2 ** 2, axis=axes))
-        / (mx.sqrt(mx.mean(d2_y ** 2, axis=axes)) + 1e-8)
+    h2t  = torch.mean(
+        torch.sqrt(torch.mean(d2 ** 2, dim=axes))
+        / (torch.sqrt(torch.mean(d2_y ** 2, dim=axes)) + 1e-8)
     )
     return l2 + alpha * h1t + beta * h2t
 
 
-def spectral_loss(pred: mx.array, y: mx.array,
-                  high_freq_weight: float = 2.0) -> mx.array:
+def spectral_loss(pred: torch.Tensor, y: torch.Tensor,
+                  high_freq_weight: float = 2.0) -> torch.Tensor:
     """Frequency-weighted L2 loss.
 
     Weights Fourier coefficients by k^high_freq_weight, emphasising
@@ -184,45 +184,45 @@ def spectral_loss(pred: mx.array, y: mx.array,
     if y.ndim == 2:
         # 1D path
         B, N     = y.shape
-        k        = mx.arange(N // 2 + 1, dtype=mx.float32)
+        k        = torch.arange(N // 2 + 1, dtype=torch.float32, device=y.device)
         weights  = 1.0 + (k / (N // 2)) ** high_freq_weight  # [N//2+1]
 
-        pred_ft  = mx.fft.rfft(pred, axis=1)
-        y_ft     = mx.fft.rfft(y,    axis=1)
+        pred_ft  = torch.fft.rfft(pred, dim=1)
+        y_ft     = torch.fft.rfft(y,    dim=1)
         diff_ft  = pred_ft - y_ft
 
         diff_mag = diff_ft.real ** 2 + diff_ft.imag ** 2      # [B, N//2+1]
         y_mag    = y_ft.real    ** 2 + y_ft.imag    ** 2
 
-        w_err = mx.mean(weights[None, :] * diff_mag, axis=1)   # [B]
-        w_nrm = mx.mean(weights[None, :] * y_mag,   axis=1)
-        return mx.mean(mx.sqrt(w_err) / (mx.sqrt(w_nrm) + 1e-8))
+        w_err = torch.mean(weights[None, :] * diff_mag, dim=1)   # [B]
+        w_nrm = torch.mean(weights[None, :] * y_mag,   dim=1)
+        return torch.mean(torch.sqrt(w_err) / (torch.sqrt(w_nrm) + 1e-8))
 
     elif y.ndim == 3:
         # 2D path: weight by 2D wavenumber magnitude |k|²
         B, N1, N2 = y.shape
         kx_int = [k if k <= N1 // 2 else k - N1 for k in range(N1)]
-        kx = mx.array(kx_int, dtype=mx.float32).reshape(N1, 1)
-        ky = mx.arange(N2 // 2 + 1, dtype=mx.float32).reshape(1, N2 // 2 + 1)
-        k_norm = mx.sqrt(kx ** 2 + ky ** 2) / (max(N1, N2) // 2)  # [N1, N2//2+1]
+        kx = torch.tensor(kx_int, dtype=torch.float32, device=y.device).reshape(N1, 1)
+        ky = torch.arange(N2 // 2 + 1, dtype=torch.float32, device=y.device).reshape(1, N2 // 2 + 1)
+        k_norm = torch.sqrt(kx ** 2 + ky ** 2) / (max(N1, N2) // 2)  # [N1, N2//2+1]
         weights = (1.0 + k_norm ** high_freq_weight).reshape(1, N1, N2 // 2 + 1)
 
-        pred_ft = mx.fft.rfft2(pred, axes=(1, 2))
-        y_ft    = mx.fft.rfft2(y,    axes=(1, 2))
+        pred_ft = torch.fft.rfft2(pred, dim=(1, 2))
+        y_ft    = torch.fft.rfft2(y,    dim=(1, 2))
         diff_ft = pred_ft - y_ft
 
         diff_mag = diff_ft.real ** 2 + diff_ft.imag ** 2
         y_mag    = y_ft.real    ** 2 + y_ft.imag    ** 2
 
-        w_err = mx.mean(weights * diff_mag, axis=(1, 2))   # [B]
-        w_nrm = mx.mean(weights * y_mag,   axis=(1, 2))
-        return mx.mean(mx.sqrt(w_err) / (mx.sqrt(w_nrm) + 1e-8))
+        w_err = torch.mean(weights * diff_mag, dim=(1, 2))   # [B]
+        w_nrm = torch.mean(weights * y_mag,   dim=(1, 2))
+        return torch.mean(torch.sqrt(w_err) / (torch.sqrt(w_nrm) + 1e-8))
 
     else:
         return relative_l2(pred, y)
 
 
-def adaptive_h1_loss(pred: mx.array, y: mx.array, base_alpha: float = 0.1) -> mx.array:
+def adaptive_h1_loss(pred: torch.Tensor, y: torch.Tensor, base_alpha: float = 0.1, alpha: float = None) -> torch.Tensor:
     """H1 Sobolev loss with auto-scaled alpha.
 
     Scales the gradient penalty so it contributes ~30% of total loss regardless
@@ -237,40 +237,43 @@ def adaptive_h1_loss(pred: mx.array, y: mx.array, base_alpha: float = 0.1) -> mx
         diff   = pred - y
         d_diff = spectral_grad_1d(diff)
         d_y    = spectral_grad_1d(y)
-        grad_loss = mx.mean(
-            mx.sqrt(mx.mean(d_diff ** 2, axis=(1,)))
-            / (mx.sqrt(mx.mean(d_y ** 2, axis=(1,))) + 1e-8)
+        grad_loss = torch.mean(
+            torch.sqrt(torch.mean(d_diff ** 2, dim=(1,)))
+            / (torch.sqrt(torch.mean(d_y ** 2, dim=(1,))) + 1e-8)
         )
     elif y.ndim == 3:
         diff  = pred - y
         dx, dy_g   = _spectral_grad_2d(diff)
         dx_y, dy_y = _spectral_grad_2d(y)
-        diff_norm = mx.sqrt(mx.mean(dx ** 2 + dy_g ** 2, axis=(1, 2)))
-        y_norm    = mx.sqrt(mx.mean(dx_y ** 2 + dy_y ** 2, axis=(1, 2)))
-        grad_loss = mx.mean(diff_norm / (y_norm + 1e-8))
+        diff_norm = torch.sqrt(torch.mean(dx ** 2 + dy_g ** 2, dim=(1, 2)))
+        y_norm    = torch.sqrt(torch.mean(dx_y ** 2 + dy_y ** 2, dim=(1, 2)))
+        grad_loss = torch.mean(diff_norm / (y_norm + 1e-8))
     else:
         return l2
 
     # Auto-scale: target_ratio=0.3 means grad term = 30% of total
     # alpha = (target_ratio / (1 - target_ratio)) * (l2 / grad_loss)
-    # Use stop_gradient so we don't optimise the scale itself
-    auto_alpha = mx.stop_gradient(0.3 / 0.7 * l2 / (grad_loss + 1e-8)) * base_alpha
-    auto_alpha = mx.minimum(auto_alpha, 5.0 * base_alpha)  # cap to avoid instability
+    # Use detach so we don't optimise the scale itself
+    # Accept `alpha` as alias for `base_alpha` (for compatibility with train.py --loss h1_adaptive)
+    if alpha is not None:
+        base_alpha = alpha
+    auto_alpha = (0.3 / 0.7 * l2 / (grad_loss + 1e-8)).detach() * base_alpha
+    auto_alpha = torch.minimum(auto_alpha, 5.0 * base_alpha)  # cap to avoid instability
     return l2 + auto_alpha * grad_loss
 
 
-def relative_l1(pred: mx.array, y: mx.array) -> mx.array:
+def relative_l1(pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Relative L1 loss.  Robust to outlier samples."""
     axes = tuple(range(1, y.ndim))
-    return mx.mean(
-        mx.mean(mx.abs(pred - y), axis=axes)
-        / (mx.mean(mx.abs(y), axis=axes) + 1e-8)
+    return torch.mean(
+        torch.mean(torch.abs(pred - y), dim=axes)
+        / (torch.mean(torch.abs(y), dim=axes) + 1e-8)
     )
 
 
-def mse_loss(pred: mx.array, y: mx.array) -> mx.array:
+def mse_loss(pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """Plain MSE — no normalisation.  Use for debugging only."""
-    return mx.mean((pred - y) ** 2)
+    return torch.mean((pred - y) ** 2)
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────

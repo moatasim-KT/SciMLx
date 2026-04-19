@@ -1,0 +1,35 @@
+paper_id: classic_fm
+title: "Classic Fluid Mechanics: Analytical and Numerical Baselines"
+authors: ["Standard Literature"]
+year: 2026
+venue: "Repository Baseline"
+link: "https://en.wikipedia.org/wiki/Fluid_dynamics"
+
+benchmarks:
+  - name: "couette_flow_1d"
+    type: "1D Shear Flow"
+    description: "Flow of a viscous fluid between two parallel plates, one of which is moving."
+    sota_val_l2_rel: 0.0001
+    metric: "val_l2_rel"
+    baseline_model: "FNO"
+    notes: "Analytical solution exists (linear velocity profile); tests fundamental shear mapping."
+
+  - name: "poiseuille_flow_1d"
+    type: "1D Pressure-driven Flow"
+    description: "Flow of a viscous fluid through a long cylindrical pipe or between stationary plates."
+    sota_val_l2_rel: 0.0001
+    metric: "val_l2_rel"
+    baseline_model: "FNO"
+    notes: "Analytical solution exists (parabolic velocity profile); tests pressure-gradient mapping."
+
+  - name: "rising_bubble_2d"
+    type: "2D Multiphase Flow"
+    description: "Dynamics of a spherical bubble rising in a liquid due to buoyancy."
+    sota_val_l2_rel: 0.0350
+    metric: "val_l2_rel"
+    baseline_model: "FNO2D"
+    notes: "Complex interface tracking; high contrast in density/viscosity."
+
+sciml_innovations:
+  - "Establishes classic analytical solutions as rigorous accuracy baselines for operator learning."
+  - "Rising bubble tests the model's ability to capture topological changes and sharp interfaces."

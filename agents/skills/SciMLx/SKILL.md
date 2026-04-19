@@ -22,6 +22,8 @@
 10. [How to Update This Document](#10-how-to-update-this-document)
 11. [Quality Checklist](#11-quality-checklist)
 12. [Learned Lessons Log](#12-learned-lessons-log)
+13. [Agent-First Reasoning Protocol (v2.0)](#13-agent-first-reasoning-protocol-v20)
+14. [Multi-Metric Monitoring Protocol (v2.0)](#14-multi-metric-monitoring-protocol-v20)
 
 ---
 
@@ -37,15 +39,17 @@ uv run data/prefetch_data.py --skip-slow    # ~2 min; caches PDE datasets
 # 1. Read current state — always start here, never skip
 uv run analyze.py --papers
 
-# 2. Get ranked next actions from the hypothesis engine
-uv run auto_suggest.py
+# 2. Get ranked next actions with Adversarial Review
+uv run auto_suggest.py --generate
 
-# 3. Edit experiments.yaml (add or reprioritize)
+# 3. Handle [AGENT] requests in auto_suggest output (see §13)
 
-# 4. Run priority-1 queue, commit results after each kept run
+# 4. Edit experiments.yaml (add or reprioritize)
+
+# 5. Run priority-1 queue with Scientific Debugging
 uv run autorun.py --priority 1 --commit
 
-# 5. Go to 1
+# 6. Handle [AGENT] requests in scientific debug logs (see §13)
 ```
 
 ### Overnight / unattended run
@@ -975,3 +979,38 @@ architecture rather than continue HPO.
   LayerNorm position? No confirmed fix yet.
 - **MHD/NS-HRE all-fail**: All models return val=1.0. Physics too complex for
   current capacity constraints or data distribution mismatch?
+
+---
+
+## 13. Agent-First Reasoning Protocol (v2.0)
+
+The system is refactored to prioritize *agent intelligence* over external API calls. Fulfill requests when you see the `[AGENT_REQUEST]` pattern.
+
+### Fulfilling Scientific Diagnoses (/debug)
+
+When a model fails with NaNs, the `ScientificDebugger` provides a probe log summary.
+1. **Analyze Gradient flow**: Look for the layer where grad_norm exceeds 1e5.
+2. **Identify Root Cause**: Usually astronomical weight initialization, missing LayerNorm, or an unstable spectral convolution.
+3. **Propose a Fix**: 
+   - *Example*: "Weights in `bomb.weight` initialized to 1e20. Fix: Use `nn.init.xavier_uniform`."
+   - *Example*: "Gradient exploded in Layer 3. Fix: Add `nn.LayerNorm` before spectral blocks."
+
+### Fulfilling Adversarial Reviews (/reason)
+
+When generating new configs or registering models:
+1. **Skepticism First**: Assume the new architecture will fail due to spectral bias or OOM.
+2. **Check High-Freq Error**: If past runs on this benchmark have `diag_high_freq > 0.3`, ensure the new config uses `loss: h1` or `loss: spectral`.
+3. **Check Memory**: If 2D, strictly enforce `h <= 32`, `l <= 4`.
+4. **Verdict**: Provide a concise verdict: **ACCEPT**, **REJECT**, or **REFINE** (with specific param changes).
+
+---
+
+## 14. Multi-Metric Monitoring Protocol (v2.0)
+
+| Metric | Target | Action if High |
+|--------|--------|----------------|
+| `val_l2_rel` | < 0.05 | Success — push to SOTA |
+| `diag_high_freq_error` | < 0.10 | Switch to `h1` or `spectral` loss |
+| `diag_grad_norm_max` | < 5.0 | Reduce `lr` or add `grad_clip: 0.5` |
+| `diag_early_stopped` | True | Model converged; try different architecture |
+| `scientific_diagnosis` | - | Apply fix branch immediately |

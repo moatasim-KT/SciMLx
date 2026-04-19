@@ -14,44 +14,30 @@ SOTA. You are an active researcher — reason about *why* before queuing anythin
 
 ---
 
-## Start Here
+## Start Here (v2.0)
 
 ```bash
 uv sync
 uv run data/prefetch_data.py --skip-slow   # cache datasets first (always)
 
 uv run analyze.py --papers                  # read current state vs SOTA
-uv run auto_suggest.py                      # get ranked next actions
-# edit experiments.yaml, then:
-uv run autorun.py --priority 1 --commit
+uv run auto_suggest.py --generate           # actions with [Adversarial Review]
+# Fulfill any [AGENT] review requests, then edit experiments.yaml
+uv run autorun.py --priority 1 --commit     # execute with [Scientific Debugging]
 ```
-
-**Fully autonomous (unattended):**
-```bash
-uv run autorun.py --auto --commit \
-    --max-auto-experiments 50 \
-    --max-auto-time 86400      # 24-hour wall clock cap
-```
-When the queue empties, `--auto` calls `auto_suggest --generate --write-yaml`
-to replenish it, then falls back to `BayesianHPO.suggest_top(3)`.
-
-Full tool reference, diagnostic APIs, and scaffold workflow are in `program.md`.
 
 ---
 
-## Infrastructure Capabilities
+## Infrastructure Capabilities (v2.0)
 
 | Feature | Flag / Field | Description |
 |---------|-------------|-------------|
-| **Spectral Curriculum** | `curriculum: true` in YAML or `--curriculum` | Low-pass filters ICs (modes 4→8 for 1D, 2→N/4 for 2D) during first 30% of budget. Helps models learn global structure before fine-scale. |
-| **Snapshot Ensembles** | `snapshot_ensemble: N` in YAML or `--snapshot_ensemble N` | Saves N checkpoints at equal intervals; final eval uses **inverse-val-error-weighted** average. 5–15% accuracy gain. |
-| **EMA Weights** | `ema_decay: 0.999` in YAML or `--ema_decay 0.999` | Exponential moving average shadow weights used for mid-run and final evaluation. 3–8% free improvement. |
-| **Adaptive H1 Loss** | `loss_type: h1_adaptive` | H1 Sobolev loss that auto-scales alpha per-batch so gradient term ≈ 30% of total. Safer than fixed alpha. |
-| **Early Stopping** | `patience: N` in YAML (default 5) | Halts if val doesn't improve for N consecutive 10%-budget evaluations. |
-| **Budget Floors** | automatic | autorun enforces 1800 s (1D) / 3600 s (60 min 2D) minimums — no config needed. |
-| **Plateau Detection** | `HypothesisEngine.detect_plateau(bm)` | Reads `trajectories.jsonl`; returns `PlateauState` with `is_stuck`, `streak_length`, `suggested_action`. |
-| **Iterative Auto Loop** | `--auto` | Non-recursive `while True` loop; stack-safe for indefinite unattended runs. |
-| **auto_suggest generate** | `--generate --write-yaml` | Appends new experiment YAML blocks directly to `experiments.yaml` for queue replenishment. |
+| **Scientific Debugger** | `--probe` | 5-step re-run on crash; logs layer-wise stats. |
+| **Adversarial Review** | `critique:` | Skeptical architectural vetting in `experiments.yaml`. |
+| **Spectral Curriculum** | `curriculum: true` | Low-pass filters ICs during first 30% of budget. |
+| **Snapshot Ensembles** | `snapshot_ensemble: N` | Inverse-val-error-weighted average of snapshots. |
+| **EMA Weights** | `ema_decay: 0.999` | Exponential moving average shadow weights. |
+| **Adaptive H1 Loss** | `loss_type: h1_adaptive` | Auto-scales alpha per-batch (gradient ≈ 30%). |
 
 ---
 

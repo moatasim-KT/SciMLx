@@ -47,6 +47,7 @@ class ExperimentConfig:
     ema_decay:   float = 0.0      # EMA decay for model weights (0=disabled, 0.999 recommended)
     patience:    int  = 5         # early-stop patience: halt after this many consecutive non-improving evals (0=off)
     snapshot_ensemble: int = 0    # Phase 12: Snapshot ensembling (number of snapshots to average)
+    critique:    str  = ""        # adversarial review from /reason protocol
 
     def to_cli_args(self) -> List[str]:
         args = [

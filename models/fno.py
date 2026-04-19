@@ -1,5 +1,6 @@
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 # ── 1D Spectral Components ────────────────────────────────────────────────────
@@ -13,28 +14,28 @@ class SpectralConv1d(nn.Module):
         self.out_ch  = out_ch
         self.n_modes = n_modes
         scale = (in_ch * out_ch) ** -0.5
-        self.wr = mx.random.normal([n_modes, in_ch, out_ch]) * scale
-        self.wi = mx.random.normal([n_modes, in_ch, out_ch]) * scale
+        self.wr = nn.Parameter(torch.randn([n_modes, in_ch, out_ch]) * scale)
+        self.wi = nn.Parameter(torch.randn([n_modes, in_ch, out_ch]) * scale)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, _ = x.shape
-        x_ft = mx.fft.rfft(x, axis=1)
+        x_ft = torch.fft.rfft(x, dim=1)
         xr   = x_ft[:, :self.n_modes, :].real
         xi   = x_ft[:, :self.n_modes, :].imag
 
-        out_r = (mx.einsum("bmi,mio->bmo", xr, self.wr)
-               - mx.einsum("bmi,mio->bmo", xi, self.wi))
-        out_i = (mx.einsum("bmi,mio->bmo", xr, self.wi)
-               + mx.einsum("bmi,mio->bmo", xi, self.wr))
+        out_r = (torch.einsum("bmi,mio->bmo", xr, self.wr)
+               - torch.einsum("bmi,mio->bmo", xi, self.wi))
+        out_i = (torch.einsum("bmi,mio->bmo", xr, self.wi)
+               + torch.einsum("bmi,mio->bmo", xi, self.wr))
 
         out_modes = out_r + 1j * out_i
         n_rfft = N // 2 + 1
         if n_rfft > self.n_modes:
-            pad    = mx.zeros([B, n_rfft - self.n_modes, self.out_ch], dtype=mx.complex64)
-            out_ft = mx.concatenate([out_modes, pad], axis=1)
+            pad    = torch.zeros([B, n_rfft - self.n_modes, self.out_ch], dtype=torch.complex64, device=x.device)
+            out_ft = torch.cat([out_modes, pad], dim=1)
         else:
             out_ft = out_modes
-        return mx.fft.irfft(out_ft, n=N, axis=1)
+        return torch.fft.irfft(out_ft, n=N, dim=1)
 
 
 class FNOBlock1d(nn.Module):
@@ -44,8 +45,8 @@ class FNOBlock1d(nn.Module):
         self.spec = SpectralConv1d(channels, channels, n_modes)
         self.w    = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
-        return nn.gelu(self.spec(x) + self.w(x))
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.gelu(self.spec(x) + self.w(x))
 
 
 class FNO1d(nn.Module):
@@ -53,18 +54,18 @@ class FNO1d(nn.Module):
     def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)])
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N  = u0.shape
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u0, grid], axis=-1)
+        grid  = torch.linspace(0.0, 1.0, N, device=u0.device).unsqueeze(0).expand(B, -1)
+        x     = torch.stack([u0, grid], dim=-1)
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(x))
+        x     = F.gelu(self.proj1(x))
         return self.proj2(x)[:, :, 0]
 
 
@@ -83,9 +84,9 @@ class FNOBlockResidual1d(nn.Module):
         self.spec = SpectralConv1d(channels, channels, n_modes)
         self.w    = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
+        return x + F.gelu(self.spec(h) + self.w(h))
 
 
 class RFNO1d(nn.Module):
@@ -101,24 +102,24 @@ class RFNO1d(nn.Module):
     def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [FNOBlockResidual1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FNOBlockResidual1d(hidden_dim, n_modes) for _ in range(n_layers)])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         if u0.ndim == 3:
             B, N, _ = u0.shape
             u_scalar = u0[:, :, 0]  # use first channel for grid stacking
         else:
             B, N  = u0.shape
             u_scalar = u0
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u_scalar, grid], axis=-1)
+        grid  = torch.linspace(0.0, 1.0, N, device=u0.device).unsqueeze(0).expand(B, -1)
+        x     = torch.stack([u_scalar, grid], dim=-1)
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
+        x     = F.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)[:, :, 0]
 
 
@@ -136,20 +137,19 @@ class FNO1dMC(nn.Module):
         self.in_ch  = in_channels
         self.out_ch = out_channels
         self.lift   = nn.Linear(in_channels + 1, hidden_dim)   # +1 for grid
-        self.blocks = [FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, out_channels)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N, _ = u0.shape
-        grid    = mx.broadcast_to(
-            mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
-        x = mx.concatenate([u0, grid], axis=-1)  # [B, N, C+1]
+        grid    = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N, 1).expand(B, -1, -1)
+        x = torch.cat([u0, grid], dim=-1)  # [B, N, C+1]
         x = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x = nn.gelu(self.proj1(self.norm(x)))
+        x = F.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)                     # [B, N, C_out]
 
 
@@ -164,38 +164,38 @@ class SpectralConv2d(nn.Module):
         self.n_modes2 = n_modes2
         scale = (in_ch * out_ch) ** -0.5
         # We need two sets of weights because rfft2 is asymmetric
-        self.wr1 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wi1 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wr2 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wi2 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
+        self.wr1 = nn.Parameter(torch.randn([n_modes1, n_modes2, in_ch, out_ch]) * scale)
+        self.wi1 = nn.Parameter(torch.randn([n_modes1, n_modes2, in_ch, out_ch]) * scale)
+        self.wr2 = nn.Parameter(torch.randn([n_modes1, n_modes2, in_ch, out_ch]) * scale)
+        self.wi2 = nn.Parameter(torch.randn([n_modes1, n_modes2, in_ch, out_ch]) * scale)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x : [B, N1, N2, C_in]
         B, N1, N2, _ = x.shape
-        x_ft = mx.fft.rfft2(x, axes=(1, 2))  # [B, N1, N2//2+1, C] complex
+        x_ft = torch.fft.rfft2(x, dim=(1, 2))  # [B, N1, N2//2+1, C] complex
 
         # Handle the two symmetric modes in the first dimension
-        out_ft = mx.zeros([B, N1, N2 // 2 + 1, self.out_ch], dtype=mx.complex64)
+        out_ft = torch.zeros([B, N1, N2 // 2 + 1, self.out_ch], dtype=torch.complex64, device=x.device)
 
         # Mode 1: [0:n_modes1, 0:n_modes2]
         xr1 = x_ft[:, :self.n_modes1, :self.n_modes2, :].real
         xi1 = x_ft[:, :self.n_modes1, :self.n_modes2, :].imag
-        out_r1 = (mx.einsum("bmki,mkio->bmko", xr1, self.wr1)
-                - mx.einsum("bmki,mkio->bmko", xi1, self.wi1))
-        out_i1 = (mx.einsum("bmki,mkio->bmko", xr1, self.wi1)
-                + mx.einsum("bmki,mkio->bmko", xi1, self.wr1))
+        out_r1 = (torch.einsum("bmki,mkio->bmko", xr1, self.wr1)
+                - torch.einsum("bmki,mkio->bmko", xi1, self.wi1))
+        out_i1 = (torch.einsum("bmki,mkio->bmko", xr1, self.wi1)
+                + torch.einsum("bmki,mkio->bmko", xi1, self.wr1))
         out_ft[:, :self.n_modes1, :self.n_modes2, :] = out_r1 + 1j * out_i1
 
         # Mode 2: [-n_modes1:, 0:n_modes2]
         xr2 = x_ft[:, -self.n_modes1:, :self.n_modes2, :].real
         xi2 = x_ft[:, -self.n_modes1:, :self.n_modes2, :].imag
-        out_r2 = (mx.einsum("bmki,mkio->bmko", xr2, self.wr2)
-                - mx.einsum("bmki,mkio->bmko", xi2, self.wi2))
-        out_i2 = (mx.einsum("bmki,mkio->bmko", xr2, self.wi2)
-                + mx.einsum("bmki,mkio->bmko", xi2, self.wr2))
+        out_r2 = (torch.einsum("bmki,mkio->bmko", xr2, self.wr2)
+                - torch.einsum("bmki,mkio->bmko", xi2, self.wi2))
+        out_i2 = (torch.einsum("bmki,mkio->bmko", xr2, self.wi2)
+                + torch.einsum("bmki,mkio->bmko", xi2, self.wr2))
         out_ft[:, -self.n_modes1:, :self.n_modes2, :] = out_r2 + 1j * out_i2
 
-        return mx.fft.irfft2(out_ft, s=(N1, N2), axes=(1, 2))
+        return torch.fft.irfft2(out_ft, s=(N1, N2), dim=(1, 2))
 
 
 class FNOBlock2d(nn.Module):
@@ -205,8 +205,8 @@ class FNOBlock2d(nn.Module):
         self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
         self.w    = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
-        return nn.gelu(self.spec(x) + self.w(x))
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.gelu(self.spec(x) + self.w(x))
 
 
 class FNO2d(nn.Module):
@@ -215,28 +215,28 @@ class FNO2d(nn.Module):
         super().__init__()
         # Internal lifting dimension: data channels + 2 spatial grids
         self.lift   = nn.Linear(in_channels + 2, hidden_dim)
-        self.blocks = [FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)])
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x : [B, N1, N2] or [B, N1, N2, C]
         if x.ndim == 3:
             B, N1, N2 = x.shape
             x = x[..., None]
         else:
             B, N1, N2, _ = x.shape
-            
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
-        
+
+        grid1 = torch.linspace(0.0, 1.0, N1, device=x.device).view(1, N1, 1, 1).expand(B, -1, N2, -1)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=x.device).view(1, 1, N2, 1).expand(B, N1, -1, -1)
+        x     = torch.cat([x, grid1, grid2], dim=-1)  # [B, N1, N2, C+2]
+
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(x))
+        x     = F.gelu(self.proj1(x))
         out   = self.proj2(x)
-        
+
         if out.shape[-1] == 1:
             return out[:, :, :, 0]
         return out
@@ -250,9 +250,9 @@ class FNOBlockResidual2d(nn.Module):
         self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
         self.w    = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
+        return x + F.gelu(self.spec(h) + self.w(h))
 
 
 class RFNO2d(nn.Module):
@@ -260,12 +260,12 @@ class RFNO2d(nn.Module):
     def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
         super().__init__()
         self.lift   = nn.Linear(in_channels + 2, hidden_dim)
-        self.blocks = [FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x : [B, N1, N2] or [B, N1, N2, C]
         if x.ndim == 3:
             B, N1, N2 = x.shape
@@ -273,14 +273,14 @@ class RFNO2d(nn.Module):
         else:
             B, N1, N2, _ = x.shape
 
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
+        grid1 = torch.linspace(0.0, 1.0, N1, device=x.device).view(1, N1, 1, 1).expand(B, -1, N2, -1)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=x.device).view(1, 1, N2, 1).expand(B, N1, -1, -1)
+        x     = torch.cat([x, grid1, grid2], dim=-1)  # [B, N1, N2, C+2]
 
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
+        x     = F.gelu(self.proj1(self.norm(x)))
         out   = self.proj2(x)
 
         if out.shape[-1] == 1:
@@ -332,10 +332,10 @@ class UNO1d(nn.Module):
         self.proj1 = nn.Linear(h, h // 2)
         self.proj2 = nn.Linear(h // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N = u0.shape
-        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x    = mx.stack([u0, grid], axis=-1)
+        grid = torch.linspace(0.0, 1.0, N, device=u0.device).unsqueeze(0).expand(B, -1)
+        x    = torch.stack([u0, grid], dim=-1)
         x    = self.lift(x)                         # [B, N,    h]
 
         # Encode
@@ -348,16 +348,16 @@ class UNO1d(nn.Module):
         x    = self.bot(x)                          # [B, N//4, 4h]
 
         # Decode
-        x    = mx.repeat(x, 2, axis=1)             # [B, N//2, 4h]
-        x    = mx.concatenate([x, s1], axis=-1)     # [B, N//2, 6h]
+        x    = x.repeat_interleave(2, dim=1)       # [B, N//2, 4h]
+        x    = torch.cat([x, s1], dim=-1)           # [B, N//2, 6h]
         x    = self.up1(x)                          # [B, N//2, 2h]
         x    = self.dec1(x)                         # [B, N//2, 2h]
-        x    = mx.repeat(x, 2, axis=1)             # [B, N,    2h]
-        x    = mx.concatenate([x, s0], axis=-1)     # [B, N,    3h]
+        x    = x.repeat_interleave(2, dim=1)       # [B, N,    2h]
+        x    = torch.cat([x, s0], dim=-1)           # [B, N,    3h]
         x    = self.up0(x)                          # [B, N,    h]
         x    = self.dec0(x)                         # [B, N,    h]
 
-        x    = nn.gelu(self.proj1(x))
+        x    = F.gelu(self.proj1(x))
         return self.proj2(x)[:, :, 0]
 
 class UNO2d(nn.Module):
@@ -377,58 +377,58 @@ class UNO2d(nn.Module):
         self.enc0  = nn.Sequential(*[FNOBlock2d(h, m, m) for _ in range(n_layers)])
         self.down0 = nn.Linear(h, 2 * h)
         # For lower levels, we halve modes to keep spectral compression
-        self.enc1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4)) 
+        self.enc1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4))
                                       for _ in range(n_layers)])
         self.down1 = nn.Linear(2 * h, 4 * h)
-        
+
         # Bottleneck
-        self.bot   = nn.Sequential(*[FNOBlock2d(4 * h, max(m // 4, 2), max(m // 4, 2)) 
+        self.bot   = nn.Sequential(*[FNOBlock2d(4 * h, max(m // 4, 2), max(m // 4, 2))
                                       for _ in range(n_layers)])
-        
+
         # Decoder
         self.up1   = nn.Linear(4 * h + 2 * h, 2 * h)
-        self.dec1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4)) 
+        self.dec1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4))
                                       for _ in range(n_layers)])
         self.up0   = nn.Linear(2 * h + h, h)
         self.dec0  = nn.Sequential(*[FNOBlock2d(h, m, m) for _ in range(n_layers)])
-        
+
         self.proj1 = nn.Linear(h, h // 2)
         self.proj2 = nn.Linear(h // 2, in_channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim == 3:
             B, N1, N2 = x.shape
             x = x[..., None]
         else:
             B, N1, N2, _ = x.shape
-            
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)
-        
+
+        grid1 = torch.linspace(0.0, 1.0, N1, device=x.device).view(1, N1, 1, 1).expand(B, -1, N2, -1)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=x.device).view(1, 1, N2, 1).expand(B, N1, -1, -1)
+        x     = torch.cat([x, grid1, grid2], dim=-1)
+
         x = self.lift(x)                            # [B, N, N, h]
-        
+
         # Encode
         s0 = self.enc0(x)                           # [B, N, N, h]
         x  = self.down0(s0)[:, ::2, ::2, :]         # [B, N/2, N/2, 2h]
         s1 = self.enc1(x)                           # [B, N/2, N/2, 2h]
         x  = self.down1(s1)[:, ::2, ::2, :]         # [B, N/4, N/4, 4h]
-        
+
         # Bottleneck
         x  = self.bot(x)                            # [B, N/4, N/4, 4h]
-        
+
         # Decode
-        x  = mx.repeat(mx.repeat(x, 2, axis=1), 2, axis=2) # [B, N/2, N/2, 4h]
-        x  = mx.concatenate([x, s1], axis=-1)       # [B, N/2, N/2, 6h]
+        x  = x.repeat_interleave(2, dim=1).repeat_interleave(2, dim=2) # [B, N/2, N/2, 4h]
+        x  = torch.cat([x, s1], dim=-1)             # [B, N/2, N/2, 6h]
         x  = self.up1(x)                            # [B, N/2, N/2, 2h]
         x  = self.dec1(x)                           # [B, N/2, N/2, 2h]
-        
-        x  = mx.repeat(mx.repeat(x, 2, axis=1), 2, axis=2) # [B, N, N, 2h]
-        x  = mx.concatenate([x, s0], axis=-1)       # [B, N, N, 3h]
+
+        x  = x.repeat_interleave(2, dim=1).repeat_interleave(2, dim=2) # [B, N, N, 2h]
+        x  = torch.cat([x, s0], dim=-1)             # [B, N, N, 3h]
         x  = self.up0(x)                            # [B, N, N, h]
         x  = self.dec0(x)                           # [B, N, N, h]
-        
-        x = nn.gelu(self.proj1(x))
+
+        x = F.gelu(self.proj1(x))
         out = self.proj2(x)
         if out.shape[-1] == 1:
             return out[:, :, :, 0]

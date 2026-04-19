@@ -31,11 +31,28 @@ The platform follows a decoupled, registry-driven architecture to allow for rapi
 ```
 
 ### Component Roles
-- **`train.py`:** The training harness. Routes benchmarks to loaders and models to the trainer.
+- **`train.py`:** The training harness. Routes benchmarks to loaders and models to the trainer. Supports the \`--probe\` flag for high-fidelity debugging.
+- **\`core/scientific_debugger.py\`:** Tactical failure analyzer. Pinpoints "offending layers" during crashes and requests agent-driven diagnosis.
+- **\`core/adversarial.py\`:** Strategic architectural vetter. Critiques new model ideas for known SciML failure modes before execution.
 - **`core/research_plugins.py`:** The central registry. Maps strings like `"FNO"` to model classes and `"burgers_1d"` to data generators.
 - **`core/trainer.py`:** Handles the MLX-specific JIT-compiled training loop and `AdamW` optimization.
 - **`data/prepare.py`:** The **Read-Only** authority on data generation and evaluation.
 - **`core/tracker.py`:** Manages the lineage-aware logging of experiments into `results.json`.
+
+---
+
+## 🔬 Autonomy Upgrade (v2.0)
+
+The system now implements a **Bimodal Reasoning** architecture:
+
+### 1. Tactical: The Scientific Debugger (/debug)
+When a run crashes with \`NaN/Inf\`, the system doesn't just stop. It performs a **Probe Run** (5 steps) with layer-wise telemetry. This telemetry is analyzed to find the exact tensor that overflowed. The agent is then asked to provide a specific scientific fix (e.g., "Add LayerNorm to Layer 3").
+
+### 2. Macro: The Hypothesis Engine
+Reads the global DAG of \`results.json\` to identify multi-experiment trends (e.g., "All DeepONet variants are failing on Darcy"). It suggests higher-level interventions like changing the model family or the loss function.
+
+### 3. Verification: The Adversarial Reviewer (/reason)
+Autonomous suggestions from the \`HypothesisEngine\` are gated by the \`AdversarialReviewer\`. It applies a "skeptical" lens to every new config, checking for spectral bias risks and memory constraints before the experiment even starts.
 
 ---
 

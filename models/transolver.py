@@ -26,8 +26,9 @@ Benefits:
   - Physics attention preserves locality: nearby points share slices
 """
 
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import math
 
 
@@ -64,7 +65,7 @@ class PhysicsAttn1d(nn.Module):
         self.to_v      = nn.Linear(dim, dim, bias=False)
         self.out_proj  = nn.Linear(dim, dim)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -78,33 +79,33 @@ class PhysicsAttn1d(nn.Module):
 
         # ── Slice assignment ─────────────────────────────────────────────────
         # [B, N, H*S] → [B, H, N, S]
-        logits = self.to_slice(x).reshape(B, N, H, S).transpose(0, 2, 1, 3)
+        logits = self.to_slice(x).reshape(B, N, H, S).permute(0, 2, 1, 3)
         # Soft assignment: each grid point attends over S slices
-        A = mx.softmax(logits, axis=-1)           # [B, H, N, S]
+        A = F.softmax(logits, dim=-1)           # [B, H, N, S]
 
         # ── Aggregate N grid points → S slice tokens ──────────────────────
         # QKV computed on all grid points, then grouped
-        q_grid = self.to_q(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)  # [B,H,N,d]
-        k_grid = self.to_k(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)
-        v_grid = self.to_v(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)
+        q_grid = self.to_q(x).reshape(B, N, H, d).permute(0, 2, 1, 3)  # [B,H,N,d]
+        k_grid = self.to_k(x).reshape(B, N, H, d).permute(0, 2, 1, 3)
+        v_grid = self.to_v(x).reshape(B, N, H, d).permute(0, 2, 1, 3)
 
         # Weighted average: [B,H,S,d] = A^T [B,H,N,S] @ {q,k,v} [B,H,N,d]
         # A: [B,H,N,S] → A^T: [B,H,S,N]
-        At     = A.transpose(0, 1, 3, 2)          # [B, H, S, N]
-        q_s    = mx.matmul(At, q_grid)            # [B, H, S, d]
-        k_s    = mx.matmul(At, k_grid)
-        v_s    = mx.matmul(At, v_grid)
+        At     = A.permute(0, 1, 3, 2)          # [B, H, S, N]
+        q_s    = torch.matmul(At, q_grid)       # [B, H, S, d]
+        k_s    = torch.matmul(At, k_grid)
+        v_s    = torch.matmul(At, v_grid)
 
         # ── Self-attention in slice space ─────────────────────────────────
-        dots   = mx.matmul(q_s, k_s.transpose(0, 1, 3, 2)) * self.scale  # [B,H,S,S]
-        attn   = mx.softmax(dots, axis=-1)
-        out_s  = mx.matmul(attn, v_s)             # [B, H, S, d]
+        dots   = torch.matmul(q_s, k_s.permute(0, 1, 3, 2)) * self.scale  # [B,H,S,S]
+        attn   = F.softmax(dots, dim=-1)
+        out_s  = torch.matmul(attn, v_s)       # [B, H, S, d]
 
         # ── Broadcast back: S slice tokens → N grid points ────────────────
         # [B,H,N,S] @ [B,H,S,d] → [B,H,N,d]
-        out_grid = mx.matmul(A, out_s)            # [B, H, N, d]
+        out_grid = torch.matmul(A, out_s)      # [B, H, N, d]
         # Re-assemble heads: [B, N, D]
-        out = out_grid.transpose(0, 2, 1, 3).reshape(B, N, D)
+        out = out_grid.permute(0, 2, 1, 3).reshape(B, N, D)
         return self.out_proj(out)
 
 
@@ -126,7 +127,7 @@ class TransolverBlock1d(nn.Module):
             nn.Linear(hidden_mlp, dim),
         )
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.norm1(x))
         x = x + self.ffn(self.norm2(x))
         return x
@@ -158,23 +159,23 @@ class Transolver1d(nn.Module):
         # n_modes is accepted for API compatibility (not used — attention is
         # resolution-agnostic; keep for uniform ExperimentConfig interface)
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             TransolverBlock1d(hidden_dim, n_head, slice_num, mlp_ratio)
             for _ in range(n_layers)
-        ]
+        ])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N  = u0.shape
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u0, grid], axis=-1)   # [B, N, 2]
-        x     = self.lift(x)                     # [B, N, D]
+        grid  = torch.linspace(0.0, 1.0, N, device=u0.device, dtype=u0.dtype).unsqueeze(0).expand(B, -1)
+        x     = torch.stack([u0, grid], dim=-1)   # [B, N, 2]
+        x     = self.lift(x)                      # [B, N, D]
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
-        return self.proj2(x)[:, :, 0]           # [B, N]
+        x     = F.gelu(self.proj1(self.norm(x)))
+        return self.proj2(x)[:, :, 0]             # [B, N]
 
 
 # ── Physics Attention (2-D structured grid) ───────────────────────────────────
@@ -189,7 +190,7 @@ class PhysicsAttn2d(nn.Module):
         super().__init__()
         self.inner = PhysicsAttn1d(dim, n_head, slice_num)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N1, N2, D = x.shape
         x_flat = x.reshape(B, N1 * N2, D)
         out    = self.inner(x_flat)
@@ -211,7 +212,7 @@ class TransolverBlock2d(nn.Module):
             nn.Linear(hidden_mlp, dim),
         )
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.norm1(x))
         x = x + self.ffn(self.norm2(x))
         return x
@@ -231,21 +232,21 @@ class Transolver2d(nn.Module):
                  mlp_ratio: float = 2.0):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             TransolverBlock2d(hidden_dim, n_head, slice_num, mlp_ratio)
             for _ in range(n_layers)
-        ]
+        ])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N1, N2 = u0.shape
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1), (B, N1, N2))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2), (B, N1, N2))
-        x     = mx.stack([u0, grid1, grid2], axis=-1)   # [B, N1, N2, 3]
+        grid1 = torch.linspace(0.0, 1.0, N1, device=u0.device, dtype=u0.dtype).reshape(1, N1, 1).expand(B, -1, N2)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=u0.device, dtype=u0.dtype).reshape(1, 1, N2).expand(B, N1, -1)
+        x     = torch.stack([u0, grid1, grid2], dim=-1)   # [B, N1, N2, 3]
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
-        return self.proj2(x)[:, :, :, 0]               # [B, N1, N2]
+        x     = F.gelu(self.proj1(self.norm(x)))
+        return self.proj2(x)[:, :, :, 0]                  # [B, N1, N2]

@@ -15,6 +15,7 @@ from .ssno import SSNO1d
 from .pacmann import PACMANN
 
 from .mamba_no  import MambaNO1d
+from .explosion_fno  import ExplosionFNO
 __all__ = [
 	"PACMANN",
 	"PINN",
@@ -73,4 +74,5 @@ __all__ = [
 	"WNO1d",
 	"WaveletConv1d",
     "MambaNO1d",
+    "ExplosionFNO",
 ]

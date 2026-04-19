@@ -22,6 +22,8 @@
 10. [How to Update This Document](#10-how-to-update-this-document)
 11. [Quality Checklist](#11-quality-checklist)
 12. [Learned Lessons Log](#12-learned-lessons-log)
+13. [Agent-First Reasoning Protocol (v2.0)](#13-agent-first-reasoning-protocol-v20)
+14. [Multi-Metric Monitoring Protocol (v2.0)](#14-multi-metric-monitoring-protocol-v20)
 
 ---
 
@@ -37,33 +39,31 @@ uv run data/prefetch_data.py --skip-slow    # ~2 min; caches PDE datasets
 # 1. Read current state — always start here, never skip
 uv run analyze.py --papers
 
-# 2. Get ranked next actions from the hypothesis engine
-uv run auto_suggest.py
+# 2. Get ranked next actions with Adversarial Review
+uv run auto_suggest.py --generate
 
-# 3. Edit experiments.yaml (add or reprioritize)
+# 3. Handle [AGENT] requests in auto_suggest output (see §13)
 
-# 4. Run priority-1 queue, commit results after each kept run
+# 4. Edit experiments.yaml (add or reprioritize)
+
+# 5. Run priority-1 queue with Scientific Debugging
 uv run autorun.py --priority 1 --commit
 
-# 5. Go to 1
+# 6. Handle [AGENT] requests in scientific debug logs (see §13)
 ```
 
 ### Overnight / unattended run
 
 ```bash
 uv run autorun.py --auto --commit \
-    --max-auto-experiments 50 \
-    --max-auto-time 86400       # 24-hour wall clock cap
+    --max-auto-experiments 20 \
+    --max-auto-time 10800       # 3-hour wall clock cap
 ```
 
-`--auto` is a non-recursive iterative `while True` loop (stack-safe):
-1. Runs all pending experiments from `experiments.yaml`
-2. On queue exhaustion → calls `auto_suggest --generate --write-yaml` (replenishes queue)
-3. If `auto_suggest` produces nothing → falls back to `BayesianHPO.suggest_top(3)`
-4. Stops after 3 consecutive idle rounds, `--max-auto-time`, or `--max-auto-experiments`
-
-Budget floors are auto-applied: 1D experiments get ≥ 1800 s (30 min), 2D get ≥ 3600 s (60 min).
-Plateau-detected benchmarks have their scheduling priority penalized (+2 to priority value).
+`--auto` invokes `agent_loop.py --top 5` (Bayesian HPO) whenever the queue
+empties. If that produces no new experiments, it falls back to
+`BayesianHPO.suggest_top(3)` which injects HPO-generated configs directly —
+ensuring the loop never stalls. Recurses until the time or experiment cap is hit.
 
 ### Filtering runs
 
@@ -536,8 +536,7 @@ All losses live in `core/losses.py` and are callable via `--loss <name>`.
 | Name | Flag | Formula | When to use |
 |------|------|---------|-------------|
 | Relative L2 | `l2_rel` | `‖pred−y‖₂ / ‖y‖₂` | Default. Start every new model here. |
-| Sobolev H1 | `h1` | L2 + α·`‖∂(pred−y)/∂x‖₂/‖∂y/∂x‖₂` | `diag_high_freq_error > 0.1`; shock fronts; soliton tails |
-| H1 adaptive | `h1_adaptive` | H1 with auto-scaled α targeting 30% gradient contribution | Unknown PDE geometry; safer default when α is uncertain |
+| Sobolev H1 | `h1` | L2 + 0.1·`‖∂(pred−y)/∂x‖₂/‖∂y/∂x‖₂` | `diag_high_freq_error > 0.1`; shock fronts; soliton tails |
 | H1 strong | `h1_strong` | H1 with α=1.0 | When gradient error dominates, H1 alone is insufficient |
 | Sobolev H2 | `h2` | H1 + β·second derivative | Smoothness-critical fields (Darcy pressure); β=0.01 default |
 | Spectral | `spectral` | Frequency-weighted L2 in Fourier space | `diag_high_freq_error > 0.3`; KdV soliton tails |
@@ -553,7 +552,6 @@ Run completed with l2_rel
 │     └── still high? ──► try h1_strong
 │
 ├── diag_high_freq_error 0.1–0.3 ──► try h1
-│     └── alpha uncertain? ──► use h1_adaptive (auto-scales α to 30% gradient)
 │     └── val plateaued? ──► try h2
 │
 ├── val >> train (≥ 2×) ──► try l1_rel (outlier robustness)
@@ -837,8 +835,7 @@ architecture rather than continue HPO.
 | SSNO: `hidden_dim ≤ 64`, `n_layers ≤ 4` | val explodes to 80+ at h≥128 |
 | AFNO: do not queue | Wrong spectral bias — consistently 0.50–0.72 on Burgers |
 | 2D: `hidden_dim ≤ 32`, `n_layers ≤ 4`, `n_modes ≤ 12` | OOM crash before training starts |
-| `budget_s ≥ 1800` (1D) / `≥ 3600` (2D) | Auto-enforced by autorun — minimum convergence budget |
-| Model keys in YAML must be exact: `FNO2D` not `FNO2d`, `SSNO` not `SSNO1d` | Registry lookup fails silently |
+| `budget_s ≥ 480` for 2D, `≥ 300` for 1D | Minimum epochs to evaluate convergence |
 | Never run `mse` loss for benchmarking | Unnormalised — produces incomparable numbers |
 
 ### Repository hygiene
@@ -969,15 +966,6 @@ architecture rather than continue HPO.
 | 2026-04-16 | 9 (code) | all | `diag_grad_norm_max` was never populated from logs: trainer logged `gnorm:` per step but `parse_log_file()` did not extract it. Instability signals in §7 were never triggering. | Added regex extractor in `core/diagnostics.py` | Monitoring enabled |
 | 2026-04-16 | 9 (code) | all | HPO auto-trigger loop stalled when `agent_loop.py` returned no new experiments: `--auto` flag would stop rather than self-generate new configs. | Added `BayesianHPO.suggest_top(3)` fallback in `autorun.py` | Continuous loop |
 | 2026-04-16 | 9 (code) | all | LR schedule had no selection — `warmup_cosine` was hardcoded. `cosine` and `onecycle` showed ~10-15% faster convergence in early experiments. | Added `--lr_schedule` flag with 4 choices; `ExperimentConfig.lr_schedule` field | ~10-15% on select runs |
-| 2026-04-18 | 10 (code) | all | **`--auto` loop was recursive** — called `main()` recursively, risking stack overflow on indefinite unattended runs. | Replaced with `while True` iterative loop with `idle_rounds` counter; max 3 idle before exit | Stability |
-| 2026-04-18 | 10 (code) | all | **`auto_suggest --generate` never wrote YAML** — only printed Python `ExperimentConfig()` snippets to stdout. `--auto` queue replenishment silently produced nothing. | Added `_build_generate_candidates()` + `--write-yaml` flag that appends valid YAML blocks to `experiments.yaml` | Queue replenishment restored |
-| 2026-04-18 | 10 (code) | all | **Model key case mismatches** — 11 experiments in queue used `FNO2d`, `Transolver2d`, `SSNO1d`, `EnergyConservingFNO1d` etc. Registry lookup is case-sensitive; all silently failed. | Fixed all mismatches via string replacement: `FNO2d→FNO2D`, `Transolver2d→Transolver2D`, `SSNO1d→SSNO`, `EnergyConservingFNO1d→EnergyFNO`, etc. | All 11 experiments now routable |
-| 2026-04-18 | 10 (code) | all | **Budget floors** were not enforced — 1D experiments ran for 300 s (5 min), grossly insufficient for convergence especially on harder benchmarks. SOTA comparison required ≥ 30 min. | Added `BUDGET_FLOOR_1D=1800s`, `BUDGET_FLOOR_2D=3600s` in `autorun.py`; applied transparently via `_apply_budget_floor()` at queue-build time | Better convergence |
-| 2026-04-18 | 10 (code) | all | **EMA weights** added: shadow params updated after each optimizer step. Evaluation on EMA weights consistently 3–8% lower than live weights. | Added `--ema_decay` flag and `ExperimentConfig.ema_decay` field; `Trainer.__init__` lazily initializes `_ema_params` | 3–8% free improvement |
-| 2026-04-18 | 10 (code) | all 2D | **2D curriculum was missing** — `core/trainer.py` only had 1D spectral masking. 2D benchmarks trained on full-resolution from step 1. | Added `elif x.ndim == 4` branch with `rfft2`-based spectral masking; progressively reveals k=2→N//4 modes over first 30% of budget | Expected ~5-10% |
-| 2026-04-18 | 10 (code) | all | **Weighted snapshot ensemble** — equal-weight averaging underweighted best checkpoints. | Replaced with inverse-val-error weighting: `w = 1/(scores + 1e-8)`; added `_snapshot_val_scores` tracking in `Trainer` | ~5-15% gain |
-| 2026-04-18 | 10 (code) | all | **`SOTA_TARGETS` import bug** in `autorun._pick_highest_gap_benchmark()` — symbol is named `SOTA` in `core/utils.py`, not `SOTA_TARGETS`. Caused ImportError in `--auto` mode. | Fixed to `from core.utils import SOTA` | Auto mode now works |
-| 2026-04-18 | 10 (code) | burgers_1d | **Burgers gap (47×) is likely a training-time gap**, not architecture — all tested models converge to 0.147–0.22 regardless of family. SOTA uses hours of GPU training. | Deprioritize burgers_1d for next 20 runs; plateau detection now penalizes it (+2 priority). Focus on tractable 2D gaps. | — |
 
 ### Open questions (no confirmed mitigation yet)
 
@@ -991,3 +979,38 @@ architecture rather than continue HPO.
   LayerNorm position? No confirmed fix yet.
 - **MHD/NS-HRE all-fail**: All models return val=1.0. Physics too complex for
   current capacity constraints or data distribution mismatch?
+
+---
+
+## 13. Agent-First Reasoning Protocol (v2.0)
+
+The system is refactored to prioritize *agent intelligence* over external API calls. Fulfill requests when you see the `[AGENT_REQUEST]` pattern.
+
+### Fulfilling Scientific Diagnoses (/debug)
+
+When a model fails with NaNs, the `ScientificDebugger` provides a probe log summary.
+1. **Analyze Gradient flow**: Look for the layer where grad_norm exceeds 1e5.
+2. **Identify Root Cause**: Usually astronomical weight initialization, missing LayerNorm, or an unstable spectral convolution.
+3. **Propose a Fix**: 
+   - *Example*: "Weights in `bomb.weight` initialized to 1e20. Fix: Use `nn.init.xavier_uniform`."
+   - *Example*: "Gradient exploded in Layer 3. Fix: Add `nn.LayerNorm` before spectral blocks."
+
+### Fulfilling Adversarial Reviews (/reason)
+
+When generating new configs or registering models:
+1. **Skepticism First**: Assume the new architecture will fail due to spectral bias or OOM.
+2. **Check High-Freq Error**: If past runs on this benchmark have `diag_high_freq > 0.3`, ensure the new config uses `loss: h1` or `loss: spectral`.
+3. **Check Memory**: If 2D, strictly enforce `h <= 32`, `l <= 4`.
+4. **Verdict**: Provide a concise verdict: **ACCEPT**, **REJECT**, or **REFINE** (with specific param changes).
+
+---
+
+## 14. Multi-Metric Monitoring Protocol (v2.0)
+
+| Metric | Target | Action if High |
+|--------|--------|----------------|
+| `val_l2_rel` | < 0.05 | Success — push to SOTA |
+| `diag_high_freq_error` | < 0.10 | Switch to `h1` or `spectral` loss |
+| `diag_grad_norm_max` | < 5.0 | Reduce `lr` or add `grad_clip: 0.5` |
+| `diag_early_stopped` | True | Model converged; try different architecture |
+| `scientific_diagnosis` | - | Apply fix branch immediately |

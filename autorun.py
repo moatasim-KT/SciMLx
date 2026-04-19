@@ -19,6 +19,7 @@ results.json is updated after every experiment.
 import argparse
 import dataclasses
 import json
+import re
 import subprocess
 import sys
 import threading
@@ -30,8 +31,12 @@ from typing import Optional
 
 from core.diagnostics import parse_log_file, check_early_stop_condition, get_fix_strategies
 from core.loader import ExperimentConfig, get_experiments
-from core.utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, SENTINEL_DIR, load_results, done_names, best_per_benchmark
+from core.utils import REPO_ROOT, RESULTS_FILE, LOGS_DIR, SENTINEL_DIR, PROBE_LOG_DIR, load_results, done_names, best_per_benchmark, BENCHMARKS_2D
+from core.scientific_debugger import ScientificDebugger
 from core.tracker import Tracker
+from core.closed_loop_reasoner import ClosedLoopReasoner, benchmark_ready_for_new, MIN_REVISIONS_BEFORE_NEW, generate_reflection
+
+_reasoner = ClosedLoopReasoner()
 
 TIMEOUT_S = 7200  # 2 hours per experiment (accommodates heavy 2D data-gen)
 
@@ -72,10 +77,6 @@ TOTAL_MEMORY_MB = 7500  # leave ~500MB headroom
 MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
 MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 
-BENCHMARKS_2D = {
-    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d",
-    "elasticity_2d", "wavebench_2d", "pdebench_2d", "multiphysics_2d",
-}
 
 # Minimum training budgets (seconds).  Shorter experiments are upgraded to
 # these floors so every run gets enough steps to meaningfully converge.
@@ -123,7 +124,17 @@ def _is_benchmark_stuck(
     if worst < 1e-9:
         return False
     relative_spread = (worst - best) / worst
-    return relative_spread < threshold
+    if relative_spread >= threshold:
+        return False
+    # Don't penalize benchmarks already near SOTA (gap < 3×) — they're doing well
+    try:
+        from core.utils import SOTA
+        sota = SOTA.get(benchmark)
+        if sota and best < 3.0 * sota:
+            return False
+    except Exception:
+        pass
+    return True
 
 
 def _pick_highest_gap_benchmark() -> str:
@@ -213,7 +224,7 @@ _active_experiments: set[str] = set()
 
 _worker_prefix: threading.local = threading.local()
 
-# ── Auto-loop state (persist across recursive main() calls) ──────────────────
+# ── Auto-loop state ──────────────────────────────────────────────────────────
 _AUTO_START_TIME: float = 0.0
 _AUTO_EXP_COUNT:  int   = 0
 
@@ -585,9 +596,29 @@ def main() -> None:
 
     # Now filter by effective priority and done set, then sort.
     # Apply budget floors so every experiment gets at least 30 min (1D) or 60 min (2D).
+    # Also enforce 3-revision gate: skip new (non-followup) experiments on benchmarks
+    # that still have incomplete revision chains.
+    _is_followup = lambda name: bool(re.search(r"_f\d+$", name))
+    _revision_ready_cache: dict[str, bool] = {}
+
+    def _revision_gate(e: ExperimentConfig) -> bool:
+        if _is_followup(e.name):
+            return True  # follow-ups always allowed
+        bm = e.benchmark
+        if bm not in _revision_ready_cache:
+            try:
+                _revision_ready_cache[bm] = benchmark_ready_for_new(bm)
+            except Exception:
+                _revision_ready_cache[bm] = True
+        if not _revision_ready_cache[bm]:
+            print(f"  [REVISION GATE] Deferring {e.name} — {bm} needs ≥{MIN_REVISIONS_BEFORE_NEW} "
+                  f"revision cycles before new experiments.")
+            return False
+        return True
+
     pending = [
         _apply_budget_floor(e) for e in queue
-        if e.name not in done and e.priority <= args.priority
+        if e.name not in done and e.priority <= args.priority and _revision_gate(e)
     ]
     # Check for plateaued benchmarks and warn (deprioritise by bumping effective priority)
     _all_results = load_results()
@@ -694,6 +725,27 @@ def main() -> None:
 
         results  = run_experiment(exp, log_path, baseline=baseline_val)
         val, mem_gb = results["val"], results["mem_mb"] / 1024.0
+
+        # ── Scientific Debugging Protocol ─────────────────────────────────────
+        if results.get("crash_type") == "NaN/Inf":
+            wprint(f"  [DEBUG] NaN/Inf detected — initiating Scientific Debugging protocol...")
+            # Run a short probe (max 5 steps with high-fidelity logging)
+            probe_log = PROBE_LOG_DIR / f"probe_{exp.name}.log"
+            probe_cmd = ["uv", "run", "train.py", *exp.to_cli_args(), "--probe", "--budget", "120"]
+            try:
+                subprocess.run(probe_cmd, cwd=REPO_ROOT, timeout=150, capture_output=True)
+                debugger = ScientificDebugger(exp.name, exp.benchmark)
+                analysis = debugger.analyze_probe_log()
+                if "error" not in analysis:
+                    diagnosis = debugger.get_scientific_fix(analysis)
+                    wprint("\n" + "="*70)
+                    wprint(f"  SCIENTIFIC DIAGNOSIS for {exp.name}")
+                    wprint("="*70 + "\n")
+                    wprint(diagnosis)
+                    wprint("\n" + "="*70 + "\n")
+                    results["scientific_diagnosis"] = diagnosis
+            except Exception as e:
+                wprint(f"  [DEBUG] Scientific Debugging failed: {e}")
 
         # ── Multi-strategy retry loop ─────────────────────────────────────────
         # Skip retries for unfixable failure modes
@@ -865,6 +917,17 @@ def main() -> None:
         wprint(f"  Logged to results.json [status={status}]")
 
         # ── Trajectory log: record outcome after run completes ────────────────
+        _outcome = (
+            f"val_l2_rel={val:.6f} status={status}"
+            if val is not None
+            else f"crash:{results.get('crash_type', 'Unknown')}"
+        )
+        if results.get("scientific_diagnosis"):
+            if "[AGENT_REQUEST]" in results["scientific_diagnosis"]:
+                _outcome += f" | DIAGNOSIS: [AGENT] Manual Scientific Review Required."
+            else:
+                _outcome += f" | DIAGNOSIS: {results['scientific_diagnosis']}"
+
         _write_trajectory({
             "benchmark":        exp.benchmark,
             "model":            exp.model,
@@ -873,13 +936,42 @@ def main() -> None:
             "hypothesis":       exp.rationale or "—",
             "action":           f"completed {exp.name}: {exp.short()}",
             "expected_outcome": exp.expected or None,
-            "outcome": (
-                f"val_l2_rel={val:.6f} status={status}"
-                if val is not None
-                else f"crash:{results.get('crash_type', 'Unknown')}"
-            ),
+            "outcome":          _outcome,
             "diag_snapshot":    results.get("diag", {}),
+            "scientific_diagnosis": results.get("scientific_diagnosis"),
         })
+
+        # ── Closed-loop: generate improved follow-up for every non-keep result ──
+        _clr_suffixes = ("_r1", "_r2", "_r3", "_adapt", "_retry", "_f1", "_f2", "_f3")
+        if status in ("discard", "crash"):
+            try:
+                _followup = _reasoner.reason_and_enqueue(
+                    exp_name=exp.name,
+                    benchmark=exp.benchmark,
+                    model=exp.model,
+                    val=val if val is not None else 1.0,
+                    crash_type=results.get("crash_type"),
+                    diag=results.get("diag", {}),
+                    config=vars(exp),
+                    log_path=os.path.join("logs", f"{exp.name}.log"),
+                )
+                if _followup:
+                    wprint(f"  [ClosedLoop] Generated follow-up: {_followup}")
+                else:
+                    # Chain exhausted or blacklisted — generate reflection
+                    wprint(f"  [ClosedLoop] Chain complete — generating reflection for {exp.benchmark}")
+                    try:
+                        generate_reflection(exp.benchmark)
+                    except Exception as _ref_err:
+                        wprint(f"  [ClosedLoop] Reflection warning: {_ref_err}")
+            except Exception as _clr_err:
+                wprint(f"  [ClosedLoop] Warning: {_clr_err}")
+        elif status == "keep":
+            # Keep result — also refresh reflection to record what worked
+            try:
+                generate_reflection(exp.benchmark)
+            except Exception:
+                pass
 
         if args.commit and status == "keep":
             git_commit_result(exp, val)

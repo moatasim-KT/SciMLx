@@ -18,8 +18,9 @@ Reference: arXiv:2111.13587
 """
 
 import math
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class BlockDiagMLP(nn.Module):
@@ -45,26 +46,26 @@ class BlockDiagMLP(nn.Module):
         assert channels % block_size == 0
         self.n_blocks   = channels // block_size
         self.block_size = block_size
-        
+
         # Improved initialization with proper bounds
         bound = 1.0 / math.sqrt(block_size)
-        self.W1 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size, block_size])
-        self.W2 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size, block_size])
-        self.b1 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size])
-        self.b2 = mx.random.uniform(-bound, bound, [self.n_blocks, block_size])
+        self.W1 = nn.Parameter(torch.empty(self.n_blocks, block_size, block_size).uniform_(-bound, bound))
+        self.W2 = nn.Parameter(torch.empty(self.n_blocks, block_size, block_size).uniform_(-bound, bound))
+        self.b1 = nn.Parameter(torch.empty(self.n_blocks, block_size).uniform_(-bound, bound))
+        self.b2 = nn.Parameter(torch.empty(self.n_blocks, block_size).uniform_(-bound, bound))
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: [N_flat, channels] → [N_flat, channels]"""
         N_flat = x.shape[0]
         nb     = self.n_blocks
         K      = self.block_size
         xb = x.reshape(N_flat, nb, K)
-        h  = nn.gelu(mx.einsum("bnk,nkj->bnj", xb, self.W1) + self.b1[None])
-        return (mx.einsum("bnk,nkj->bnj", h, self.W2) + self.b2[None]).reshape(N_flat, -1)
+        h  = F.gelu(torch.einsum("bnk,nkj->bnj", xb, self.W1) + self.b1[None])
+        return (torch.einsum("bnk,nkj->bnj", h, self.W2) + self.b2[None]).reshape(N_flat, -1)
 
 
-def _softshrink(x: mx.array, lam: float) -> mx.array:
-    return mx.sign(x) * mx.maximum(mx.abs(x) - lam, 0.0)
+def _softshrink(x: torch.Tensor, lam: float) -> torch.Tensor:
+    return torch.sign(x) * torch.clamp(torch.abs(x) - lam, min=0.0)
 
 
 class AdaptiveSpectralMixer1d(nn.Module):
@@ -95,10 +96,10 @@ class AdaptiveSpectralMixer1d(nn.Module):
         # MLP operates on 2*channels (real + imag stacked)
         self.mixer = BlockDiagMLP(2 * channels, block_size)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, C = x.shape
         m       = self.n_modes
-        x_ft    = mx.fft.rfft(x, axis=1)           # [B, N//2+1, C] complex
+        x_ft    = torch.fft.rfft(x, dim=1)         # [B, N//2+1, C] complex
 
         xr = x_ft[:, :m, :].real                   # [B, m, C]
         xi = x_ft[:, :m, :].imag
@@ -106,7 +107,7 @@ class AdaptiveSpectralMixer1d(nn.Module):
         # Simplified complex coupling: concatenate real and imag
         # This allows the MLP to learn the full xr*wr - xi*wi complex interaction.
         # [B, m, C] + [B, m, C] -> [B, m, 2C] -> [B*m, 2C]
-        ri_flat = mx.concatenate([xr, xi], axis=-1).reshape(B * m, 2 * C)
+        ri_flat = torch.cat([xr, xi], dim=-1).reshape(B * m, 2 * C)
 
         out     = self.mixer(ri_flat)               # [B*m, 2C]
         out     = out.reshape(B, m, 2 * C)
@@ -122,17 +123,17 @@ class AdaptiveSpectralMixer1d(nn.Module):
         out_modes = out_r + 1j * out_i
         n_rfft    = N // 2 + 1
         if n_rfft > m:
-            pad    = mx.zeros([B, n_rfft - m, C], dtype=mx.complex64)
-            out_ft = mx.concatenate([out_modes, pad], axis=1)
+            pad    = torch.zeros(B, n_rfft - m, C, dtype=x_ft.dtype, device=x.device)
+            out_ft = torch.cat([out_modes, pad], dim=1)
         else:
             out_ft = out_modes
 
-        return mx.fft.irfft(out_ft, n=N, axis=1)
+        return torch.fft.irfft(out_ft, n=N, dim=1)
 
 
 class AFNOBlock1d(nn.Module):
     """Transformer-style two-stage residual AFNO block (Pre-LN).
-    
+
     Phase 1: Spectral Mixing (Token mixing)
     Phase 2: Channel Mixing (Feed-forward)
     """
@@ -149,7 +150,7 @@ class AFNOBlock1d(nn.Module):
             nn.Linear(channels * mlp_ratio, channels)
         )
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Phase 1: Spectral Mixing
         x = x + self.spec(self.norm1(x))
         # Phase 2: Channel Mixing (Feed-Forward)
@@ -175,22 +176,22 @@ class AFNO1d(nn.Module):
                  in_ch: int = 2, block_size: int = None, sparsity: float = 0.0):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             AFNOBlock1d(hidden_dim, n_modes, block_size, sparsity)
             for _ in range(n_layers)
-        ]
+        ])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N  = u0.shape
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u0, grid], axis=-1)
+        grid  = torch.linspace(0.0, 1.0, N, device=u0.device, dtype=u0.dtype).unsqueeze(0).expand(B, -1)
+        x     = torch.stack([u0, grid], dim=-1)
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
+        x     = F.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)[:, :, 0]
 
 
@@ -216,28 +217,28 @@ class DiagSpectralConv1d(nn.Module):
         self.n_modes  = n_modes
         scale = 0.02
         # Per-mode per-channel complex weights (diagonal in channel dim)
-        self.wr = mx.random.normal([n_modes, channels]) * scale
-        self.wi = mx.random.normal([n_modes, channels]) * scale
+        self.wr = nn.Parameter(torch.randn(n_modes, channels) * scale)
+        self.wi = nn.Parameter(torch.randn(n_modes, channels) * scale)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, C = x.shape
         n_rfft  = N // 2 + 1
         m       = min(self.n_modes, n_rfft)     # clamp to available rfft modes
-        x_ft    = mx.fft.rfft(x, axis=1)
+        x_ft    = torch.fft.rfft(x, dim=1)
         xr      = x_ft[:, :m, :].real          # [B, m, C]
         xi      = x_ft[:, :m, :].imag
 
         # Diagonal complex multiply: elementwise per (mode, channel)
-        out_r = xr * self.wr[:m][None] - xi * self.wi[:m][None]
-        out_i = xr * self.wi[:m][None] + xi * self.wr[:m][None]
+        out_r = xr * self.wr[:m].unsqueeze(0) - xi * self.wi[:m].unsqueeze(0)
+        out_i = xr * self.wi[:m].unsqueeze(0) + xi * self.wr[:m].unsqueeze(0)
 
         out_modes = out_r + 1j * out_i
         if n_rfft > m:
-            pad    = mx.zeros([B, n_rfft - m, C], dtype=mx.complex64)
-            out_ft = mx.concatenate([out_modes, pad], axis=1)
+            pad    = torch.zeros(B, n_rfft - m, C, dtype=x_ft.dtype, device=x.device)
+            out_ft = torch.cat([out_modes, pad], dim=1)
         else:
             out_ft = out_modes
-        return mx.fft.irfft(out_ft, n=N, axis=1)
+        return torch.fft.irfft(out_ft, n=N, dim=1)
 
 
 class FFNOBlock1d(nn.Module):
@@ -251,9 +252,9 @@ class FFNOBlock1d(nn.Module):
         self.spec = DiagSpectralConv1d(channels, n_modes)
         self.w    = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
+        return x + F.gelu(self.spec(h) + self.w(h))
 
 
 class FFNO1d(nn.Module):
@@ -278,17 +279,17 @@ class FFNO1d(nn.Module):
                  in_ch: int = 2):
         super().__init__()
         self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [FFNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([FFNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)])
         self.norm   = nn.LayerNorm(hidden_dim)
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2  = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N  = u0.shape
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u0, grid], axis=-1)
+        grid  = torch.linspace(0.0, 1.0, N, device=u0.device, dtype=u0.dtype).unsqueeze(0).expand(B, -1)
+        x     = torch.stack([u0, grid], dim=-1)
         x     = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
+        x     = F.gelu(self.proj1(self.norm(x)))
         return self.proj2(x)[:, :, 0]

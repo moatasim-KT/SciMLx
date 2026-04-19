@@ -580,6 +580,40 @@ def get_model_registry_benchmark(benchmark: str):
     return data
 
 
+# ── Reflection ───────────────────────────────────────────────────────────────
+
+@app.get("/api/reflection/{benchmark}")
+def get_reflection(benchmark: str):
+    """Return the latest reflection for a benchmark (what worked, what didn't, next steps)."""
+    from core.closed_loop_reasoner import generate_reflection, load_reflections
+    # Try cached first
+    cached = load_reflections().get(benchmark)
+    if cached:
+        return sanitize(cached)
+    # Generate fresh
+    try:
+        return sanitize(generate_reflection(benchmark))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/reflections")
+def get_all_reflections():
+    """Return all saved reflections keyed by benchmark."""
+    from core.closed_loop_reasoner import load_reflections
+    return sanitize(load_reflections())
+
+
+@app.post("/api/reflection/{benchmark}/refresh")
+def refresh_reflection(benchmark: str):
+    """Force-regenerate reflection for a benchmark from current results."""
+    from core.closed_loop_reasoner import generate_reflection
+    try:
+        return sanitize(generate_reflection(benchmark))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── MLflow runs ───────────────────────────────────────────────────────────────
 
 @app.get("/api/mlflow/runs")

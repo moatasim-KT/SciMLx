@@ -1810,6 +1810,142 @@ function MLflowRunsTable({ runs, sota, bmFilter }) {
 }
 
 
+// ── Reflection Panel ──────────────────────────────────────────────────────────
+function ReflectionPanel({ reflections, sota, bmFilter }) {
+  const [sel, setSel] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const bms = Object.keys(reflections).filter(b => bmFilter === "all" || b === bmFilter);
+
+  async function doRefresh(bm) {
+    setRefreshing(true);
+    try {
+      const r = await fetch(`${API}/api/reflection/${bm}/refresh`, {method:"POST"});
+      if (r.ok) { const d = await r.json(); reflections[bm] = d; setSel(d); }
+    } finally { setRefreshing(false); }
+  }
+
+  const r = sel || (bms.length === 1 ? reflections[bms[0]] : null);
+
+  return (
+    <div style={{display:"flex",height:"100%",overflow:"hidden"}}>
+      {/* Sidebar */}
+      <div style={{width:200,borderRight:"1px solid var(--border)",overflowY:"auto",padding:"10px 0",flexShrink:0}}>
+        <div style={{padding:"0 12px 8px",fontSize:10,color:"var(--txt2)",textTransform:"uppercase",letterSpacing:1}}>Benchmarks</div>
+        {bms.length === 0 && <div style={{padding:"8px 14px",fontSize:11,color:"var(--txt2)"}}>No reflections yet</div>}
+        {bms.map(bm => {
+          const d = reflections[bm];
+          const beats = sota[bm] && d.best_val && d.best_val < sota[bm].sota;
+          return (
+            <div key={bm} onClick={()=>setSel(d)}
+              style={{padding:"7px 14px",cursor:"pointer",fontSize:11,fontFamily:"var(--mono)",
+                      background: sel?.benchmark===bm ? "var(--bg2)" : "transparent",
+                      borderLeft: sel?.benchmark===bm ? "3px solid var(--green)" : "3px solid transparent",
+                      color: beats ? "var(--green)" : "var(--txt1)"}}>
+              {bm}
+              <div style={{fontSize:10,color:"var(--txt2)",marginTop:2}}>
+                {d.best_val ? `best: ${d.best_val.toFixed(5)}` : "—"}
+                {beats && " ✓ SOTA"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detail */}
+      <div style={{flex:1,overflowY:"auto",padding:"18px 22px"}}>
+        {!r ? (
+          <div style={{color:"var(--txt2)",fontSize:12,marginTop:40,textAlign:"center"}}>
+            Select a benchmark to view its reflection.
+            {bms.length === 0 && <div style={{marginTop:8}}>Reflections are generated after revision chains complete.</div>}
+          </div>
+        ) : (
+          <>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+              <div style={{fontFamily:"var(--mono)",fontSize:16,fontWeight:700,color:"var(--green)"}}>
+                {r.benchmark}
+              </div>
+              <div style={{fontSize:11,color:"var(--txt2)"}}>
+                {r.total_chains} chains · {r.total_keep} keep · best {r.best_val?.toFixed(5) ?? "—"}
+              </div>
+              <button className="btn" style={{marginLeft:"auto",padding:"3px 10px",fontSize:10}}
+                onClick={()=>doRefresh(r.benchmark)} disabled={refreshing}>
+                {refreshing ? "Refreshing…" : "↻ Refresh"}
+              </button>
+              <div style={{fontSize:10,color:"var(--txt2)"}}>{r.generated_at?.slice(0,16)}</div>
+            </div>
+
+            {/* Further steps */}
+            {r.further_steps?.length > 0 && (
+              <div style={{marginBottom:18,background:"var(--bg1)",borderRadius:6,padding:"12px 16px",
+                           borderLeft:"3px solid var(--amber)"}}>
+                <div className="sec-label" style={{marginBottom:8}}>Recommended Next Steps</div>
+                {r.further_steps.map((s,i) => (
+                  <div key={i} style={{fontSize:12,color:"var(--txt1)",marginBottom:5,display:"flex",gap:8}}>
+                    <span style={{color:"var(--amber)",flexShrink:0}}>{i+1}.</span>
+                    <span>{s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
+              {/* What worked */}
+              <div style={{background:"var(--bg1)",borderRadius:6,padding:"12px 16px",
+                           borderLeft:"3px solid var(--green)"}}>
+                <div className="sec-label" style={{marginBottom:8}}>What Worked</div>
+                {(r.what_worked||[]).length === 0
+                  ? <div style={{fontSize:11,color:"var(--txt2)"}}>Not enough data yet</div>
+                  : (r.what_worked||[]).map((w,i) => (
+                    <div key={i} style={{fontSize:11,color:"var(--txt1)",marginBottom:4,
+                                         fontFamily:"var(--mono)",lineHeight:1.5}}>{w}</div>
+                  ))}
+              </div>
+              {/* What didn't */}
+              <div style={{background:"var(--bg1)",borderRadius:6,padding:"12px 16px",
+                           borderLeft:"3px solid var(--red,#e06c75)"}}>
+                <div className="sec-label" style={{marginBottom:8}}>What Didn't Work</div>
+                {(r.what_didnt||[]).length === 0
+                  ? <div style={{fontSize:11,color:"var(--txt2)"}}>Not enough data yet</div>
+                  : (r.what_didnt||[]).map((w,i) => (
+                    <div key={i} style={{fontSize:11,color:"var(--txt1)",marginBottom:4,
+                                         fontFamily:"var(--mono)",lineHeight:1.5}}>{w}</div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Chain summaries */}
+            <div className="sec-label" style={{marginBottom:8}}>Revision Chains ({r.chain_summaries?.length})</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {(r.chain_summaries||[]).map((c,i) => (
+                <div key={i} style={{background:"var(--bg1)",borderRadius:5,padding:"8px 12px",
+                                     borderLeft:`3px solid ${c.final_status==="keep"?"var(--green)":c.improved?"var(--amber)":"var(--border)"}`}}>
+                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                    <span style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--txt1)",flex:1}}>{c.base}</span>
+                    <span style={{fontSize:10,color:"var(--txt2)"}}>{c.revisions} rev</span>
+                    <span style={{fontSize:10,color: c.final_status==="keep"?"var(--green)":"var(--txt2)"}}>{c.final_status}</span>
+                    {c.best_val && <span style={{fontSize:10,color:"var(--amber)",fontFamily:"var(--mono)"}}>best {c.best_val.toFixed(5)}</span>}
+                  </div>
+                  <div style={{marginTop:4,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {(c.val_progression||[]).map((v,j) => (
+                      <span key={j} style={{fontSize:10,fontFamily:"var(--mono)",
+                                             color: v===c.best_val?"var(--green)":"var(--txt2)",
+                                             background:"var(--bg0)",padding:"1px 5px",borderRadius:3}}>
+                        {v!=null ? (j===0?"r0":"f"+j)+":"+v.toFixed(4) : (j===0?"r0":"f"+j)+":crash"}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App() {
   const [experiments, setExperiments] = useState([]);
@@ -1821,6 +1957,7 @@ function App() {
   const [registry, setRegistry] = useState({});
   const [mlflowRuns, setMlflowRuns] = useState([]);
   const [archMap, setArchMap] = useState({});
+  const [reflections, setReflections] = useState({});
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("results");
   const [bmFilter, setBmFilter] = useState("all");
@@ -1828,7 +1965,7 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [expR, qR, sotaR, stR, actR, linR, regR, mlfR, archR] = await Promise.all([
+      const [expR, qR, sotaR, stR, actR, linR, regR, mlfR, archR, reflR] = await Promise.all([
         fetch(`${API}/api/experiments`),
         fetch(`${API}/api/queue`),
         fetch(`${API}/api/sota`),
@@ -1838,11 +1975,13 @@ function App() {
         fetch(`${API}/api/model-registry`),
         fetch(`${API}/api/mlflow/runs`),
         fetch(`${API}/api/arch-map`),
+        fetch(`${API}/api/reflections`),
       ]);
       if (!expR.ok) throw new Error(`API ${expR.status}`);
-      const [exps, q, s, st, act, lin, reg, mlf, arch] = await Promise.all([
+      const [exps, q, s, st, act, lin, reg, mlf, arch, refl] = await Promise.all([
         expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json(),
         linR.json(), regR.json(), mlfR.json(), archR.json(),
+        reflR.ok ? reflR.json() : Promise.resolve({}),
       ]);
       setExperiments([...exps].reverse());
       setQueue(q.experiments || []);
@@ -1852,6 +1991,7 @@ function App() {
       setLineage(lin || {nodes:[],links:[]});
       setRegistry(reg || {});
       setMlflowRuns(mlf.runs || []);
+      setReflections(refl || {});
       setArchMap(arch || {});
       setError(null);
     } catch (e) {
@@ -2021,6 +2161,11 @@ function App() {
             <div className={`tab ${tab==="lineage"?"active":""}`} onClick={()=>setTab("lineage")}>
               Lineage DAG
             </div>
+            <div className={`tab ${tab==="reflection"?"active":""}`} onClick={()=>setTab("reflection")}
+              style={{color: tab==="reflection" ? "var(--green)" : undefined,
+                      borderBottomColor: tab==="reflection" ? "var(--green)" : undefined}}>
+              Reflection ({Object.keys(reflections).length})
+            </div>
           </div>
 
           {/* Active experiment strip — one row per running experiment */}
@@ -2112,6 +2257,9 @@ function App() {
               />
             )}
             {tab==="lineage" && <LineageDAG lineage={lineage} onSelect={handleSelect}/>}
+            {tab==="reflection" && (
+              <ReflectionPanel reflections={reflections} sota={sota} bmFilter={bmFilter}/>
+            )}
           </div>
         </div>
 

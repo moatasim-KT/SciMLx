@@ -1,5 +1,5 @@
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
 
 
 class DeepONet(nn.Module):
@@ -35,9 +35,9 @@ class DeepONet(nn.Module):
 
         self.branch = _make_net(branch_dim)
         self.trunk  = _make_net(trunk_dim)
-        self.bias   = mx.zeros([1])
+        self.register_buffer('bias', torch.zeros(1))
 
-    def __call__(self, u: mx.array, y: mx.array) -> mx.array:
+    def forward(self, u: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Args:
             u : [B, branch_dim]    - input function at sensor locations
@@ -47,7 +47,7 @@ class DeepONet(nn.Module):
         """
         b_out = self.branch(u)           # [B, out_dim]
         t_out = self.trunk(y)            # [B, N, out_dim]
-        return mx.einsum("bo,bno->bn", b_out, t_out) + self.bias
+        return torch.einsum("bo,bno->bn", b_out, t_out) + self.bias
 
 
 class PODDeepONet(nn.Module):
@@ -79,10 +79,10 @@ class PODDeepONet(nn.Module):
 
         # Learnable POD basis: [n_basis, N] - each row is one basis function
         # Initialised with small random values; will be learned from data.
-        self.basis = mx.random.normal([n_basis, 64]) * 0.02
-        self.bias  = mx.zeros([1])
+        self.basis = nn.Parameter(torch.randn(n_basis, 64) * 0.02)
+        self.register_buffer('bias', torch.zeros(1))
 
-    def __call__(self, u: mx.array, y: mx.array | None = None) -> mx.array:
+    def forward(self, u: torch.Tensor, y: torch.Tensor | None = None) -> torch.Tensor:
         """
         Args:
             u : [B, branch_dim]
@@ -91,4 +91,4 @@ class PODDeepONet(nn.Module):
             [B, N]
         """
         coeffs = self.branch(u)                         # [B, n_basis]
-        return mx.matmul(coeffs, self.basis) + self.bias  # [B, N]
+        return torch.matmul(coeffs, self.basis) + self.bias  # [B, N]

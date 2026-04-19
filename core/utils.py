@@ -15,15 +15,21 @@ REPO_ROOT     = Path(__file__).parent.parent
 RESULTS_FILE  = REPO_ROOT / "results.json"  # results.tsv logic is now legacy or synced
 LOGS_DIR      = REPO_ROOT / "logs"
 TELEMETRY_DIR = LOGS_DIR / "telemetry"
+PROBE_LOG_DIR = LOGS_DIR / "probes"
 SENTINEL_DIR  = LOGS_DIR / "sentinels"
 FIGS_DIR      = REPO_ROOT / "figs"
 PAPERS_DIR    = REPO_ROOT / "docs" / "papers"
 
 # Ensure directories exist
-for d in [LOGS_DIR, TELEMETRY_DIR, SENTINEL_DIR, FIGS_DIR]:
+for d in [LOGS_DIR, TELEMETRY_DIR, PROBE_LOG_DIR, SENTINEL_DIR, FIGS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # ── SOTA targets ──────────────────────────────────────────────────────────────
+
+BENCHMARKS_2D = {
+    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d",
+    "elasticity_2d", "wavebench_2d", "pdebench_2d", "multiphysics_2d", "radiative_2d",
+}
 
 SOTA: dict[str, float] = {
     # prepare.py benchmarks

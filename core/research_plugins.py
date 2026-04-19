@@ -21,14 +21,15 @@ class ModelRegistry:
 
     def build(self, name: str, benchmark: str = "", **kwargs) -> nn.Module:
         # Safety constraint: 2D benchmark model size limits
-        _2d_benchmarks = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d"}
-        if benchmark in _2d_benchmarks:
+        from core.utils import BENCHMARKS_2D
+        if benchmark in BENCHMARKS_2D:
             hidden = kwargs.get("hidden_dim", 64)
             layers = kwargs.get("n_layers", 4)
-            if hidden >= 64 or layers >= 8:
+            modes  = kwargs.get("n_modes", 16)
+            if hidden >= 64 or layers >= 8 or modes > 16:
                 raise ValueError(
-                    f"Configuration (hidden={hidden}, layers={layers}) is too large for 2D "
-                    f"benchmark {benchmark!r} and will crash (OOM). Use hidden<64, layers<8."
+                    f"Configuration (hidden={hidden}, layers={layers}, modes={modes}) is too large for 2D "
+                    f"benchmark {benchmark!r} and will crash (OOM). Use hidden<64, layers<8, modes<=16."
                 )
 
         if name not in self._registry and name in self._lazy_imports:
@@ -113,6 +114,10 @@ class BenchmarkRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._loaders
 
+
+    # ExplosionFNO
+    from models.explosion_fno import ExplosionFNO
+    MODEL_REGISTRY.register_class("ExplosionFNO", ExplosionFNO)
 
 BENCHMARK_REGISTRY = BenchmarkRegistry()
 

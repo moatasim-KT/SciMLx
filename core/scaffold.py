@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.utils import REPO_ROOT
+from core.adversarial import AdversarialReviewer
 
 # ── Stub templates ────────────────────────────────────────────────────────────
 
@@ -60,8 +61,8 @@ Edit this file to implement the model, then validate with:
     uv run model_scaffold.py --validate {name} models/{module}.py
 """
 
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
 from .fno import SpectralConv1d   # reuse existing building blocks
 
 
@@ -85,17 +86,17 @@ class {name}(nn.Module):
         self.lift = nn.Linear(1, hidden_dim)
 
         # TODO: replace with your custom operator blocks
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             SpectralConv1d(hidden_dim, hidden_dim, n_modes)
             for _ in range(n_layers)
-        ]
+        ])
         self.proj = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1),
         )
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: [B, N] input field
@@ -118,8 +119,8 @@ _STUB_TEMPLATE_2D = '''"""
 {name}2d — 2D SciML Neural Operator (auto-generated stub)
 """
 
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
 from .fno import SpectralConv2d
 
 
@@ -130,15 +131,15 @@ class {name}2d(nn.Module):
         self.n_modes    = n_modes
         self.hidden_dim = hidden_dim
         self.lift       = nn.Linear(1, hidden_dim)
-        self.blocks     = [
+        self.blocks     = nn.ModuleList([
             SpectralConv2d(hidden_dim, hidden_dim, n_modes, n_modes)
             for _ in range(n_layers)
-        ]
+        ])
         self.proj = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim), nn.GELU(), nn.Linear(hidden_dim, 1)
         )
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: [B, N, N]  →  out: [B, N, N]"""
         B, N, _ = x.shape
         h = self.lift(x.reshape(B, N*N, 1))          # [B, N*N, H]
@@ -204,22 +205,31 @@ class ModelGate:
 
         # ── Gate 3: Smoke test ────────────────────────────────────────────────
         try:
-            import mlx.core as mx
+            import torch
             import numpy as np
+
+            # Determine device
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
             model_inst = cls(n_modes=8, hidden_dim=16, n_layers=2)
+            model_inst = model_inst.to(device)
+            model_inst.eval()
+
             # Test both 1D [B,N] and 2D [B,N,N] shapes
-            x1d = mx.array(np.random.randn(4, 64).astype(np.float32))
-            x2d = mx.array(np.random.randn(4, 16, 16).astype(np.float32))
+            x1d = torch.tensor(np.random.randn(4, 64).astype(np.float32), device=device)
+            x2d = torch.tensor(np.random.randn(4, 16, 16).astype(np.float32), device=device)
             out_shape = None
-            for x in (x1d, x2d):
-                try:
-                    out = model_inst(x)
-                    mx.eval(out)
-                    if out.shape == x.shape:
-                        out_shape = out.shape
-                        break
-                except Exception:
-                    continue
+
+            with torch.no_grad():
+                for x in (x1d, x2d):
+                    try:
+                        out = model_inst(x)
+                        if out.shape == x.shape:
+                            out_shape = out.shape
+                            break
+                    except Exception:
+                        continue
+
             if out_shape is None:
                 raise ValueError("Model output shape does not match input shape "
                                  "for either 1D [B,N] or 2D [B,N,N] input")
@@ -232,13 +242,14 @@ class ModelGate:
 
     def register_and_queue(self, name: str, path: str,
                            benchmarks: Optional[list] = None,
-                           priority: int = 3) -> bool:
+                           priority: int = 3,
+                           critique: Optional[str] = None) -> bool:
         """
         After validation passes:
           1. Copy model file to models/ if not already there
           2. Add export to models/__init__.py
           3. Add MODEL_REGISTRY.register_class() call to research_plugins.py
-          4. Append ExperimentConfig entries to experiments.yaml
+          4. Append ExperimentConfig entries to experiments.yaml (with optional critique)
         """
         model_path = Path(path)
         target     = REPO_ROOT / "models" / model_path.name
@@ -310,6 +321,7 @@ class ModelGate:
                 "budget_s": 480 if is_2d else 300,
                 "priority": priority,
                 "rationale": f"Auto-generated baseline for {name} on {bm}",
+                "critique": critique,
             })
         
         if new_configs:
@@ -332,6 +344,8 @@ def main() -> None:
                    help="Base architecture to inherit from (default: FNO)")
     p.add_argument("--notes",    default="",
                    help="Free-text notes added to the stub docstring")
+    p.add_argument("--reason",   action="store_true",
+                   help="Call AdversarialReviewer to critique the architecture before registration")
     p.add_argument("--2d",       dest="two_d", action="store_true",
                    help="Generate a 2D model stub")
     p.add_argument("--validate", nargs=2, metavar=("NAME", "PATH"),
@@ -377,7 +391,20 @@ def main() -> None:
             print(f"  {report.get('error')}")
             sys.exit(1)
         print(f"All gates passed. Registering {name}...")
-        gate.register_and_queue(name, path, benchmarks=args.benchmarks)
+        
+        critique = None
+        if args.reason:
+            reviewer = AdversarialReviewer()
+            with open(path) as f:
+                code = f.read()
+            print("\n" + "="*70)
+            print(f"  Adversarial Review for {args.benchmarks[0]}")
+            print("="*70 + "\n")
+            critique = reviewer.critique(code, args.notes or "Architecture expansion", args.benchmarks[0])
+            print(critique)
+            print("\n" + "="*70 + "\n")
+            
+        gate.register_and_queue(name, path, benchmarks=args.benchmarks, critique=critique)
         print(f"Done. Run `uv run autorun.py --model {name}` to execute.")
         return
 

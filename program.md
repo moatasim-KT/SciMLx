@@ -31,22 +31,23 @@ data per subprocess and exceed the hard timeout before training starts.
 
 ---
 
-## The Research Loop
+## The Research Loop (v2.0)
 
 ```bash
 # 1. Read current state — always start here
 uv run analyze.py --papers
 
-# 2. Get ranked next actions
-uv run auto_suggest.py
+# 2. Get ranked next actions with Adversarial Review
+uv run auto_suggest.py --generate
 
-# 3. Queue new experiments (edit experiments.yaml)
-#    OR scaffold a new model architecture (see below)
+# 3. Handle any [AGENT] review requests in the output
 
-# 4. Run
+# 4. Queue new experiments (edit experiments.yaml)
+
+# 5. Run with Scientific Debugging (auto-rescue on crash)
 uv run autorun.py --priority 1 --commit
 
-# 5. Go to 1
+# 6. Check logs/probes/ if NaNs occurred; fulfill [AGENT] diagnoses
 ```
 
 This loop is the only sanctioned way to drive the pipeline. Do not skip steps.

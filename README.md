@@ -297,6 +297,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_curriculum_h128_l8_m24.log
 │   │   │       └── fno_burgers_curriculum_h128_l8_m24_best.npz
+│   │   ├── 54625101ce2f4fed8363ecf8c6f11b4e/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
+│   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
@@ -347,6 +351,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno2d_darcy2d_h32_l4_m8_adapt.log
 │   │   │       └── rfno2d_darcy2d_h32_l4_m8_adapt_best.npz
+│   │   ├── 569846757b1e4791a71c2ccb9801c281/
+│   │   │   └── artifacts/
+│   │   │       ├── fedonet2d_darcy_h32_l2_m8_h1.log
+│   │   │       └── fedonet2d_darcy_h32_l2_m8_h1_best.npz
 │   │   ├── 5bb14a75e85143e29f7f25087212e71a/
 │   │   │   └── artifacts/
 │   │   │       ├── fedonet2d_darcy_h32_l4.log
@@ -363,10 +371,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver2d_darcy_s16_h24_l3.log
 │   │   │       └── transolver2d_darcy_s16_h24_l3_best.npz
+│   │   ├── abc12a20d416466b95ec4e8cc2f02cc2/
+│   │   │   └── artifacts/
+│   │   │       ├── fedonet2d_darcy_h32_l2_m8_h1_adapt.log
+│   │   │       └── fedonet2d_darcy_h32_l2_m8_h1_adapt_best.npz
 │   │   ├── b0b654187e3f4bf2bc185394e871a6b3/
 │   │   │   └── artifacts/
 │   │   │       ├── fno2d_darcy_h48_l6_m12_aug.log
 │   │   │       └── fno2d_darcy_h48_l6_m12_aug_best.npz
+│   │   ├── b7cb04e62ee74c7fae9b5e8326476472/
+│   │   │   └── artifacts/
+│   │   │       ├── autogen_darcy_2d_fno2d_h1_4991.log
+│   │   │       └── autogen_darcy_2d_fno2d_h1_4991_best.npz
 │   │   ├── d26aaa4bbf92492896d0150798bd90ae/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver2d_darcy_h32_l4_s32_h1.log
@@ -375,26 +391,97 @@ autoresearch-mlx/
 │   │       └── artifacts/
 │   │           ├── transolver2d_darcy_h32_l4_s32_h1_adapt.log
 │   │           └── transolver2d_darcy_h32_l4_s32_h1_adapt_best.npz
-│   └── 415139728503581214/
-│       ├── f487c4bd48de4f4b98dd180188324a57/
-│       │   ├── artifacts/
-│       │   ├── metrics/
-│       │   │   ├── training_seconds
-│       │   │   └── val_l2_rel
-│       │   ├── params/
-│       │   │   ├── hidden_dim
-│       │   │   ├── lr
-│       │   │   └── n_layers
-│       │   ├── tags/
-│       │   │   ├── benchmark
-│       │   │   ├── exp_name
-│       │   │   ├── mlflow.runName
-│       │   │   ├── mlflow.source.name
-│       │   │   ├── mlflow.source.type
-│       │   │   ├── mlflow.user
-│       │   │   └── model
-│       │   └── meta.yaml
-│       └── meta.yaml
+│   ├── 4/
+│   │   └── 7379f0f26da342ba8b2cf5512f0e00de/
+│   │       └── artifacts/
+│   │           ├── autogen_rayleigh_benard_2d_fno2d_h1adapt_2746.log
+│   │           └── autogen_rayleigh_benard_2d_fno2d_h1adapt_2746_best.npz
+│   ├── 415139728503581214/
+│   │   ├── f487c4bd48de4f4b98dd180188324a57/
+│   │   │   ├── artifacts/
+│   │   │   ├── metrics/
+│   │   │   │   ├── training_seconds
+│   │   │   │   └── val_l2_rel
+│   │   │   ├── params/
+│   │   │   │   ├── hidden_dim
+│   │   │   │   ├── lr
+│   │   │   │   └── n_layers
+│   │   │   ├── tags/
+│   │   │   │   ├── benchmark
+│   │   │   │   ├── exp_name
+│   │   │   │   ├── mlflow.runName
+│   │   │   │   ├── mlflow.source.name
+│   │   │   │   ├── mlflow.source.type
+│   │   │   │   ├── mlflow.user
+│   │   │   │   └── model
+│   │   │   └── meta.yaml
+│   │   └── meta.yaml
+│   ├── 5/
+│   │   ├── 08d3eb38ad3543e3b3ea72b543aa0fd3/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m32_l8_f1.log
+│   │   │       └── rfno_kdv_h128_m32_l8_f1_best.npz
+│   │   ├── 12244133c4c440a0bbdd13e6c80a91f9/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_kdv_h64_l4_f1_adapt.log
+│   │   │       └── hnn_kdv_h64_l4_f1_adapt_best.npz
+│   │   ├── 16fba21f31fe40a1842e6ae9d8cee6fd/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l10_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l10_f1_best.npz
+│   │   ├── 206e3290c9a44f508b4308a471cd7f13/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h256_m24_l8_f1.log
+│   │   │       └── rfno_kdv_h256_m24_l8_f1_best.npz
+│   │   ├── 49ccb8972c394db28edb90b58067b28f/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l12_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l12_f1_best.npz
+│   │   ├── 6b087efc74dc408ab765f3f512c96f29/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l10_f1_adapt.log
+│   │   │       └── rfno_kdv_h128_m24_l10_f1_adapt_best.npz
+│   │   ├── a52e0e23a9ed48308082fd721c02f38d/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_kdv_h256_m32_l8_f1.log
+│   │   │       └── fno_kdv_h256_m32_l8_f1_best.npz
+│   │   ├── b475d5c9b9d045ff98bca3c676a3ef2e/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_kdv_h64_l4_f1.log
+│   │   │       └── hnn_kdv_h64_l4_f1_best.npz
+│   │   ├── c3d252ccc6844db3ae9feb04346dedc4/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_m24_l12_f1.log
+│   │   │       └── rfno_kdv_h128_m24_l12_f1_best.npz
+│   │   ├── c486e0920f374ab6aff09baa8041404f/
+│   │   │   └── artifacts/
+│   │   │       ├── ffno_kdv_h256_m32_l8_f1.log
+│   │   │       └── ffno_kdv_h256_m32_l8_f1_best.npz
+│   │   ├── cbc7e7b893394cc0b47f047282caed66/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
+│   │   │       └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
+│   │   └── fa8e55dc92e746a68cf779fbc1e87755/
+│   │       └── artifacts/
+│   │           ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
+│   │           └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
+│   └── 6/
+│       ├── 4930a7ed6016418c825e16a034ba57a1/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│       ├── 6af3c131a637401ea11f8b11a89ad060/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│       ├── c562ff4728c746aba70fdd7285aa0984/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│       └── f4175ebb4d344ef6b87755649bdeabb2/
+│           └── artifacts/
+│               ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│               └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
 ├── models/
 │   ├── AGENTS.md
 │   ├── __init__.py
@@ -433,10 +520,14 @@ autoresearch-mlx/
 │   ├── gen_arch_nanobanana.py
 │   └── gen_arch_viz.py
 ├── AGENTS.md
+├── AUTONOMOUS_RUN_REPORT.md
 ├── CLAUDE.md
 ├── CODE_INDEX.json
+├── EXECUTION_SUMMARY.txt
 ├── GEMINI.md
+├── PYTORCH_REFACTORING_PLAN.md
 ├── README.md
+├── RESEARCH_PROGRESS.md
 ├── SKILL.md
 ├── WIKI.md
 ├── agent_loop.py
@@ -454,6 +545,7 @@ autoresearch-mlx/
 ├── pyproject.toml
 ├── results.json
 ├── results.json.bak_pre_burgers_removal
+├── results.json.bak_pre_clean2
 ├── results.json.bak_session11
 ├── test_hf.py
 ├── test_openai.py
