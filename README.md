@@ -1,169 +1,764 @@
-# autoresearch-sciml-mlx
+# AutoResearch-MLX
 
-Autonomous AI-driven research loop for **Scientific Machine Learning (SciML)**
-on Apple Silicon, built on [MLX](https://github.com/ml-explore/mlx) — no
-PyTorch, no CUDA.
+**Autonomous neural operator research loop for PDE solving on Apple Silicon.**  
+Queue an experiment, go to sleep — the system trains, evaluates, diagnoses failures,
+proposes follow-ups, and updates itself overnight.
 
-The system trains neural PDE solvers within a fixed budget per experiment
-(30 min for 1D, 60 min for 2D — auto-enforced), logs every result to a
-lineage-aware DAG, and iterates toward published SOTA. A human or AI agent
-drives the loop by reading current state, forming hypotheses, queuing
-experiments, and analyzing outcomes.
+[![MLX](https://img.shields.io/badge/Platform-MLX%20%28Apple%20Silicon%29-blue.svg)](https://github.com/ml-explore/mlx)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/Status-Active%20Research-green.svg)](#project-status)
 
-Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch).
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Quick Start](#quick-start)
+3. [Core Concepts](#core-concepts)
+4. [Architecture](#architecture)
+5. [Model Zoo](#model-zoo)
+6. [PDE Benchmarks](#pde-benchmarks)
+7. [Configuration](#configuration)
+8. [Training a Single Model](#training-a-single-model)
+9. [Running the Autonomous Loop](#running-the-autonomous-loop)
+10. [Loss Functions](#loss-functions)
+11. [Bayesian HPO](#bayesian-hpo)
+12. [Adding a New Model](#adding-a-new-model)
+13. [Dashboard](#dashboard)
+14. [Results & Tracking](#results--tracking)
+15. [Deployment & Production](#deployment--production)
+16. [Troubleshooting](#troubleshooting)
+17. [Project Status](#project-status)
+18. [Additional Resources](#additional-resources)
+
+---
+
+## Overview
+
+AutoResearch-MLX is a self-driving experiment harness for **neural operator** research —
+the class of deep learning models that learn mappings between function spaces (e.g.,
+PDE initial condition → solution). It targets Apple Silicon (M1/M2/M3/M4) via the
+[MLX](https://github.com/ml-explore/mlx) framework.
+
+**What it does:**
+
+- Provides 28+ neural operator architectures (FNO, MambaNO, Transolver, DeepONet,
+  HANO, WNO, KAN, PINN, …) all under one unified training harness
+- Supports 15+ PDE benchmarks (Burgers, Darcy, Navier-Stokes, KdV, Shallow Water, …)
+- Orchestrates overnight autonomous experiment campaigns: train → evaluate → diagnose →
+  propose next experiment → repeat, without human intervention
+- Uses Bayesian HPO (Gaussian Process + Expected Improvement) and a data-driven
+  HypothesisEngine to propose follow-up experiments backed by empirical results and
+  literature
+- Tracks full experiment lineage in `results.json`, champions in `model_registry.json`,
+  and metrics in MLflow
+
+**Who this is for:** ML researchers and engineers working on scientific ML / neural PDEs
+who want to explore many architectures and hyperparameters systematically on a Mac.
 
 ---
 
 ## Quick Start
 
-**Requirements:** Apple Silicon Mac, Python 3.10+, [uv](https://docs.astral.sh/uv/)
+### Prerequisites
+
+- Apple Silicon Mac (M1 / M2 / M3 / M4)
+- Python 3.10–3.13
+- [`uv`](https://github.com/astral-sh/uv) package manager
 
 ```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and install
+git clone <repo-url> autoresearch-mlx
+cd autoresearch-mlx
 uv sync
-uv run data/prefetch_data.py --skip-slow   # cache PDE datasets (~2 min)
-
-uv run analyze.py --papers                  # current results vs SOTA
-uv run auto_suggest.py                      # ranked next actions
-
-# edit experiments.yaml, then run the queue
-uv run autorun.py --priority 1 --commit
 ```
 
-For a fully autonomous unattended run:
+### Your First Training Run (~2 minutes)
+
 ```bash
-uv run autorun.py --auto --commit \
-    --max-auto-experiments 50 \
-    --max-auto-time 86400    # 24-hour cap
+uv run train.py \
+  --benchmark burgers_1d \
+  --model_type FNO \
+  --hidden_dim 64 \
+  --n_layers 4 \
+  --n_modes 16 \
+  --lr 1e-3 \
+  --budget 120
 ```
 
-`--auto` is a non-recursive iterative loop: runs queue → replenishes via
-`auto_suggest --generate --write-yaml` → falls back to `BayesianHPO` → stops
-after 3 idle rounds or the time/experiment cap.
+**Expected output:**
 
-Optional `train.py` flags:
+```
+[train] burgers_1d | FNO | budget=120s
+epoch 10 | train_loss=0.4231 | val_l2_rel=0.3105 | lr=9.9e-4
+epoch 20 | train_loss=0.2814 | val_l2_rel=0.2208 | lr=9.7e-4
+...
+[eval] val_l2_rel = 0.2087  SOTA_target = 0.0149  gap = 13.97x
+[done] checkpoint saved → checkpoints/burgers_1d_FNO_....npz
+```
+
+### Overnight Autonomous Campaign
+
 ```bash
-uv run train.py --lr_schedule cosine    # warmup_cosine | cosine | onecycle | none
-uv run train.py --seed 123              # reproducibility seed (default: 42)
-uv run train.py --ema_decay 0.999       # EMA shadow weights (3–8% free improvement)
-uv run train.py --patience 5            # early stopping (10%-budget evals)
+# Queue experiments in experiments.yaml, then let the system self-drive
+uv run autorun.py --auto --commit --max-auto-experiments 50 --max-auto-time 86400
 ```
 
 ---
 
-## Documentation
+## Core Concepts
 
-| File | Purpose |
-|------|---------|
-| [`program.md`](./program.md) | Full operational guide — the loop, tools, constraints, scaffold workflow |
-| [`CLAUDE.md`](./CLAUDE.md) | Entry point for Claude Code agents |
-| [`GEMINI.md`](./GEMINI.md) | Entry point for Gemini and other external agents |
-| [`docs/SOTA.md`](./docs/SOTA.md) | SOTA targets per benchmark |
-| [`docs/papers/*.yaml`](./docs/papers/) | Paper registry with suggested experiments |
-| [`WIKI.md`](./WIKI.md) | Architecture diagrams and system overview |
+### Neural Operator
+
+A neural network trained to approximate a mapping between infinite-dimensional function
+spaces — e.g., mapping a PDE's initial condition (a function) to its solution at time T
+(another function). Unlike standard networks, neural operators are discretization-invariant:
+they generalize to different grid resolutions at test time.
+
+### `experiments.yaml` — The Queue
+
+A declarative YAML list of experiments. Each entry becomes one training run.
+The system deduplicates against `results.json`, so re-queueing a completed experiment
+is harmless.
+
+```yaml
+- name: fno_burgers_baseline
+  benchmark: burgers_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 24
+  lr: 1e-3
+  budget_s: 1800
+  rationale: "FNO baseline per Li et al. 2021"
+```
+
+### `results.json` — Single Source of Truth
+
+A lineage-aware DAG of all completed experiments. Every entry records:
+`{name, benchmark, model, val_l2_rel, hyperparams, parent, status, diagnostics, timestamp}`.
+`analyze.py` reads this to produce SOTA gap reports and improvement trajectories.
+
+### `model_registry.json` — Champion Registry
+
+Tracks the best checkpoint path and hyperparameters per benchmark. A new champion
+is registered automatically when a run beats the previous best.
+
+### SOTA Targets
+
+Hard-coded reference values from published papers (see `core/utils.py`). Used to
+compute "SOTA gap" — how far the current best is from the published state of the art.
 
 ---
 
-## Repository Layout
+## Architecture
 
 ```
-autoresearch-mlx/
-├── train.py               # training harness — routes benchmark → model → trainer
-├── autorun.py             # queue runner with crash recovery and git integration
-├── agent_loop.py          # automated Bayesian HPO loop (optional)
-├── analyze.py             # results analyzer and SOTA gap reporter
-├── auto_suggest.py        # ranked next-experiment suggester
-├── experiments.yaml       # declarative experiment queue
-├── results.json           # SSoT — lineage DAG of all completed runs
-├── core/
-│   ├── trainer.py         # MLX JIT training loop + AdamW
-│   ├── tracker.py         # write API for results.json
-│   ├── hypothesis.py      # failure pattern detection
-│   ├── hpo.py             # Gaussian Process Bayesian HPO
-│   ├── scaffold.py        # gated model registration
-│   ├── losses.py          # l2_rel, h1, spectral, l1_rel (1D + 2D native)
-│   ├── diagnostics.py     # spectral bias, grad norm extraction, failure classifier
-│   ├── mlflow_integration.py  # optional MLflow run tracking
-│   ├── model_versioning.py    # model checkpoint versioning
-│   └── research_plugins.py  # model + benchmark registry
-├── models/                # 48+ model implementations
-├── data/
-│   ├── prepare.py         # READ-ONLY ground-truth evaluator
-│   ├── prefetch_data.py   # one-time dataset cache
-│   ├── benchmarks_ext.py  # extended benchmark definitions
-│   └── simulations/       # high-fidelity PDE solvers
-├── dashboard/
-│   ├── app.py             # FastAPI backend
-│   └── ui/dashboard.html  # live dashboard
-├── docs/
-│   ├── papers/*.yaml      # paper registry
-│   └── SOTA.md            # SOTA targets
-└── logs/
-    ├── trajectories.jsonl # RL replay buffer — agent reasoning log
-    └── <name>.log         # per-experiment training logs
+┌─────────────────────────────────────────────────────────────┐
+│                     experiments.yaml                        │
+│            (declarative experiment queue)                   │
+└────────────────────────┬────────────────────────────────────┘
+                         │ reads / appends
+          ┌──────────────▼──────────────┐
+          │        autorun.py           │◄──── agent_loop.py
+          │  (subprocess orchestrator)  │      (Mode B AI loop)
+          └──────────────┬──────────────┘
+                         │ subprocess
+          ┌──────────────▼──────────────┐
+          │          train.py           │
+          │   (single training run)     │
+          │                             │
+          │  ModelRegistry.build()      │
+          │  BenchmarkRegistry.eval()   │
+          │  Trainer.train()            │
+          └──┬───────────┬──────────────┘
+             │           │
+    ┌────────▼──┐   ┌────▼──────────────┐
+    │results.   │   │checkpoints/       │
+    │json (DAG) │   │<name>.npz         │
+    └────────┬──┘   └───────────────────┘
+             │
+    ┌────────▼──────────────┐
+    │   auto_suggest.py     │  ← Bayesian HPO + HypothesisEngine
+    │   (next experiment)   │    (reads results + papers/*.yaml)
+    └───────────────────────┘
+```
+
+### Key Modules
+
+| Module | Responsibility |
+|---|---|
+| `train.py` | Single training run: build model, train, evaluate, log |
+| `autorun.py` | Orchestrates queue, retries, adaptive fallback, git commits |
+| `agent_loop.py` | Fully autonomous Mode B: generates new experiments programmatically |
+| `auto_suggest.py` | Ranks and prints next-experiment suggestions |
+| `analyze.py` | Summarizes `results.json` into SOTA gap tables |
+| `core/research_plugins.py` | Central `ModelRegistry` + `BenchmarkRegistry` |
+| `core/trainer.py` | MLX training loop, EMA, snapshot ensemble, early stopping |
+| `core/loader.py` | `ExperimentConfig` dataclass + YAML parser |
+| `core/losses.py` | L2-rel, H1, spectral, and adaptive loss functions |
+| `core/hpo.py` | Gaussian Process HPO with EI acquisition |
+| `core/hypothesis.py` | Data-driven intervention engine |
+| `core/scaffold.py` | Gated model scaffolding (stub → validate → register) |
+| `core/tracker.py` | Lineage-aware `results.json` writer |
+| `core/diagnostics.py` | Log parsing, spectral bias detection, early-stop analysis |
+| `data/prepare.py` | Ground-truth data generator and evaluation harness |
+| `dashboard/app.py` | FastAPI Command Center API |
+
+---
+
+## Model Zoo
+
+28+ neural operator architectures, all implemented in MLX:
+
+### Fourier-Based
+
+| Registry Key | Architecture | Key Reference |
+|---|---|---|
+| `FNO` | 1D Fourier Neural Operator | Li et al. 2021 |
+| `FNO2D` | 2D FNO (auto-selected for 2D benchmarks) | Li et al. 2021 |
+| `RFNO` / `RFNO2D` | Residual FNO with Pre-LayerNorm | — |
+| `AFNO` | Adaptive FNO (softshrink sparsity) | Guibas et al. 2022 |
+| `FFNO` | Factorized FNO | — |
+| `TFNO` / `RTFNO` | Tucker-factorized FNO (4–10x fewer params) | — |
+| `UNO` / `UNO2d` | U-shaped Neural Operator | — |
+| `SNO2D` | Spectral Neural Operator 2D | — |
+| `AttentionEnhancedFNO2D` | FNO blocks + cross-attention | — |
+
+### State-Space / SSM-Based
+
+| Registry Key | Architecture | Key Reference |
+|---|---|---|
+| `MambaNO` / `MambaNO1d` | Mamba SSM-based operator | Gu & Dao 2023 |
+| `SSNO` | Dual-branch S4D + Spectral FNO with gating | — |
+| `S4NO` | S4D diagonal state-space operator | — |
+| `MemNO` | Memory-augmented Neural Operator | 2025 |
+
+### Attention-Based
+
+| Registry Key | Architecture | Key Reference |
+|---|---|---|
+| `GNOT` | Graph Neural Operator Transformer | — |
+| `GNOT_Axial2d` | GNOT with axial attention | — |
+| `Transolver` / `Transolver2D` | Physics-slice attention | Wu et al. 2024 |
+| `HANO` / `HANO2D` | Hierarchical Attention Neural Operator | — |
+
+### DeepONet Family
+
+| Registry Key | Architecture | Key Reference |
+|---|---|---|
+| `DeepONet` | Branch-Trunk DeepONet | Lu et al. 2021 |
+| `PODDeepONet` | SVD basis DeepONet | — |
+| `TimeDeepONet` | Time-conditioned DeepONet | — |
+| `HybridDecoderDeepONet2D` | Hybrid DeepONet with 2D decoder | — |
+| `FEDONet2D` | Frequency-Enhanced DeepONet 2D | — |
+
+### Physics-Informed / Other
+
+| Registry Key | Architecture |
+|---|---|
+| `WNO` | Wavelet Neural Operator (Haar multi-resolution) |
+| `PINN` | Physics-Informed Neural Network (coordinate MLP) |
+| `KAN` | Kolmogorov-Arnold Network |
+| `cPIKAN` | Chebyshev polynomial KAN for physics |
+
+---
+
+## PDE Benchmarks
+
+### 1D
+
+| Key | PDE | Grid | Notes |
+|---|---|---|---|
+| `burgers_1d` | Viscous Burgers: u_t + u·u_x = ν·u_xx, ν=0.01/π | 64 | Default benchmark |
+| `burgers_nu_001` | Burgers with ν=0.001 | 64 | Strong shocks |
+| `kdv_1d` | Korteweg-de Vries | 64 | Soliton dynamics |
+| `wave_1d` | Wave: u_tt = c²·u_xx | 64 | Propagation |
+| `euler_1d` | 1D Euler (multi-channel) | 64 | Subsonic smooth flow |
+
+### 2D
+
+| Key | PDE | Grid | Notes |
+|---|---|---|---|
+| `darcy_2d` | Darcy: -div(a·∇u) = f | 64×64 | Variable-coefficient elliptic |
+| `ns_2d` | Navier-Stokes 2D (vorticity) | 64×64 | Semi-implicit spectral |
+| `ns_hre_2d` | Navier-Stokes Re=1000 | 64×64 | High-Reynolds |
+| `swe_2d` | Shallow Water Equations | 64×64 | Linearized gravity waves |
+| `allen_cahn_2d` | Allen-Cahn phase field | 64×64 | Phase-field coarsening |
+| `elasticity_2d` | Linear elasticity | 64×64 | Multi-physics |
+| `wavebench_2d` | WaveBench 2D | 64×64 | Wave propagation |
+| `pdebench_2d` | PDEBench suite | 64×64 | Comprehensive |
+| `multiphysics_2d` | Coupled multi-physics | 64×64 | Multi-field |
+
+**Fixed data constants** (from `data/prepare.py` — do not modify):
+
+| Constant | Value |
+|---|---|
+| `GRID_SIZE` | 64 |
+| `N_TRAIN` | 4096 |
+| `N_VAL` | 256 |
+| `VAL_SEED` | 42 |
+| `TRAIN_SEED` | 7 |
+| `SOLVER_STEPS` | 500 |
+
+---
+
+## Configuration
+
+### `ExperimentConfig` Fields
+
+The full set of fields supported in `experiments.yaml`:
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | str | required | Unique experiment name |
+| `benchmark` | str | `burgers_1d` | Benchmark key |
+| `model` | str | `FNO` | Model registry key |
+| `hidden_dim` | int | 64 | Channel width |
+| `n_layers` | int | 4 | Number of operator blocks |
+| `n_modes` | int | 16 | Fourier modes (1D) or max modes per dim (2D) |
+| `n_levels` | int | 4 | Hierarchy levels (HANO, UNO) |
+| `n_head` | int | 4 | Attention heads (GNOT, Transolver) |
+| `slice_num` | int | 32 | Physics slices (Transolver) |
+| `lr` | float | 1e-3 | Initial learning rate |
+| `batch_size` | int | 32 | Training batch size |
+| `grad_clip` | float | 1.0 | Gradient clipping norm |
+| `loss_type` | str | `l2_rel` | Loss function key |
+| `h1_alpha` | float | 0.1 | H1 gradient penalty weight |
+| `augment` | bool | false | Random flip/roll data augmentation |
+| `curriculum` | bool | false | Curriculum: start with easier samples |
+| `curriculum_epochs` | int | 10 | Epochs before full difficulty |
+| `budget_s` | int | 300 | Training time budget in seconds |
+| `lr_schedule` | str | `warmup_cosine` | `warmup_cosine`, `cosine`, `onecycle`, `none` |
+| `ema_decay` | float | 0.999 | EMA weight decay |
+| `patience` | int | 5 | Early-stop patience (in eval intervals) |
+| `snapshot_ensemble` | bool | false | Average N checkpoint predictions |
+| `resume` | bool | false | Resume from champion checkpoint |
+| `resume_from` | str | null | Checkpoint path or `champion:<benchmark>` |
+| `save_ckpt` | bool | true | Save checkpoint after training |
+| `seed` | int | 42 | Global random seed |
+| `rationale` | str | — | Human-readable justification |
+| `paper_ref` | str | — | Literature reference |
+| `priority` | int | 5 | Queue priority (1=highest) |
+
+### 2D Memory Safety Limits
+
+Enforced at `ModelRegistry.build()` for all 2D benchmarks:
+
+- `hidden_dim < 64` (use 32 for most 2D runs)
+- `n_layers < 8` (use ≤ 4 for 2D)
+
+### Budget Floors (enforced by `autorun.py`)
+
+- 1D benchmarks: ≥ 1800 seconds
+- 2D benchmarks: ≥ 3600 seconds
+
+### SOTA Reference Targets
+
+```python
+# from core/utils.py
+SOTA = {
+    "burgers_1d":     0.0149,
+    "darcy_2d":       0.0108,
+    "ns_2d":          0.0128,
+    "kdv_1d":         0.010,
+    "wave_1d":        0.005,
+    "euler_1d":       0.015,
+    "swe_2d":         0.002,
+    "allen_cahn_2d":  0.020,
+    "ns_hre_2d":      0.070,
+}
 ```
 
 ---
 
-## Current Results
-
-To see the latest benchmark results and SOTA gaps:
+## Training a Single Model
 
 ```bash
-uv run analyze.py --papers
+# Minimal run (120-second budget)
+uv run train.py --benchmark burgers_1d --model_type FNO --budget 120
+
+# Full options example
+uv run train.py \
+  --benchmark darcy_2d \
+  --model_type Transolver2D \
+  --hidden_dim 32 \
+  --n_layers 4 \
+  --n_head 4 \
+  --slice_num 32 \
+  --lr 2e-3 \
+  --lr_schedule warmup_cosine \
+  --loss_type h1 \
+  --h1_alpha 0.1 \
+  --budget 3600 \
+  --ema_decay 0.999 \
+  --save_ckpt \
+  --seed 42
+
+# Resume from champion checkpoint and fine-tune
+uv run train.py \
+  --benchmark burgers_1d \
+  --model_type FNO \
+  --resume_from champion:burgers_1d \
+  --lr 1e-4 \
+  --budget 1800
 ```
 
-To see what to run next:
+### CLI Arguments Reference
+
+```
+--benchmark         PDE benchmark key (default: burgers_1d)
+--model_type        Model registry key (default: FNO)
+--hidden_dim        Channel width (default: 64)
+--n_layers          Operator block depth (default: 4)
+--n_modes           Fourier modes (default: 16)
+--n_levels          Hierarchy levels for UNO/HANO (default: 4)
+--n_head            Attention heads (default: 4)
+--slice_num         Physics slices for Transolver (default: 32)
+--lr                Initial learning rate (default: 1e-3)
+--lr_schedule       LR schedule type (default: warmup_cosine)
+--batch_size        Batch size (default: 32)
+--loss_type         Loss function key (default: l2_rel)
+--h1_alpha          H1 gradient weight (default: 0.1)
+--grad_clip         Gradient clip norm (default: 1.0)
+--augment           Enable data augmentation (flag)
+--curriculum        Enable curriculum training (flag)
+--budget            Time budget in seconds (default: 300)
+--ema_decay         EMA decay (default: 0.999)
+--patience          Early-stop patience (default: 5)
+--snapshot_ensemble Enable snapshot ensemble (flag)
+--save_ckpt         Save checkpoint (flag)
+--resume            Resume from last checkpoint (flag)
+--resume_from       Checkpoint path or "champion:<benchmark>"
+--seed              Random seed (default: 42)
+```
+
+---
+
+## Running the Autonomous Loop
+
+### Mode A: Human-Guided (Queue + Autorun)
+
+1. Append entries to `experiments.yaml`
+2. Run `autorun.py` — it processes the queue sequentially, skipping already-done runs
 
 ```bash
-uv run auto_suggest.py
+# Process queue once
+uv run autorun.py
+
+# With auto-commit to git after each successful run
+uv run autorun.py --commit
+```
+
+### Mode B: Fully Autonomous
+
+The system reads results, generates hypotheses, appends new experiments, and runs them
+without any human input.
+
+```bash
+# Autonomous overnight run: up to 50 experiments over 24 hours
+uv run autorun.py --auto --commit --max-auto-experiments 50 --max-auto-time 86400
+
+# Dry run: see what would be queued without executing
+uv run auto_suggest.py --benchmark burgers_1d --top-k 5
+
+# Run one AI agent cycle (inspect/modify experiments.yaml only)
+uv run agent_loop.py
+```
+
+### Retry System
+
+When a run crashes or produces poor results, `autorun.py` escalates automatically:
+
+| Level | Trigger | Action |
+|---|---|---|
+| **r1** | Crash or OOM | `smart_fix()`: context-aware fix from log analysis |
+| **r2** | r1 fails | Halve `hidden_dim`, `n_layers`, `n_modes`; `lr × 0.1` |
+| **r3** | r2 fails | Minimal viable config: `h=32, l=2, m≤8, lr=1e-4` |
+| **_adapt** | Run completes but `val > 3× baseline` | `HypothesisEngine.suggest_intervention()` |
+
+### Pause / Resume
+
+```bash
+# Pause between experiments (checked at start of each run)
+touch .autorun_pause
+
+# Resume
+rm .autorun_pause
+```
+
+### Analyze Results
+
+```bash
+# Print best-per-benchmark table + SOTA gaps
+uv run analyze.py
+
+# Get ranked suggestions for next experiment on a specific benchmark
+uv run auto_suggest.py --benchmark darcy_2d
+```
+
+---
+
+## Loss Functions
+
+| Key | Formula | Best For |
+|---|---|---|
+| `l2_rel` | ‖pred−y‖₂ / ‖y‖₂ | Default; most benchmarks |
+| `h1` | L2 + α·‖∇pred − ∇y‖₂ | Shock fronts, Burgers, Darcy |
+| `h1_adaptive` | H1 with α auto-scaled so gradient term ≈ 30% | Unknown PDEs |
+| `h1_strong` | H1 with α = 1.0 | Strong gradient penalty |
+| `spectral` | Frequency-weighted L2 (emphasizes high-k) | High-frequency error |
+| `l1_rel` | ‖pred−y‖₁ / ‖y‖₁ | Outlier-robust training |
+| `mse` | Mean squared error | Debug only |
+
+---
+
+## Bayesian HPO
+
+`core/hpo.py` implements a Gaussian Process surrogate with Expected Improvement (EI)
+acquisition for automatic hyperparameter search.
+
+```python
+from core.hpo import BayesianHPO
+
+hpo = BayesianHPO(benchmark="burgers_1d")
+hpo.load_history()          # seeds GP from results.json history
+
+suggestion = hpo.ask()
+# → {"hidden_dim": 192, "n_layers": 6, "n_modes": 20, "lr": 5e-4}
+
+hpo.tell(suggestion, val_l2_rel=0.145)   # update surrogate
+```
+
+**Search space:**
+
+| Hyperparameter | Range |
+|---|---|
+| `hidden_dim` | 32 – 256 |
+| `n_layers` | 2 – 12 |
+| `n_modes` | 8 – 32 |
+| `lr` | 1e-4 – 1e-2 |
+
+Multi-objective extension supports Pareto-front extraction via weighted scalarization.
+
+---
+
+## Adding a New Model
+
+The scaffold system enforces a three-gate pipeline to prevent broken models from
+entering the queue:
+
+```bash
+# Gate 1: Generate starter file from template
+uv run -m core.scaffold --stub MyOperator --base FNO
+
+# Gate 2: Validate (import check + output shape smoke test)
+uv run -m core.scaffold --validate MyOperator models/my_operator.py
+
+# Gate 3: Register in MODEL_REGISTRY and experiments.yaml
+uv run -m core.scaffold --register MyOperator
+```
+
+**Model interface contract** (what `train.py` expects):
+
+```python
+class MyOperator(nn.Module):
+    def __init__(self, hidden_dim: int, n_layers: int, n_modes: int, **kwargs):
+        super().__init__()
+        ...
+
+    def __call__(self, x: mx.array) -> mx.array:
+        # x: (batch, grid, channels)     [1D benchmarks]
+        # x: (batch, h, w, channels)     [2D benchmarks]
+        # returns: same spatial shape as x
+        ...
 ```
 
 ---
 
 ## Dashboard
 
+A FastAPI Command Center for monitoring and injecting experiments.
+
 ```bash
-python3 dashboard/app.py
-# open dashboard/ui/dashboard.html in a browser
+# Start dashboard
+uv run uvicorn dashboard.app:app --host 0.0.0.0 --port 8000
+
+open http://localhost:8000
 ```
 
-Live training progress, VRAM usage, lineage DAG, per-experiment log tails,
-and kill controls.
+### API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Web dashboard UI |
+| `GET` | `/api/results` | All results from `results.json` |
+| `POST` | `/api/inject` | Inject new experiments without restarting autorun |
+| `POST` | `/api/priority` | Override experiment priorities |
+| `GET` | `/figs/<name>` | Diagnostic plot images |
+| `GET` | `/logs/<name>` | Raw experiment log files |
 
 ---
 
-## New Capabilities (Sessions 1–10)
+## Results & Tracking
 
-| Feature | How to use |
-|---------|-----------|
-| EMA weights | `ema_decay: 0.999` in YAML or `--ema_decay 0.999` — 3–8% free improvement |
-| Adaptive H1 loss | `loss_type: h1_adaptive` — auto-scales α to target 30% gradient contribution |
-| 2D curriculum | `curriculum: true` — spectral masking from k=2→N//4 over first 30% of budget |
-| Weighted snapshot ensemble | `snapshot_ensemble: 3` — inverse-val-error weighting across checkpoints |
-| Early stopping | `patience: 5` — halts if no improvement for N consecutive 10%-budget evals |
-| Budget floors | Auto-enforced: 1D ≥ 1800 s, 2D ≥ 3600 s — no manual config needed |
-| Plateau detection | Benchmarks with < 2% relative improvement over 5 runs get deprioritized |
-| Iterative auto loop | `--auto` is a stack-safe `while True` loop; queue replenished via `auto_suggest` |
+### MLflow
 
-## Hard Constraints
+All runs are logged to `mlruns/` automatically:
 
-- `data/prepare.py` is read-only — it defines the ground-truth metric
-- `results.json` is never hand-edited — use `core/tracker.py`
-- 2D benchmarks: `hidden_dim ≤ 32`, `n_layers ≤ 4`, `n_modes ≤ 12` (memory ceiling)
-- Budget floors auto-enforced: 1D → 1800 s (30 min), 2D → 3600 s (60 min)
-- Model registry keys are case-sensitive: `FNO2D` not `FNO2d`, `SSNO` not `SSNO1d`
-- RFNO is 1D-only; PINO always diverges — never queue either
-- AFNO: do not queue — consistently 0.50–0.72 spectral bias
-- SSNO: `hidden_dim ≤ 64`, `n_layers ≤ 4` only — diverges at h≥128
+```bash
+uv run mlflow ui --port 5000
+open http://localhost:5000
+```
 
-Full constraint table with reasons in [`program.md`](./program.md).
+### Champion Registry
+
+`model_registry.json` stores the best checkpoint per benchmark:
+
+```json
+{
+  "burgers_1d": {
+    "path": "checkpoints/burgers_1d_FNO_h128_l8_m24.npz",
+    "val_l2_rel": 0.1468,
+    "model": "FNO",
+    "hidden_dim": 128,
+    "n_layers": 8,
+    "n_modes": 24
+  }
+}
+```
+
+### Trajectory Log
+
+`logs/trajectories.jsonl` is an RL-style replay buffer. Every queued action and
+outcome is logged for post-hoc analysis:
+
+```jsonl
+{"timestamp": "...", "benchmark": "burgers_1d", "action": {...}, "outcome": 0.1468, "diag_snapshot": {...}}
+```
+
+### Diagnostics
+
+`core/diagnostics.py` parses logs to detect:
+
+- **Spectral bias**: unusually high error in high-frequency Fourier modes
+- **Early stopping**: whether patience threshold was triggered
+- **Crash patterns**: OOM, NaN loss, shape mismatches
+- **Plateau detection**: loss stagnated for N epochs
 
 ---
 
-## Acknowledgments
+## Deployment & Production
 
-- Andrej Karpathy for the autonomous research concept
-- [MLX](https://github.com/ml-explore/mlx) team at Apple
+### Hardware Requirements
+
+This project runs exclusively on **Apple Silicon** (MLX is the training backend):
+
+| Resource | Minimum | Recommended |
+|---|---|---|
+| Chip | M1 | M2 Pro / M3 |
+| Unified Memory | 16 GB | 32 GB (for 2D) |
+| Storage | 20 GB | 50 GB |
+
+### DVC Data Versioning
+
+```bash
+dvc repro   # Reproduce data pipeline
+dvc push    # Push data to remote
+dvc pull    # Pull data from remote
+```
+
+### Disk Layout
+
+```
+checkpoints/      Model weights (.npz), 10–200 MB each
+logs/             Per-experiment logs (.log), trajectories.jsonl
+mlruns/           MLflow tracking database
+figs/             Diagnostic plots (.png)
+results.json      Experiment DAG (grows with each run)
+model_registry.json  Champion checkpoints per benchmark
+```
+
+---
+
+## Troubleshooting
+
+**OOM / out-of-memory on 2D benchmarks**  
+Reduce `hidden_dim` to 32 and `n_layers` to ≤ 4. The system auto-retries with
+smaller configs (r2/r3 fallback) when run via `autorun.py`.
+
+**`val_l2_rel` stuck at 1.0 or diverging**  
+Try `loss_type: h1`, reduce `lr` by 10×, or use `lr_schedule: warmup_cosine`.
+Check `logs/<name>.log` for NaN loss entries.
+
+**`RFNO` shape mismatch**  
+`RFNO` is 1D only. Use `FNO2D` for 2D benchmarks.
+
+**Import error after adding a new model**  
+Re-run `--validate` before `--register`. If validation passes, check
+`models/__init__.py` to ensure the class is exported.
+
+**`autorun.py` skipping new queue entries**  
+The `name` field must be unique. Entries whose name matches a completed run in
+`results.json` are skipped automatically.
+
+**MLflow UI shows no runs**  
+Run `uv run mlflow ui` from the project root, not a subdirectory.
+
+---
+
+## Project Status
+
+**Active research project.** Stable for automated overnight runs. Not a versioned,
+published library — `experiments.yaml` schema and `results.json` format may change.
+
+### Current Best Results
+
+| Benchmark | Champion | val_l2_rel | SOTA Target |
+|---|---|---|---|
+| `kdv_1d` | RFNO | **0.0020** | 0.010 (5× better) |
+| `wave_1d` | FNO | **0.0009** | 0.005 (5× better) |
+| `pdebench_2d` | FEDONet2D | **0.0026** | — |
+| `elasticity_2d` | FEDONet2D | 0.0077 | — |
+| `wavebench_2d` | SNO2D | 0.0099 | — |
+| `ns_2d` | FNO | 0.0215 | 0.0128 |
+| `darcy_2d` | FEDONet2D | 0.2735 | 0.0108 |
+| `burgers_1d` | FNO | 0.1468 | 0.0149 |
+
+### Known Limitations
+
+- Apple Silicon only — not portable to Linux/CUDA without replacing MLX
+- 2D benchmarks: `hidden_dim ≥ 64` causes OOM on 16 GB devices
+- `Transolver2D` and `GNOT` are significantly slower per epoch than FNO-family
+- `RFNO2D` has a shape constraint; use only with 1D benchmarks
+
+### Planned Directions
+
+- Multi-PDE foundation model pretraining
+- PDE-aware tokenization for transformer operators
+- Multi-fidelity training (coarse-to-fine grid)
+- Automated paper drafting from `trajectories.jsonl`
+
+---
+
+## Additional Resources
+
+- [`RESEARCH_BRAIN.md`](./RESEARCH_BRAIN.md) — Living research driver: current strategy,
+  empirical findings, SOTA gaps, session history (primary reference)
+- [`WIKI.md`](./WIKI.md) — High-level system overview
+- [`docs/SOTA.md`](./docs/SOTA.md) — Granular SOTA targets with paper references
+- [`docs/LITERATURE.md`](./docs/LITERATURE.md) — Literature survey
+- [`docs/TERMINOLOGY.md`](./docs/TERMINOLOGY.md) — Glossary
+- [`model_architectures.md`](./model_architectures.md) — Mermaid architecture diagrams
+- [`CODE_INDEX.json`](./CODE_INDEX.json) — Machine-readable symbol/docstring map
+- [MLX Documentation](https://ml-explore.github.io/mlx/) — Apple Silicon ML framework
+
+---
+
+*For authoritative research context, see [`RESEARCH_BRAIN.md`](./RESEARCH_BRAIN.md).*
 
 
 <!-- STRUCTURE_START -->
@@ -212,6 +807,13 @@ autoresearch-mlx/
 │   ├── prefetch_data.py
 │   └── prepare.py
 ├── docs/
+│   ├── archive/
+│   │   ├── AGENTS.md
+│   │   ├── CLAUDE.md
+│   │   ├── GEMINI.md
+│   │   ├── SKILL.md
+│   │   ├── models_AGENTS.md
+│   │   └── program.md
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
@@ -288,6 +890,10 @@ autoresearch-mlx/
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 6b478292309345dc826df07ce6f41195/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_h128_l8_adapt.log
+│   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
 │   │   ├── 795692bf22524f1ca68cefc5331b185c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -307,6 +913,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── b2d3c64c24cc4903be3b8d57b218e23c/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_h128_l8.log
+│   │   │       └── mambano_burgers_h128_l8_best.npz
 │   │   ├── b48aca5c6f9c42d4bfe9f37e38dc1ab2/
 │   │   │   └── artifacts/
 │   │   │       └── ffno_burgers_test_best.npz
@@ -367,6 +977,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver2d_darcy_s16_h24_l3.log
 │   │   │       └── transolver2d_darcy_s16_h24_l3_best.npz
+│   │   ├── 9d956408609745a3a3c06a9b22a3cfc8/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_darcy2d_h32_l4_m8_h1_f1_r1.log
+│   │   │       └── fno_darcy2d_h32_l4_m8_h1_f1_r1_best.npz
 │   │   ├── abc12a20d416466b95ec4e8cc2f02cc2/
 │   │   │   └── artifacts/
 │   │   │       ├── fedonet2d_darcy_h32_l2_m8_h1_adapt.log
@@ -486,6 +1100,10 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── energy_fno_wave_h64_l8_m24_f1.log
 │       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│       ├── 5a567c3696464eedb5c6d4672edf15de/
+│       │   └── artifacts/
+│       │       ├── time_deeponet_wave_h128_l4_f1.log
+│       │       └── time_deeponet_wave_h128_l4_f1_best.npz
 │       ├── 6af3c131a637401ea11f8b11a89ad060/
 │       │   └── artifacts/
 │       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
@@ -498,12 +1116,15 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── energy_fno_wave_h64_l8_m24_f1.log
 │       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
-│       └── f4175ebb4d344ef6b87755649bdeabb2/
+│       ├── f4175ebb4d344ef6b87755649bdeabb2/
+│       │   └── artifacts/
+│       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│       │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│       └── f7b10fc9a98e47888ad511c2fc8d485e/
 │           └── artifacts/
-│               ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
-│               └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│               ├── time_deeponet_wave_h128_l4_f1_adapt.log
+│               └── time_deeponet_wave_h128_l4_f1_adapt_best.npz
 ├── models/
-│   ├── AGENTS.md
 │   ├── __init__.py
 │   ├── afno.py
 │   ├── attention_fno.py
@@ -538,12 +1159,11 @@ autoresearch-mlx/
 │   ├── dvc_train.py
 │   ├── gen_arch_nanobanana.py
 │   └── gen_arch_viz.py
-├── AGENTS.md
 ├── CLAUDE.md
 ├── CODE_INDEX.json
 ├── GEMINI.md
 ├── README.md
-├── SKILL.md
+├── RESEARCH_BRAIN.md
 ├── WIKI.md
 ├── agent_loop.py
 ├── analyze.py
@@ -556,7 +1176,6 @@ autoresearch-mlx/
 ├── model_architectures.md
 ├── model_registry.json
 ├── params.yaml
-├── program.md
 ├── pyproject.toml
 ├── results.json
 ├── test_hf.py
