@@ -109,16 +109,16 @@ Full authoritative list: `core/research_plugins.py`.
 | Date | Insight | Action | Outcome |
 |------|---------|--------|---------|
 <!-- LESSONS_START -->
-| 2026-04-19 | N/A... | FNO on darcy_2d | **crash:UnknownError)** |
-| 2026-04-19 | N/A... | UNO on burgers_1d | **0.980742 (discard)** |
-| 2026-04-19 | current_val (0.1823) marginally above best (0.1813). Increme... | UNO on burgers_1d | **0.182251 (discard)** |
-| 2026-04-19 | N/A... | LatentODE on wave_1d | **crash:EarlyStop)** |
-| 2026-04-19 | N/A... | FNO on wave_1d | **0.004408 (discard)** |
-| 2026-04-19 | N/A... | NeuralODE on wave_1d | **crash:EarlyStop)** |
-| 2026-04-19 | N/A... | GNOT on burgers_1d | **0.184157 (discard)** |
-| 2026-04-19 | current_val (0.1842) marginally above best (0.1813). Increme... | GNOT on burgers_1d | **0.184157 (discard)** |
-| 2026-04-19 | Architecture discovery halted by EarlyStop.... | UDE on burgers_1d | **crash:EarlyStop)** |
-| 2026-04-19 | N/A... | UDE on burgers_1d | **crash:EarlyStop)** |
+| 2026-04-19 | current_val (0.1859) marginally above best (0.1813). Increme... | LatentODE on burgers_1d | **0.185855 (discard)** |
+| 2026-04-19 | Architecture discovery halted by UnknownError.... | PODDeepONet on burgers_1d | **crash:UnknownError)** |
+| 2026-04-19 | N/A... | PODDeepONet on burgers_1d | **crash:UnknownError)** |
+| 2026-04-19 | N/A... | RFNO on kdv_1d | **0.020456 (discard)** |
+| 2026-04-19 | N/A... | RFNO2D on ns_2d | **0.120363 (discard)** |
+| 2026-04-19 | No prior experiments found. Starting with FNO h=128 l=8 m=24... | FNO on burgers_1d | **0.223195 (discard)** |
+| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.209866 (keep)** |
+| 2026-04-19 | N/A... | FNO on burgers_1d | **0.223007 (discard)** |
+| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.225705 (discard)** |
+| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.208866 (discard)** |
 <!-- LESSONS_END -->
 
 ### Architecture Evolution
