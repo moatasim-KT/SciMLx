@@ -7555,16 +7555,16 @@
     "diag": {}
   },
   {
-    "id": "burgers_nu_001_WNO_1776639852_035881",
+    "id": "burgers_nu_001_WNO_1776639880_df3e43",
     "parent_id": "burgers_nu_001_WNO_1776114789_c074a7",
-    "timestamp": 1776639852,
+    "timestamp": 1776639880,
     "benchmark": "burgers_nu_001",
     "model": "WNO",
     "val_l2_rel": 0.245389,
     "memory_gb": 0.23232421875,
     "status": "keep",
     "description": "bnu001_wno_h128_l10_lvl6 WNO  h=128  l=10  lvl=6  lr=5e-04",
-    "commit": "9d89a82",
+    "commit": "e90a223",
     "config": {
       "name": "bnu001_wno_h128_l10_lvl6",
       "benchmark": "burgers_nu_001",
@@ -7602,14 +7602,14 @@
       "snapshot_ensemble": 0
     },
     "rationale": "RL-sweep: Deeper WNO with 6 wavelet levels \u2014 Haar wavelets excel at discontinuity localization for shocks.",
-    "conclusion": "WNO_burgers_nu_001_1776639837 | Critique: Incrementing modes to m=20 based on best config (WNO h=128 l=8 m=16, val=0.6338). [Grounding: 2205.02191]",
+    "conclusion": "WNO_burgers_nu_001_1776639837 | Critique: current_val (0.2454) within 5% of best (0.2454). Exploring different model family: FFNO. [Grounding: 2111.13587]",
     "diag": {
       "diag_stability_signature_volatility": 0.1183,
       "diag_stability_signature_gnorm_max": 11.408,
       "diag_low_freq_error": 0.025203,
       "diag_high_freq_error": 0.093053,
       "diag_grad_norm_max": 3.055,
-      "diag_grad_norm_mean": 1.1462603036876362
+      "diag_grad_norm_mean": 1.143632385120351
     }
   }
 ]

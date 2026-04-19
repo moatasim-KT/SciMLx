@@ -1351,6 +1351,10 @@ autoresearch-mlx/
 │   │           ├── euler1d_fno_mc_h128_l8_m24_f1_adapt.log
 │   │           └── euler1d_fno_mc_h128_l8_m24_f1_adapt_best.npz
 │   └── 9/
+│       ├── 431b84df8cc542efb46491a9d2f01225/
+│       │   └── artifacts/
+│       │       ├── bnu001_wno_h128_l10_lvl6.log
+│       │       └── bnu001_wno_h128_l10_lvl6_best.npz
 │       └── 616ada9edab14541b133dc9d8867baff/
 │           └── artifacts/
 │               ├── bnu001_wno_h128_l10_lvl6.log
