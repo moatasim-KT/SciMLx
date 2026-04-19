@@ -17,7 +17,7 @@ import math
 from collections import defaultdict
 from typing import Optional
 
-from core.utils import RESULTS_FILE, LOGS_DIR, FIGS_DIR, SOTA, load_results
+from core.utils import RESULTS_FILE, LOGS_DIR, FIGS_DIR, SOTA, load_results, best_per_benchmark_sql
 
 
 # ── Analysis helpers ──────────────────────────────────────────────────────────
@@ -74,6 +74,26 @@ def correlate_hyperparams(rows: list[dict], benchmark: str) -> dict[str, list]:
     for k, vdict in buckets.items():
         summary[k] = {v: min(vals) for v, vals in vdict.items()}
     return summary
+
+
+# ── Fast SOTA gap summary (DuckDB-powered) ────────────────────────────────────
+
+def print_sota_gaps() -> None:
+    """Print SOTA gap table for all benchmarks using DuckDB for speed."""
+    bests = best_per_benchmark_sql()
+    if not bests:
+        print("  (No results or duckdb unavailable — run: uv add duckdb)")
+        return
+    print(f"\n{'Benchmark':<22}  {'Best':<10}  {'SOTA':<10}  {'Gap':>7}")
+    print("─" * 58)
+    for bm in sorted(bests):
+        best  = bests[bm]
+        sota  = SOTA.get(bm)
+        gap   = f"{best / sota:.2f}x" if sota else "—"
+        sota_s = f"{sota:.4f}" if sota else "—"
+        flag  = " ✓" if sota and best <= sota else ""
+        print(f"  {bm:<20}  {best:<10.6f}  {sota_s:<10}  {gap:>7}{flag}")
+    print()
 
 
 # ── Report ────────────────────────────────────────────────────────────────────
@@ -253,6 +273,7 @@ def main() -> None:
     args = p.parse_args()
 
     rows = load_results(args.benchmark)
+    print_sota_gaps()        # fast DuckDB SOTA gap table (falls back gracefully)
     print_report(rows, args.benchmark)
 
     if args.papers:

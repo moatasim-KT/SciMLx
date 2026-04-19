@@ -45,13 +45,17 @@ See program.md for the external-agent (Mode A) workflow.
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from core.utils import REPO_ROOT
+from core.hpo import _normalize, PARAM_KEYS
 
 # ── Imports (lazy to avoid MLX startup cost when just planning) ───────────────
 
@@ -246,6 +250,55 @@ def _config_to_code(cfg: dict) -> str:
     return "\n".join(lines)
 
 
+def _config_novelty(cfg: dict, existing_vectors: list[np.ndarray],
+                    threshold: float = 0.97) -> bool:
+    """Return True if cfg is sufficiently novel vs. all existing_vectors.
+
+    Uses cosine similarity on normalized config vectors (same space as BayesianHPO).
+    Configs with cosine similarity ≥ threshold to any existing config are rejected
+    as near-duplicates — they probe the same hyperparameter region.
+    """
+    if not existing_vectors:
+        return True
+    v = _normalize(cfg)
+    norm_v = np.linalg.norm(v)
+    if norm_v < 1e-10:
+        return True
+    for ev in existing_vectors:
+        norm_ev = np.linalg.norm(ev)
+        if norm_ev < 1e-10:
+            continue
+        sim = float(np.dot(v, ev) / (norm_v * norm_ev))
+        if sim >= threshold:
+            return False
+    return True
+
+
+def _build_existing_vectors(content: str, done_results: set[str]) -> list[np.ndarray]:
+    """Build config vectors for all experiments already queued or completed.
+
+    Parses the YAML-like content of experiments.yaml and uses results.json
+    done set to collect existing hyperparameter vectors for novelty checking.
+    """
+    import re
+    vectors: list[np.ndarray] = []
+    # Parse experiments.yaml: extract hidden_dim, n_layers, n_modes blocks
+    # Each experiment block is delineated by a `- name:` line
+    blocks = re.split(r"\n- name:", content)
+    for block in blocks[1:]:  # skip preamble
+        cfg: dict = {}
+        for key in ("hidden_dim", "n_layers", "n_modes", "lr"):
+            m = re.search(rf"{key}:\s*([\d.e+-]+)", block)
+            if m:
+                try:
+                    cfg[key] = float(m.group(1))
+                except ValueError:
+                    pass
+        if cfg:
+            vectors.append(_normalize(cfg))
+    return vectors
+
+
 def append_configs_to_experiments(configs: list[dict]) -> int:
     """Append new ExperimentConfig entries to experiments.yaml (gated: smoke-test first)."""
     if not configs:
@@ -257,6 +310,7 @@ def append_configs_to_experiments(configs: list[dict]) -> int:
     # Validate: each config must have required fields and unique name
     from core.utils import done_names
     done = done_names()
+    existing_vectors = _build_existing_vectors(content, done)
     to_add = []
     for cfg in configs:
         if not all(k in cfg for k in ("name", "benchmark", "model", "hidden_dim", "n_layers")):
@@ -268,6 +322,10 @@ def append_configs_to_experiments(configs: list[dict]) -> int:
         if f'name: {cfg["name"]}' in content:
             print(f"  SKIP {cfg['name']} — already in experiments.yaml")
             continue
+        if not _config_novelty(cfg, existing_vectors):
+            print(f"  SKIP {cfg['name']} — near-duplicate of existing config (cosine sim ≥ 0.97)")
+            continue
+        existing_vectors.append(_normalize(cfg))  # avoid adding two near-dupes from same batch
         to_add.append(cfg)
 
     if not to_add:

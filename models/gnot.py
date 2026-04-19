@@ -1,4 +1,5 @@
 """General Neural Operator Transformer (GNOT) for SciML benchmarks.
+# einops used for multi-head reshape ops — clearer than manual reshape+transpose.
 
 Simplified implementation for 1-D and 2-D regular grids using self-attention
 over spatial tokens, with coordinate-based positional encoding.
@@ -11,6 +12,7 @@ Reference:
 import math
 import mlx.core as mx
 import mlx.nn as nn
+from einops import rearrange
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, dims: int, num_heads: int):
@@ -28,17 +30,16 @@ class MultiHeadAttention(nn.Module):
         H = self.num_heads
         d = D // H
 
-        queries = self.query_proj(queries).reshape(B, L, H, d).transpose(0, 2, 1, 3)
-        keys = self.key_proj(keys).reshape(B, S, H, d).transpose(0, 2, 1, 3)
-        values = self.value_proj(values).reshape(B, S, H, d).transpose(0, 2, 1, 3)
+        queries = rearrange(self.query_proj(queries), 'b l (h d) -> b h l d', h=H)
+        keys    = rearrange(self.key_proj(keys),      'b s (h d) -> b h s d', h=H)
+        values  = rearrange(self.value_proj(values),  'b s (h d) -> b h s d', h=H)
 
-        # scores: [B, H, L, S]
         scores = (queries @ keys.transpose(0, 1, 3, 2)) * self.scale
         if mask is not None:
             scores = scores + mask
-        
+
         attn = mx.softmax(scores, axis=-1)
-        out = (attn @ values).transpose(0, 2, 1, 3).reshape(B, L, D)
+        out = rearrange(attn @ values, 'b h l d -> b l (h d)')
         return self.out_proj(out)
 
 class TransformerBlock(nn.Module):
