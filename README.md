@@ -939,6 +939,10 @@ autoresearch-mlx/
 │   │   ├── 3ff8598ac74844fb8ef5c10b0d0517e8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_pino_fix_best.npz
+│   │   ├── 4ca8a3f087664cffb6e89dd89eb5f924/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_h64_l2.log
+│   │   │       └── uno_h64_l2_best.npz
 │   │   ├── 4d95bbd7cc9447e2a98362d265f69b95/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_curriculum_ema_h128_l8_m24.log
@@ -982,6 +986,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── 7f374f9cfe614796abb7b50e32abbad3/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h64_m16_l6.log
+│   │   │       └── fno_h64_m16_l6_best.npz
 │   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
 │   │   │   └── artifacts/
 │   │   │       └── mambano_burgers_h128_l8_h1_best.npz
@@ -1055,10 +1063,18 @@ autoresearch-mlx/
 │   │   ├── ca1b039eecd6409b839b073ab3eb404f/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v4_best.npz
+│   │   ├── df2e9e358269465da4886814ad222d8d/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_h128_l8_adapt.log
+│   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
 │   │   ├── e44104abf0fe40719a1b32a1f305b7fa/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_h64_l1.log
 │   │   │       └── uno_h64_l1_best.npz
+│   │   ├── e4494c64a8af447695620f81bc4aae66/
+│   │   │   └── artifacts/
+│   │   │       ├── wno_h64_lvl3_l4.log
+│   │   │       └── wno_h64_lvl3_l4_best.npz
 │   │   ├── e583018f152f4544bb845bdd9e553d9d/
 │   │   │   └── artifacts/
 │   │   │       └── repro_afno_bias_best.npz
@@ -1316,6 +1332,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── ssno_wave_h64_l4_m16_f1_adapt.log
 │   │   │       └── ssno_wave_h64_l4_m16_f1_adapt_best.npz
+│   │   ├── a8f8bfc3822f4c578f935b0b0542d7d6/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_wave_h64_l8_m24_f1_adapt.log
+│   │   │       └── rfno_wave_h64_l8_m24_f1_adapt_best.npz
 │   │   ├── c562ff4728c746aba70fdd7285aa0984/
 │   │   │   └── artifacts/
 │   │   │       ├── energy_fno_wave_h64_l8_m24_f1.log
