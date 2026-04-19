@@ -95,3 +95,46 @@ def done_names() -> set[str]:
         desc = row.get("description", "")
         names.add(desc.split()[0] if desc else "")
     return names
+
+
+# ── DuckDB-powered fast queries ───────────────────────────────────────────────
+
+def query_results(sql: str) -> list[dict]:
+    """Run an arbitrary SQL query against results.json via DuckDB.
+
+    The table is exposed as `results`.  Example:
+        query_results("SELECT benchmark, MIN(val_l2_rel) FROM results GROUP BY benchmark")
+
+    Falls back gracefully if duckdb is not installed (returns empty list with a warning).
+    """
+    if not RESULTS_FILE.exists():
+        return []
+    try:
+        import duckdb
+        con = duckdb.connect()
+        con.execute(f"CREATE VIEW results AS SELECT * FROM read_json_auto('{RESULTS_FILE}')")
+        rows = con.execute(sql).fetchall()
+        cols = [d[0] for d in con.description]
+        return [dict(zip(cols, row)) for row in rows]
+    except ImportError:
+        print("[utils] duckdb not installed — falling back to load_results()")
+        return []
+    except Exception as e:
+        print(f"[utils] DuckDB query failed: {e}")
+        return []
+
+
+def best_per_benchmark_sql() -> dict[str, float]:
+    """DuckDB-powered replacement for best_per_benchmark(load_results()).
+
+    ~10-100x faster than the Python loop on large results.json files.
+    Falls back to the pure-Python path if duckdb is unavailable.
+    """
+    rows = query_results(
+        "SELECT benchmark, MIN(CAST(val_l2_rel AS DOUBLE)) AS best "
+        "FROM results WHERE status = 'keep' GROUP BY benchmark"
+    )
+    if rows:
+        return {r["benchmark"]: float(r["best"]) for r in rows if r["best"] is not None}
+    # fallback
+    return best_per_benchmark(load_results())

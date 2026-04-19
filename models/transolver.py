@@ -1,4 +1,5 @@
 """Transolver: Transformer Solver with Physics Attention.
+# einops used for multi-head reshape ops — clearer than manual reshape+transpose.
 
 Adapted from PhysicsNeMo (NVIDIA Modulus) Transolver implementation:
   "Transolver: A Fast Transformer Solver for PDEs on General Geometries"
@@ -29,6 +30,7 @@ Benefits:
 import mlx.core as mx
 import mlx.nn as nn
 import math
+from einops import rearrange
 
 
 # ── Physics Attention (1-D structured grid) ───────────────────────────────────
@@ -77,16 +79,13 @@ class PhysicsAttn1d(nn.Module):
         H, S, d = self.n_head, self.slice_num, self.head_dim
 
         # ── Slice assignment ─────────────────────────────────────────────────
-        # [B, N, H*S] → [B, H, N, S]
-        logits = self.to_slice(x).reshape(B, N, H, S).transpose(0, 2, 1, 3)
-        # Soft assignment: each grid point attends over S slices
+        logits = rearrange(self.to_slice(x), 'b n (h s) -> b h n s', h=H)
         A = mx.softmax(logits, axis=-1)           # [B, H, N, S]
 
         # ── Aggregate N grid points → S slice tokens ──────────────────────
-        # QKV computed on all grid points, then grouped
-        q_grid = self.to_q(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)  # [B,H,N,d]
-        k_grid = self.to_k(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)
-        v_grid = self.to_v(x).reshape(B, N, H, d).transpose(0, 2, 1, 3)
+        q_grid = rearrange(self.to_q(x), 'b n (h d) -> b h n d', h=H)
+        k_grid = rearrange(self.to_k(x), 'b n (h d) -> b h n d', h=H)
+        v_grid = rearrange(self.to_v(x), 'b n (h d) -> b h n d', h=H)
 
         # Weighted average: [B,H,S,d] = A^T [B,H,N,S] @ {q,k,v} [B,H,N,d]
         # A: [B,H,N,S] → A^T: [B,H,S,N]
@@ -101,10 +100,8 @@ class PhysicsAttn1d(nn.Module):
         out_s  = mx.matmul(attn, v_s)             # [B, H, S, d]
 
         # ── Broadcast back: S slice tokens → N grid points ────────────────
-        # [B,H,N,S] @ [B,H,S,d] → [B,H,N,d]
         out_grid = mx.matmul(A, out_s)            # [B, H, N, d]
-        # Re-assemble heads: [B, N, D]
-        out = out_grid.transpose(0, 2, 1, 3).reshape(B, N, D)
+        out = rearrange(out_grid, 'b h n d -> b n (h d)')
         return self.out_proj(out)
 
 

@@ -954,6 +954,10 @@ autoresearch-mlx/
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 5cd42e5777d548909041c2da816c4df6/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h256_m16_l4.log
+│   │   │       └── fno_h256_m16_l4_best.npz
 │   │   ├── 66c386387e78416d92d9c2c5c439cba2/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8_adapt.log
@@ -1024,6 +1028,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── c1e1b2c04a4f458a8e3b5bc53d036045/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m16_l4.log
+│   │   │       └── fno_h128_m16_l4_best.npz
 │   │   ├── c67ad2eb9b654fcdb50323264258ce10/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m16_l4.log
@@ -1046,6 +1054,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_ema_h128_l8_m24.log
 │   │   │       └── fno_burgers_ema_h128_l8_m24_best.npz
+│   │   ├── f3256b4b2dd74473ae13761d79e50249/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_curriculum.log
+│   │   │       └── mambano_burgers_curriculum_best.npz
 │   │   ├── facea104fb684955ae97c8d213b26a7a/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8.log
@@ -1223,6 +1235,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
 │   │   │       └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
+│   │   ├── d35710cea6a9470e881f4e8a985e27f2/
+│   │   │   └── artifacts/
+│   │   │       ├── s4d_kdv_h128_l6_p1_f1_r1.log
+│   │   │       └── s4d_kdv_h128_l6_p1_f1_r1_best.npz
 │   │   └── fa8e55dc92e746a68cf779fbc1e87755/
 │   │       └── artifacts/
 │   │           ├── energy_fno_kdv_h128_l8_m24_f1_r1.log

@@ -150,11 +150,19 @@ def _pick_highest_gap_benchmark() -> str:
 
 
 def _run_hpo_batch(benchmark: str, args) -> int:
-    """Run BayesianHPO suggestions for `benchmark`. Returns number of experiments run."""
+    """Run HPO suggestions for `benchmark`. Returns number of experiments run.
+
+    Uses OptunaHPO (TPE + MedianPruner) when optuna is available,
+    falling back to BayesianHPO (GP + EI) otherwise.
+    """
     import time as _t2
     try:
-        from core.hpo import BayesianHPO
-        hpo = BayesianHPO(benchmark)
+        try:
+            from core.hpo import OptunaHPO
+            hpo = OptunaHPO(benchmark)
+        except Exception:
+            from core.hpo import BayesianHPO as _HPO
+            hpo = _HPO(benchmark)
         hpo.load_history()
         hpo_configs = hpo.suggest_top(n=3)
         done = load_done_names()

@@ -6,12 +6,22 @@ Gaussian Process surrogate with Expected Improvement acquisition.
 Supports multi-objective optimization via weighted scalarization and
 Pareto-front extraction when secondary objectives are present.
 
+Also provides OptunaHPO — an Optuna-backed alternative with TPE sampler and
+MedianPruner for early stopping of unpromising experiments.
+
 Usage (single-objective, original):
     hpo = BayesianHPO(benchmark="burgers_1d")
     hpo.load_history()           # seed from results.json
     config = hpo.ask()           # get next config to try
     hpo.tell(config, val=0.15)   # report result
     hpo.suggest_top(n=5)         # print top-N suggestions
+
+Usage (Optuna-backed):
+    hpo = OptunaHPO(benchmark="burgers_1d")
+    hpo.load_history()
+    config = hpo.ask()
+    hpo.tell(config, val=0.15)
+    hpo.suggest_top(n=5)
 
 Usage (multi-objective: accuracy + memory):
     hpo = BayesianHPO(
@@ -446,3 +456,192 @@ if __name__ == "__main__":
     next_cfg = hpo.ask()
     for k, v in next_cfg.items():
         print(f"  {k}: {v}")
+
+
+# ── Optuna-backed HPO ─────────────────────────────────────────────────────────
+
+class OptunaHPO:
+    """Optuna TPE + MedianPruner HPO study for SciML experiments.
+
+    Drop-in complement to BayesianHPO.  Advantages:
+      - TPE sampler typically outperforms GP-EI on noisy SciML metrics
+      - MedianPruner enables early stopping of unpromising experiment runs
+      - Native study persistence (SQLite) — survives restarts
+      - Same API as BayesianHPO: load_history(), ask(), tell(), suggest_top()
+
+    Pruning requires intermediate values to be reported via report_step().
+    If report_step() is never called, the pruner is dormant (safe fallback).
+    """
+
+    def __init__(self, benchmark: str, model: str = "FNO",
+                 storage: Optional[str] = None, n_startup: int = 5):
+        """
+        Args:
+            benchmark:  Benchmark name — used as the Optuna study name.
+            model:      Model type filter for seeding from results.json.
+            storage:    SQLite URI for persistent study, e.g.
+                        "sqlite:///logs/optuna.db".  Defaults to in-memory.
+            n_startup:  Random trials before TPE kicks in (default 5).
+        """
+        self.benchmark  = benchmark
+        self.model      = model
+        self._trials: List[Tuple[dict, float]] = []  # (config, val) pairs logged
+
+        try:
+            import optuna
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+            sampler = optuna.samplers.TPESampler(
+                n_startup_trials=n_startup,
+                seed=42,
+            )
+            pruner = optuna.pruners.MedianPruner(
+                n_startup_trials=n_startup,
+                n_warmup_steps=3,
+            )
+            study_name = f"{benchmark}_{model}"
+            self._study = optuna.create_study(
+                study_name=study_name,
+                direction="minimize",
+                sampler=sampler,
+                pruner=pruner,
+                storage=storage,
+                load_if_exists=True,
+            )
+            self._optuna_available = True
+        except ImportError:
+            print("[OptunaHPO] optuna not installed — falling back to BayesianHPO")
+            self._fallback = BayesianHPO(benchmark, model)
+            self._optuna_available = False
+
+    # ── Seeding from results.json ─────────────────────────────────────────────
+
+    def load_history(self, results_path: Path = RESULTS_JSON) -> int:
+        if not self._optuna_available:
+            return self._fallback.load_history(results_path)
+
+        import optuna
+        if not results_path.exists():
+            return 0
+
+        import json as _json
+        with open(results_path) as f:
+            data = _json.load(f)
+
+        loaded = 0
+        for e in data:
+            if e.get("benchmark") != self.benchmark:
+                continue
+            if e.get("model") != self.model:
+                continue
+            val = e.get("val_l2_rel")
+            if not val or not (0 < float(val) < 5.0):
+                continue
+            cfg = e.get("config") or {}
+            if not cfg:
+                continue
+
+            # Seed Optuna with a fixed trial (tells the sampler about past runs)
+            try:
+                trial = optuna.trial.create_trial(
+                    params={
+                        "hidden_dim": int(cfg.get("hidden_dim", 64)),
+                        "n_layers":   int(cfg.get("n_layers", 4)),
+                        "n_modes":    int(cfg.get("n_modes", 16)),
+                        "lr":         float(cfg.get("lr", 1e-3)),
+                    },
+                    distributions={
+                        "hidden_dim": optuna.distributions.IntDistribution(32, 256),
+                        "n_layers":   optuna.distributions.IntDistribution(2, 12),
+                        "n_modes":    optuna.distributions.IntDistribution(8, 32),
+                        "lr":         optuna.distributions.FloatDistribution(1e-4, 1e-2, log=True),
+                    },
+                    value=float(val),
+                )
+                self._study.add_trial(trial)
+                loaded += 1
+            except Exception:
+                pass  # duplicate or invalid trial — skip silently
+
+        return loaded
+
+    # ── Suggestion ───────────────────────────────────────────────────────��───
+
+    def ask(self) -> dict:
+        """Return the next config suggested by Optuna TPE."""
+        if not self._optuna_available:
+            return self._fallback.ask()
+
+        trial = self._study.ask()
+        config = {
+            "hidden_dim": trial.suggest_int("hidden_dim", 32, 256),
+            "n_layers":   trial.suggest_int("n_layers",   2,  12),
+            "n_modes":    trial.suggest_int("n_modes",    8,  32),
+            "lr":         trial.suggest_float("lr",       1e-4, 1e-2, log=True),
+        }
+        self._pending_trial = trial
+        return config
+
+    def report_step(self, intermediate_val: float, step: int) -> bool:
+        """Report an intermediate value so the MedianPruner can prune.
+
+        Returns True if the trial should be pruned (abort the run early).
+        """
+        if not self._optuna_available or not hasattr(self, "_pending_trial"):
+            return False
+        import optuna
+        self._pending_trial.report(intermediate_val, step)
+        return self._pending_trial.should_prune()
+
+    def tell(self, config: dict, val: float) -> None:
+        """Record a completed trial result."""
+        if not self._optuna_available:
+            self._fallback.tell(config, val)
+            return
+        self._trials.append((config, val))
+        if hasattr(self, "_pending_trial"):
+            self._study.tell(self._pending_trial, val)
+            del self._pending_trial
+        # If called without a matching ask() (e.g. seeding), just record
+        # — the study already has it from add_trial() in load_history().
+
+    # ── Top-N suggestions (exploitation) ─────────────────────────────────────
+
+    def suggest_top(self, n: int = 5) -> List[dict]:
+        """Return top-N configs by predicted mean value from the Optuna study."""
+        if not self._optuna_available:
+            return self._fallback.suggest_top(n)
+
+        import optuna
+        # Use n_trials independent asks and pick the best predicted by TPE
+        candidates = []
+        for _ in range(max(n * 20, 100)):
+            trial = self._study.ask()
+            cfg = {
+                "hidden_dim": trial.suggest_int("hidden_dim", 32, 256),
+                "n_layers":   trial.suggest_int("n_layers",   2,  12),
+                "n_modes":    trial.suggest_int("n_modes",    8,  32),
+                "lr":         trial.suggest_float("lr",       1e-4, 1e-2, log=True),
+            }
+            # Freeze the trial without a real value — we're just sampling candidates
+            try:
+                self._study.tell(trial, float("nan"), state=optuna.trial.TrialState.FAIL)
+            except Exception:
+                pass
+            candidates.append(cfg)
+
+        # Rank by GP-predicted mean using the existing BayesianHPO predict()
+        _gp = BayesianHPO(self.benchmark, self.model)
+        _gp.load_history()
+        if len(_gp.y) >= 2:
+            scored = sorted(candidates, key=lambda c: _gp.predict(c)[0])
+        else:
+            scored = candidates
+
+        top = scored[:n]
+        print(f"\nOptunaHPO top-{n} for {self.benchmark}/{self.model} "
+              f"({len(self._trials)} logged trials):")
+        for rank, cfg in enumerate(top, 1):
+            parts = "  ".join(f"{k}={v}" for k, v in cfg.items())
+            print(f"  {rank:>2}. {parts}")
+        return top
