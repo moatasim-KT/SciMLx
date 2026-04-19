@@ -608,39 +608,66 @@ class OptunaHPO:
     # ── Top-N suggestions (exploitation) ─────────────────────────────────────
 
     def suggest_top(self, n: int = 5) -> List[dict]:
-        """Return top-N configs by predicted mean value from the Optuna study."""
+        """Return top-N configs ranked by GP posterior mean.
+
+        Samples candidates using the TPE sampler from a *temporary* study
+        (never commits to the real study) then ranks them with BayesianHPO's
+        GP so no fake FAIL trials pollute the live study.
+        """
         if not self._optuna_available:
             return self._fallback.suggest_top(n)
 
         import optuna
-        # Use n_trials independent asks and pick the best predicted by TPE
-        candidates = []
-        for _ in range(max(n * 20, 100)):
-            trial = self._study.ask()
-            cfg = {
-                "hidden_dim": trial.suggest_int("hidden_dim", 32, 256),
-                "n_layers":   trial.suggest_int("n_layers",   2,  12),
-                "n_modes":    trial.suggest_int("n_modes",    8,  32),
-                "lr":         trial.suggest_float("lr",       1e-4, 1e-2, log=True),
-            }
-            # Freeze the trial without a real value — we're just sampling candidates
+
+        # Sample candidates from a fresh in-memory study seeded with same history.
+        # This keeps the live study clean — no fake FAILed trials.
+        _scratch = optuna.create_study(
+            direction="minimize",
+            sampler=optuna.samplers.TPESampler(seed=42),
+        )
+        for cfg, val in self._trials:
             try:
-                self._study.tell(trial, float("nan"), state=optuna.trial.TrialState.FAIL)
+                _scratch.add_trial(optuna.trial.create_trial(
+                    params={k: cfg[k] for k in ("hidden_dim", "n_layers", "n_modes", "lr")},
+                    distributions={
+                        "hidden_dim": optuna.distributions.IntDistribution(32, 256),
+                        "n_layers":   optuna.distributions.IntDistribution(2, 12),
+                        "n_modes":    optuna.distributions.IntDistribution(8, 32),
+                        "lr":         optuna.distributions.FloatDistribution(1e-4, 1e-2, log=True),
+                    },
+                    value=val,
+                ))
             except Exception:
                 pass
-            candidates.append(cfg)
 
-        # Rank by GP-predicted mean using the existing BayesianHPO predict()
+        candidates: list[dict] = []
+        seen: set[tuple] = set()
+        n_sample = max(n * 40, 200)
+        for _ in range(n_sample):
+            t = _scratch.ask()
+            cfg = {
+                "hidden_dim": t.suggest_int("hidden_dim", 32, 256),
+                "n_layers":   t.suggest_int("n_layers",   2,  12),
+                "n_modes":    t.suggest_int("n_modes",    8,  32),
+                "lr":         round(t.suggest_float("lr", 1e-4, 1e-2, log=True), 6),
+            }
+            # Deduplicate at integer level to avoid showing identical configs
+            key = (cfg["hidden_dim"], cfg["n_layers"], cfg["n_modes"])
+            if key not in seen:
+                seen.add(key)
+                candidates.append(cfg)
+            _scratch.tell(t, state=optuna.trial.TrialState.FAIL)  # only hits scratch
+
+        # Rank by GP posterior mean — BayesianHPO's GP is the oracle here
         _gp = BayesianHPO(self.benchmark, self.model)
         _gp.load_history()
         if len(_gp.y) >= 2:
-            scored = sorted(candidates, key=lambda c: _gp.predict(c)[0])
-        else:
-            scored = candidates
+            candidates = sorted(candidates, key=lambda c: _gp.predict(c)[0])
 
-        top = scored[:n]
+        top = candidates[:n]
+        n_obs = len(self._study.trials)
         print(f"\nOptunaHPO top-{n} for {self.benchmark}/{self.model} "
-              f"({len(self._trials)} logged trials):")
+              f"({n_obs} study trials):")
         for rank, cfg in enumerate(top, 1):
             parts = "  ".join(f"{k}={v}" for k, v in cfg.items())
             print(f"  {rank:>2}. {parts}")

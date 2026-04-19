@@ -124,17 +124,23 @@ def query_results(sql: str) -> list[dict]:
         return []
 
 
-def best_per_benchmark_sql() -> dict[str, float]:
-    """DuckDB-powered replacement for best_per_benchmark(load_results()).
+def best_per_benchmark_sql(threshold: int = 500) -> dict[str, float]:
+    """Return best val_l2_rel per benchmark, using DuckDB above `threshold` rows.
 
-    ~10-100x faster than the Python loop on large results.json files.
-    Falls back to the pure-Python path if duckdb is unavailable.
+    DuckDB connection setup costs ~50ms, so for small result sets the Python
+    loop is faster.  Above `threshold` experiments DuckDB is typically 5-20x
+    faster.  Falls back to the pure-Python path if duckdb is unavailable or
+    the result set is below threshold.
     """
-    rows = query_results(
+    # Use Python path for small files (avoids ~50ms DuckDB startup overhead)
+    rows = load_results()
+    if len(rows) < threshold:
+        return best_per_benchmark(rows)
+
+    sql_rows = query_results(
         "SELECT benchmark, MIN(CAST(val_l2_rel AS DOUBLE)) AS best "
         "FROM results WHERE status = 'keep' GROUP BY benchmark"
     )
-    if rows:
-        return {r["benchmark"]: float(r["best"]) for r in rows if r["best"] is not None}
-    # fallback
-    return best_per_benchmark(load_results())
+    if sql_rows:
+        return {r["benchmark"]: float(r["best"]) for r in sql_rows if r["best"] is not None}
+    return best_per_benchmark(rows)

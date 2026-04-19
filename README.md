@@ -1009,6 +1009,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
 │   │   │       └── uno_burgers_h128_l8_m24_best.npz
+│   │   ├── ae8edfc6c83f45bfa27079a1cc97a431/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h64_m16_l6.log
+│   │   │       └── fno_h64_m16_l6_best.npz
 │   │   ├── b2d3c64c24cc4903be3b8d57b218e23c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8.log
