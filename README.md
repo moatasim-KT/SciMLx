@@ -288,6 +288,14 @@ autoresearch-mlx/
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 795692bf22524f1ca68cefc5331b185c/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_curriculum_adapt.log
+│   │   │       └── mambano_burgers_curriculum_adapt_best.npz
+│   │   ├── 7a4afee8db27401cb6d44d35137ce91b/
+│   │   │   └── artifacts/
+│   │   │       ├── mambano_burgers_curriculum.log
+│   │   │       └── mambano_burgers_curriculum_best.npz
 │   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
 │   │   │   └── artifacts/
 │   │   │       └── mambano_burgers_h128_l8_h1_best.npz
@@ -429,6 +437,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_kdv_h128_m24_l10_f1_adapt.log
 │   │   │       └── rfno_kdv_h128_m24_l10_f1_adapt_best.npz
+│   │   ├── 6ec949c9530e453e9cf8663b08968a99/
+│   │   │   └── artifacts/
+│   │   │       ├── tfno_kdv_h128_l8_m24_f1_adapt.log
+│   │   │       └── tfno_kdv_h128_l8_m24_f1_adapt_best.npz
 │   │   ├── 72998ac24aff4c4fa01764967d39643a/
 │   │   │   └── artifacts/
 │   │   │       ├── rtfno_kdv_h128_l10_m24_f1_r2.log
