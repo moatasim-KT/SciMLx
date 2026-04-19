@@ -72,8 +72,16 @@ def parse_log_file(log_path: Path) -> Dict[str, Any]:
             elif line.startswith("diag_"):
                 key = line.split(":")[0].strip()
                 try:
-                    val = float(line.split(":")[1].strip())
-                    results["diag"][key] = val
+                    val_str = line.split(":")[1].strip()
+                    if "=" in val_str:
+                        # Parse multi-value signature: "key: v1=X v2=Y"
+                        parts = val_str.split()
+                        for p in parts:
+                            if "=" in p:
+                                pk, pv = p.split("=", 1)
+                                results["diag"][f"{key}_{pk}"] = float(pv)
+                    else:
+                        results["diag"][key] = float(val_str)
                 except (ValueError, IndexError):
                     pass
             elif line.startswith("inspect_id:"):

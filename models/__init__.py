@@ -13,10 +13,12 @@ from .neural_ode import NeuralODE1d, UniversalDE1d, LatentODE1d
 from .ssno import SSNO1d
 
 from .pacmann import PACMANN
+from .vsmno import VSMNO2d
 
 from .mamba_no  import MambaNO1d
 __all__ = [
 	"PACMANN",
+	"VSMNO2d",
 	"PINN",
 	# AFNO/FFNO family
 	"AFNO1d",

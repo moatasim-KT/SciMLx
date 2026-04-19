@@ -26,23 +26,23 @@ modes, SOTA loss (H1/spectral), longer budget.
 
 ### KdV 1D (soliton transport, ETDRK4)
 
-| Model                | Relative L2 | Notes                   |
-|----------------------|-------------|-------------------------|
-| RFNO (paper)         | ~0.010      | Residual FNO baseline   |
-| **This repo (best)** | **0.00202** | RFNO h=128 — beats SOTA |
+| Model                | Relative L2 | Notes                    |
+|----------------------|-------------|--------------------------|
+| RFNO (paper)         | ~0.010      | Residual FNO baseline    |
+| **This repo (best)** | **0.005748** | RFNO h=128 — beats SOTA |
 
-**Status:** SOTA beat (5× below published RFNO baseline).
+**Status:** SOTA beat. Registry champion: RFNO, exp `rfno_kdv_h128_m24_l8`.
 
 ---
 
 ### Wave 1D (u_tt = c²u_xx)
 
-| Model                | Relative L2 | Notes                       |
-|----------------------|-------------|-----------------------------|
-| FNO baseline         | ~0.005      | Estimated                   |
-| **This repo (best)** | **0.00099** | RFNO h=128 — beats SOTA     |
+| Model                | Relative L2 | Notes                    |
+|----------------------|-------------|--------------------------|
+| FNO baseline         | ~0.005      | Estimated                |
+| **This repo (best)** | **0.001662** | FNO — beats SOTA 3×     |
 
-**Status:** SOTA beat (5× below FNO baseline).
+**Status:** SOTA beat. Registry champion: FNO, exp `time_deeponet_wave_h128_l4_f1_adapt`.
 
 ---
 
@@ -57,8 +57,10 @@ modes, SOTA loss (H1/spectral), longer budget.
 
 ## 2D Benchmarks
 
-> **2D hard constraints (Apple Silicon unified memory):**
-> `hidden_dim ≤ 32`, `n_layers ≤ 4`, `n_modes ≤ 12`, `budget_s ≥ 480`
+> **2D constraints (Apple Silicon unified memory):**
+> Hard limit (raises ValueError): `hidden_dim < 64`, `n_layers < 8`
+> Recommended practice: `hidden_dim = 32`, `n_layers ≤ 4`, `n_modes ≤ 12`
+> Budget floor: `budget_s ≥ 3600`
 
 ### Darcy Flow 2D (steady-state -∇·(a∇u)=f, N=64×64)
 
@@ -67,10 +69,10 @@ modes, SOTA loss (H1/spectral), longer budget.
 | FNO (paper)          | 0.0108      | Li et al. 2020, 12 modes, width 32   |
 | GNOT (paper)         | 0.0041      | Hao et al. 2023                      |
 | WNO                  | ~0.015      |                                      |
-| **This repo (best)** | **0.1041**  | FEDONet2D h=32                       |
+| **This repo (best)** | **0.2735**  | FEDONet2D h=32 (registry champion)   |
 
-**Gap to SOTA:** ~25× vs GNOT. 2D constraints are the primary limiter; hybrid
-decoder models (FEDONet, HANO) outperform plain FNO at this memory ceiling.
+**Gap to SOTA:** ~67× vs GNOT. Registry champion: FEDONet2D h=32 l=4 → val=0.2735.
+2D memory constraints (hidden_dim<64, n_layers<8) are the primary limiter.
 
 ---
 
@@ -163,13 +165,15 @@ Try physics-informed losses and architecture families with symmetry constraints.
 
 ## Target Milestones
 
-| Benchmark | Current Best | Next Target | Path |
-|-----------|-------------|-------------|------|
-| burgers_1d | 0.1468 | 0.05 | GNOT + onecycle LR + spectral loss |
-| darcy_2d | 0.1041 | 0.02 | FEDONet2D + H1 loss + more budget |
-| ns_2d | 0.0143 | 0.008 | AFNO architecture |
-| kdv_1d | 0.0020 | beat current | already beating SOTA |
-| wave_1d | 0.0010 | beat current | already beating SOTA |
+Registry best values from `model_registry.json`. Targets from `core/utils.py`.
+
+| Benchmark | Registry Best | SOTA Target | Gap | Next Action |
+|-----------|--------------|-------------|-----|-------------|
+| burgers_1d | 0.1468 (FNO) | 0.0031 (GNOT) | 47× | Transolver, GNOT, H1 loss |
+| darcy_2d | 0.2735 (FEDONet2D) | 0.0041 (GNOT) | 67× | AttentionEnhancedFNO2D; longer budget |
+| ns_2d | 0.0143 (FNO) | 0.0128 (FNO) | 1.1× | HPO fine-tune at lr=1e-4 |
+| kdv_1d | 0.005748 (RFNO) | 0.010 | ✅ Beat | Maintain; try GNOT for further gains |
+| wave_1d | 0.001662 (FNO) | 0.005 | ✅ Beat 3× | Benchmark effectively solved |
 
 ---
 

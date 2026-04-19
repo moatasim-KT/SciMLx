@@ -1,6 +1,6 @@
 """Autonomous SciML experiment runner.
 
-Iterates through the experiment queue in experiments.py, skips anything
+Iterates through the experiment queue in experiments.yaml, skips anything
 already recorded in results.json, runs each via subprocess, and logs results.
 
 Usage:
@@ -73,8 +73,10 @@ MEMORY_ESTIMATE_1D_MB = 2500   # burgers, kdv, wave, euler
 MEMORY_ESTIMATE_2D_MB = 5000   # darcy, ns, swe, allen_cahn, ns_hre
 
 BENCHMARKS_2D = {
-    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d",
+    # Must stay in sync with the protected set in core/research_plugins.py build()
+    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d",
     "elasticity_2d", "wavebench_2d", "pdebench_2d", "multiphysics_2d",
+    "radiative_2d",
 }
 
 # Minimum training budgets (seconds).  Shorter experiments are upgraded to
@@ -827,16 +829,29 @@ def main() -> None:
             with _baselines_lock:
                 baseline_val = baselines.get(exp.benchmark, float("inf"))
 
+        _critique = ""
         if val is None:
             status = "crash"
             crash_type = results.get("crash_type", "Unknown")
             wprint(f"  RESULT: CRASH  [{crash_type}]")
+            _critique = f"Architecture discovery halted by {crash_type}."
         else:
             improved = val < baseline_val
             status   = "keep" if improved else "discard"
             delta    = (baseline_val - val) / baseline_val * 100 if baseline_val < float("inf") else 0
             marker   = f"↑ NEW BEST  (+{delta:.1f}%)" if improved else f"↓ no improvement"
             wprint(f"  RESULT: val_l2_rel = {val:.6f}   {marker}")
+
+            try:
+                from core.hypothesis import HypothesisEngine
+                _reflection = HypothesisEngine().suggest_intervention(exp.benchmark, val, results.get("diag", {}))
+                _critique = _reflection.get("rationale", "No specific critique.")
+                if "paper_ref" in _reflection:
+                    _critique += f" [Grounding: {_reflection['paper_ref']}]"
+                wprint(f"  CRITIQUE: {_critique[:120]}...")
+            except Exception as _refl_err:
+                _critique = f"Reflection error: {_refl_err}"
+
             if improved:
                 with _baselines_lock:
                     baselines[exp.benchmark] = val
@@ -859,6 +874,7 @@ def main() -> None:
                     (f"crash:{results['crash_type']} " if results.get("crash_type") else "")
                     + (results.get("inspect_id") or "")
                     + (" " + results.get("_retry_tag", "") if results.get("_retry_tag") else "")
+                    + f" | Critique: {_critique}"
                 ),
                 diag=results.get("diag", {}),
             )
@@ -873,6 +889,7 @@ def main() -> None:
             "hypothesis":       exp.rationale or "—",
             "action":           f"completed {exp.name}: {exp.short()}",
             "expected_outcome": exp.expected or None,
+            "critique":         _critique,
             "outcome": (
                 f"val_l2_rel={val:.6f} status={status}"
                 if val is not None
@@ -883,6 +900,13 @@ def main() -> None:
 
         if args.commit and status == "keep":
             git_commit_result(exp, val)
+
+        # ── Brain Distillation: Evolve RESEARCH_BRAIN.md ──────────────────────
+        try:
+            from core.brain_distiller import distill
+            distill()
+        except Exception as _distill_err:
+            wprint(f"  [brain] Distillation failed: {_distill_err}")
 
         return exp, results, val, mem_gb, status
 

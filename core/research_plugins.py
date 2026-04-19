@@ -3,6 +3,13 @@ import mlx.core as mx
 import inspect
 from typing import Callable, Dict, Any, Optional, Type, List
 
+# Must stay in sync with BENCHMARKS_2D in autorun.py.
+_2D_BENCHMARKS = frozenset({
+    "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d",
+    "elasticity_2d", "wavebench_2d", "pdebench_2d", "multiphysics_2d",
+    "radiative_2d",
+})
+
 # ── Model Registry ────────────────────────────────────────────────────────────
 
 class ModelRegistry:
@@ -20,9 +27,7 @@ class ModelRegistry:
         return _decorator
 
     def build(self, name: str, benchmark: str = "", **kwargs) -> nn.Module:
-        # Safety constraint: 2D benchmark model size limits
-        _2d_benchmarks = {"darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "ns_hre_2d", "mhd_2d"}
-        if benchmark in _2d_benchmarks:
+        if benchmark in _2D_BENCHMARKS:
             hidden = kwargs.get("hidden_dim", 64)
             layers = kwargs.get("n_layers", 4)
             if hidden >= 64 or layers >= 8:

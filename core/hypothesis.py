@@ -208,31 +208,31 @@ class HypothesisEngine:
         n_layers = best_config.get("n_layers", 8)
         n_modes = best_config.get("n_modes", 24)
 
-        # If RFNO not yet tried, recommend it for depth stability
+        # ── 1. HPO & Depth Stability ──────────────────────────────────────────
         if "RFNO" not in tried_models:
-            suggestions.append(("RFNO", "Pre-LN residuals unlock deeper stacks (l>=10)"))
+            suggestions.append(("RFNO", "Pre-LN residuals unlock deeper stacks (l>=10) for better high-freq capture."))
 
-        # If best is FNO and we're not near SOTA, try increasing depth by 2
-        if best_model == "FNO" and best_val > 0.05 and n_layers < 10:
-            suggestions.append(
-                (best_model, f"Increment depth l={n_layers}→{n_layers+2} (step-budget permitting)")
-            )
+        # ── 2. Scientific Architecture Discovery (Mashups) ────────────────────
+        plateau = self.detect_plateau(benchmark)
+        if plateau.is_stuck:
+            # Benchmark is structurally plateaued — suggest a hybrid mashup
+            if "MambaNO" not in tried_models:
+                suggestions.append(("MambaNO", "Hybrid Discovery: Integrate Mamba state-space layers for long-range temporal consistency in Burgers/KdV."))
+            elif "Transolver" not in tried_models:
+                suggestions.append(("Transolver", "Hybrid Discovery: Use physics-aware attention slices to bypass spectral resolution limits."))
+            else:
+                # Novel Mashup suggestion
+                suggestions.append((f"{best_model}_Hybrid", f"Novel Mashup: Combine {best_model} spectral blocks with windowed attention to resolve persistent high-freq error ({plateau.best_val:.4f})."))
 
-        # If best is RFNO and val is still high, try more modes
-        if best_model == "RFNO" and best_val > 0.05 and n_modes < 32:
-            suggestions.append(
-                (best_model, f"Increment modes m={n_modes}→{n_modes+4} for finer spectral resolution")
-            )
-
-        # If plateau, try H1 loss
+        # ── 3. Loss Synthesis & Physics Guiding ───────────────────────────────
         if best_val < 0.25 and best_val > 0.01:
             suggestions.append(
-                (best_model, "Apply H1 Sobolev loss (--loss h1) to target derivative errors")
+                (best_model, "Loss Synthesis: Switch to adaptive Sobolev (H1_adaptive) to penalize gradient drift without manual alpha tuning.")
             )
 
-        # If no UNO tried for 2D benchmarks
-        if "2d" in benchmark and "UNO" not in tried_models:
-            suggestions.append(("UNO", "U-shaped encoder-decoder for multi-scale 2D features"))
+        # ── 4. Scale Up ───────────────────────────────────────────────────────
+        if best_val > 0.1 and not plateau.is_stuck:
+            suggestions.append((best_model, f"Scale Up: Increment modes m={n_modes}→{n_modes+8} and hidden_dim to resolve capacity bottleneck."))
 
         return suggestions[:4]  # cap at 4
 

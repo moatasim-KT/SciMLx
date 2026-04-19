@@ -26,19 +26,23 @@ for d in [LOGS_DIR, TELEMETRY_DIR, SENTINEL_DIR, FIGS_DIR]:
 # ── SOTA targets ──────────────────────────────────────────────────────────────
 
 SOTA: dict[str, float] = {
-    # prepare.py benchmarks
-    "burgers_1d":       0.0149,
-    "darcy_2d":         0.0108,
-    "ns_2d": 0.0128,
-    # benchmarks_ext.py
-    "kdv_1d":           0.010,
-    "wave_1d":          0.005,
-    "ns_2d":        0.0128,
-    # simulations/ (high-fidelity)
-    "euler_1d":         0.015,   # smooth subsonic Euler (multi-channel)
-    "swe_2d":           0.002,   # linearized gravity waves (analytic GT)
-    "allen_cahn_2d":    0.020,   # phase-field coarsening (Geneva & Zabaras 2022)
-    "ns_hre_2d":        0.070,   # Li et al. 2020 Re=1000 (FNO Table 4)
+    # 1D benchmarks
+    "burgers_1d":       0.0031,  # GNOT (Hao et al. 2023) — tightest published
+    "kdv_1d":           0.010,   # RFNO (estimated)
+    "wave_1d":          0.005,   # FNO (estimated)
+    "euler_1d":         0.003,   # estimated for smooth subsonic multi-channel
+    "burgers_nu_001":   0.080,   # estimated for near-inviscid shocks
+    # 2D benchmarks
+    "darcy_2d":         0.0041,  # GNOT (Hao et al. 2023) — tightest published
+    "ns_2d":            0.0128,  # Li et al. 2021 FNO Table 1
+    "ns_hre_2d":        0.050,   # estimated Re=1000 target
+    "swe_2d":           0.015,   # FNO baseline (estimated)
+    "allen_cahn_2d":    0.080,   # estimated phase-field target
+    "elasticity_2d":    0.010,   # estimated linear elasticity target
+    "wavebench_2d":     0.015,   # WaveBench baseline (estimated)
+    "pdebench_2d":      0.005,   # PDEBench baseline (estimated)
+    "mhd_2d":           0.050,   # estimated MHD target
+    "multiphysics_2d":  0.200,   # estimated multi-physics baseline
 }
 
 # ── results.tsv helpers ───────────────────────────────────────────────────────

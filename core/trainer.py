@@ -2,6 +2,7 @@
 
 import time
 import math
+import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
 from mlx.optimizers import AdamW
@@ -194,9 +195,18 @@ class Trainer:
                 t_now2 = time.time()
                 dt_ms = (t_now2 - t_last_log) / 20 * 1000
                 remaining = max(0.0, self.time_budget - (t_now2 - t_start))
-                print(f"step {total_steps:05d} ({progress*100:.1f}%) | loss: {loss.item():.6f} | "
+                
+                _recent_losses = [p[1] for p in self._loss_history[-20:]]
+                _loss_volatility = (np.std(_recent_losses) / (np.mean(_recent_losses) + 1e-8)
+                                    if len(_recent_losses) > 1 else 0.0)
+
+                print(f"step {total_steps:05d} ({progress*100:.1f}%) | loss: {loss_val:.6f} | "
                       f"lr: {self.optimizer.lr:.2e} | gnorm: {current_gnorm:.3f} | "
                       f"dt: {dt_ms:.0f}ms | remaining: {remaining:.0f}s", flush=True)
+                
+                if total_steps % 100 == 0:
+                    print(f"diag_stability_signature: volatility={_loss_volatility:.4f} gnorm_max={max_grad_norm:.3f}", flush=True)
+                
                 t_last_log = t_now2
 
                 # VRAM guard + live telemetry file every 20 steps

@@ -65,6 +65,7 @@ who want to explore many architectures and hyperparameters systematically on a M
 - Apple Silicon Mac (M1 / M2 / M3 / M4)
 - Python 3.10–3.13
 - [`uv`](https://github.com/astral-sh/uv) package manager
+- ~5 GB disk space (PyTorch is a hard dependency for data utilities; MLX handles all training)
 
 ```bash
 # Install uv (if not already installed)
@@ -244,7 +245,7 @@ compute "SOTA gap" — how far the current best is from the published state of t
 | `GNOT` | Graph Neural Operator Transformer | — |
 | `GNOT_Axial2d` | GNOT with axial attention | — |
 | `Transolver` / `Transolver2D` | Physics-slice attention | Wu et al. 2024 |
-| `HANO` / `HANO2D` | Hierarchical Attention Neural Operator | — |
+| `HANO2D` | Hierarchical Attention Neural Operator (2D only) | — |
 
 ### DeepONet Family
 
@@ -264,6 +265,8 @@ compute "SOTA gap" — how far the current best is from the published state of t
 | `PINN` | Physics-Informed Neural Network (coordinate MLP) |
 | `KAN` | Kolmogorov-Arnold Network |
 | `cPIKAN` | Chebyshev polynomial KAN for physics |
+| `PACMANN` | Scaffold-generated stub (placeholder architecture; replace operator blocks before use) |
+| `VSMNO2D` | Variational Spectral Mixture NO — dual `SpectralConv2d` branches with learned mixture weights |
 
 ---
 
@@ -320,56 +323,74 @@ The full set of fields supported in `experiments.yaml`:
 | `hidden_dim` | int | 64 | Channel width |
 | `n_layers` | int | 4 | Number of operator blocks |
 | `n_modes` | int | 16 | Fourier modes (1D) or max modes per dim (2D) |
-| `n_levels` | int | 4 | Hierarchy levels (HANO, UNO) |
+| `n_levels` | int | 3 | Hierarchy levels (HANO, UNO) |
 | `n_head` | int | 4 | Attention heads (GNOT, Transolver) |
 | `slice_num` | int | 32 | Physics slices (Transolver) |
 | `lr` | float | 1e-3 | Initial learning rate |
-| `batch_size` | int | 32 | Training batch size |
+| `batch_size` | int | 64 | Training batch size |
 | `grad_clip` | float | 1.0 | Gradient clipping norm |
 | `loss_type` | str | `l2_rel` | Loss function key |
 | `h1_alpha` | float | 0.1 | H1 gradient penalty weight |
 | `augment` | bool | false | Random flip/roll data augmentation |
 | `curriculum` | bool | false | Curriculum: start with easier samples |
 | `curriculum_epochs` | int | 10 | Epochs before full difficulty |
-| `budget_s` | int | 300 | Training time budget in seconds |
+| `budget_s` | int | 1200 | Training time budget in seconds (raised to budget floor by autorun.py) |
 | `lr_schedule` | str | `warmup_cosine` | `warmup_cosine`, `cosine`, `onecycle`, `none` |
-| `ema_decay` | float | 0.999 | EMA weight decay |
+| `ema_decay` | float | 0.0 | EMA decay (0 = disabled; set to 0.999 to enable) |
 | `patience` | int | 5 | Early-stop patience (in eval intervals) |
-| `snapshot_ensemble` | bool | false | Average N checkpoint predictions |
+| `snapshot_ensemble` | int | 0 | Number of snapshots to average (0 = disabled) |
 | `resume` | bool | false | Resume from champion checkpoint |
 | `resume_from` | str | null | Checkpoint path or `champion:<benchmark>` |
 | `save_ckpt` | bool | true | Save checkpoint after training |
 | `seed` | int | 42 | Global random seed |
+| `pino_lambda` | float | 0.0 | PINO physics-loss weight |
+| `refine_grid` | bool | false | Adaptive grid refinement |
+| `cheb_degree` | int | 5 | Chebyshev degree for cPIKAN |
+| `curriculum_epochs` | int | 0 | Curriculum ramp epochs (requires `curriculum: true`) |
+| `parent_name` | str | — | Name of parent experiment (lineage tracking) |
+| `expected` | str | — | Expected val_l2_rel range (informational) |
 | `rationale` | str | — | Human-readable justification |
-| `paper_ref` | str | — | Literature reference |
+| `paper_ref` | str | — | Paper ID from `docs/papers/*.yaml` |
 | `priority` | int | 5 | Queue priority (1=highest) |
 
 ### 2D Memory Safety Limits
 
-Enforced at `ModelRegistry.build()` for all 2D benchmarks:
+Enforced at `ModelRegistry.build()` for all 2D benchmarks (raises `ValueError`):
 
-- `hidden_dim < 64` (use 32 for most 2D runs)
-- `n_layers < 8` (use ≤ 4 for 2D)
+- **Hard limit**: `hidden_dim < 64` and `n_layers < 8`
+- **Recommended practice**: `hidden_dim = 32`, `n_layers ≤ 4` to avoid OOM on 16 GB devices
 
 ### Budget Floors (enforced by `autorun.py`)
 
 - 1D benchmarks: ≥ 1800 seconds
 - 2D benchmarks: ≥ 3600 seconds
 
+> **Note:** These are hard-coded constants — not configurable via CLI. To change them,
+> edit `BUDGET_FLOOR_1D` / `BUDGET_FLOOR_2D` in `autorun.py` lines 82–83.
+
 ### SOTA Reference Targets
 
+Targets used by `analyze.py` and `auto_suggest.py` for gap calculations. Source: `core/utils.py`.
+
 ```python
-# from core/utils.py
 SOTA = {
-    "burgers_1d":     0.0149,
-    "darcy_2d":       0.0108,
-    "ns_2d":          0.0128,
-    "kdv_1d":         0.010,
-    "wave_1d":        0.005,
-    "euler_1d":       0.015,
-    "swe_2d":         0.002,
-    "allen_cahn_2d":  0.020,
-    "ns_hre_2d":      0.070,
+    # 1D
+    "burgers_1d":      0.0031,  # GNOT (Hao et al. 2023)
+    "kdv_1d":          0.010,   # estimated
+    "wave_1d":         0.005,   # estimated
+    "euler_1d":        0.003,   # estimated
+    "burgers_nu_001":  0.080,   # estimated
+    # 2D
+    "darcy_2d":        0.0041,  # GNOT (Hao et al. 2023)
+    "ns_2d":           0.0128,  # Li et al. 2021
+    "ns_hre_2d":       0.050,   # estimated
+    "swe_2d":          0.015,   # estimated
+    "allen_cahn_2d":   0.080,   # estimated
+    "elasticity_2d":   0.010,   # estimated
+    "wavebench_2d":    0.015,   # estimated
+    "pdebench_2d":     0.005,   # estimated
+    "mhd_2d":          0.050,   # estimated
+    "multiphysics_2d": 0.200,   # estimated
 }
 ```
 
@@ -463,7 +484,7 @@ without any human input.
 uv run autorun.py --auto --commit --max-auto-experiments 50 --max-auto-time 86400
 
 # Dry run: see what would be queued without executing
-uv run auto_suggest.py --benchmark burgers_1d --top-k 5
+uv run auto_suggest.py --benchmark burgers_1d --top 5
 
 # Run one AI agent cycle (inspect/modify experiments.yaml only)
 uv run agent_loop.py
@@ -594,12 +615,29 @@ open http://localhost:8000
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/` | Web dashboard UI |
-| `GET` | `/api/results` | All results from `results.json` |
-| `POST` | `/api/inject` | Inject new experiments without restarting autorun |
-| `POST` | `/api/priority` | Override experiment priorities |
-| `GET` | `/figs/<name>` | Diagnostic plot images |
-| `GET` | `/logs/<name>` | Raw experiment log files |
+| `GET` | `/` | Web dashboard UI (serves `dashboard/ui/dashboard.html`) |
+| `GET` | `/api/experiments` | Full experiment lineage list |
+| `GET` | `/api/experiment/{exp_id}` | Single experiment detail + inspect URL if PNG exists |
+| `GET` | `/api/lineage` | DAG as `{"nodes": [...], "links": [...]}` |
+| `GET` | `/api/status` | Live VRAM, progress, loss history, active runs, pause state |
+| `GET` | `/api/sota` | Per-benchmark SOTA gap ratios `{"sota", "our_best", "ratio", "beats_sota"}` |
+| `GET` | `/api/logs` | List of available log file stems |
+| `GET` | `/api/logs/{exp_name}?tail=300` | Log tail (`total_lines`, `lines`, `path`) |
+| `GET` | `/api/diagnostics/{exp_name}` | Spectral/gradient diagnostics for an experiment |
+| `GET` | `/api/queue` | Pending experiments with priority and metadata |
+| `GET` | `/api/active` | Names of currently-running experiments |
+| `GET` | `/api/arch-map` | Map of model key → architecture diagram file path |
+| `GET` | `/api/model-registry` | Full champion registry (all benchmarks) |
+| `GET` | `/api/model-registry/{benchmark}` | Champion registry filtered by benchmark |
+| `GET` | `/api/mlflow/runs?benchmark=&limit=200` | MLflow run list |
+| `POST` | `/api/inject` | Inject a new experiment without restarting autorun |
+| `POST` | `/api/priority` | Override priority for a queued experiment |
+| `POST` | `/api/kill/{name}` | Request kill of a running experiment |
+| `POST` | `/api/pause` | Pause autorun between experiments |
+| `POST` | `/api/resume` | Resume autorun |
+| `GET` | `/api/pause` | Check pause state `{"paused": bool}` |
+| `GET` | `/figs/*` | Diagnostic plot images (static) |
+| `GET` | `/logs/*` | Raw log files (static) |
 
 ---
 
@@ -694,8 +732,10 @@ smaller configs (r2/r3 fallback) when run via `autorun.py`.
 Try `loss_type: h1`, reduce `lr` by 10×, or use `lr_schedule: warmup_cosine`.
 Check `logs/<name>.log` for NaN loss entries.
 
-**`RFNO` shape mismatch**  
-`RFNO` is 1D only. Use `FNO2D` for 2D benchmarks.
+**`RFNO` vs `RFNO2D` — which to use?**  
+Use `RFNO` for 1D benchmarks and `RFNO2D` for 2D benchmarks. Both are fully
+supported. `RFNO2D` takes a single `n_modes` flag and auto-maps it to
+`(n_modes1, n_modes2)` — no manual tuning required.
 
 **Import error after adding a new model**  
 Re-run `--validate` before `--register`. If validation passes, check
@@ -717,23 +757,35 @@ published library — `experiments.yaml` schema and `results.json` format may ch
 
 ### Current Best Results
 
-| Benchmark | Champion | val_l2_rel | SOTA Target |
-|---|---|---|---|
-| `kdv_1d` | RFNO | **0.0020** | 0.010 (5× better) |
-| `wave_1d` | FNO | **0.0009** | 0.005 (5× better) |
-| `pdebench_2d` | FEDONet2D | **0.0026** | — |
-| `elasticity_2d` | FEDONet2D | 0.0077 | — |
-| `wavebench_2d` | SNO2D | 0.0099 | — |
-| `ns_2d` | FNO | 0.0215 | 0.0128 |
-| `darcy_2d` | FEDONet2D | 0.2735 | 0.0108 |
-| `burgers_1d` | FNO | 0.1468 | 0.0149 |
+Values from `model_registry.json` (SSoT for champion checkpoints).
+
+| Benchmark | Champion | val_l2_rel | SOTA Target | Status |
+|---|---|---|---|---|
+| `wave_1d` | FNO | **0.001662** | 0.005 | ✅ 3× better than SOTA |
+| `kdv_1d` | RFNO | **0.005748** | 0.010 | ✅ beat SOTA |
+| `elasticity_2d` | FEDONet2D | **0.007734** | 0.010 | ✅ beat SOTA |
+| `pdebench_2d` | FEDONet2D | **0.0026** | 0.005 | ✅ beat SOTA |
+| `wavebench_2d` | SNO2D | **0.0099** | 0.015 | ✅ beat SOTA |
+| `swe_2d` | FNO | 0.0107 | 0.015 | ✅ beat SOTA |
+| `allen_cahn_2d` | FNO | 0.0628 | 0.080 | ✅ beat SOTA |
+| `ns_2d` | FNO | 0.0143 | 0.0128 | near SOTA |
+| `burgers_1d` | FNO | 0.1468 | 0.0031 | gap: 47× |
+| `darcy_2d` | FEDONet2D | 0.2735 | 0.0041 | gap: 67× |
+| `ns_hre_2d` | — | 1.000 | 0.050 | unsolved |
+| `mhd_2d` | — | 1.000 | 0.050 | unsolved |
+| `multiphysics_2d` | HybridDecoderDeepONet2D | 0.6923 | 0.200 | gap |
+
+> SOTA targets use GNOT (Hao et al. 2023) for burgers/darcy and published/estimated
+> baselines for others. Full references: [`docs/SOTA.md`](./docs/SOTA.md)
+
+Per-benchmark tuning guidance: [`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md)
 
 ### Known Limitations
 
 - Apple Silicon only — not portable to Linux/CUDA without replacing MLX
-- 2D benchmarks: `hidden_dim ≥ 64` causes OOM on 16 GB devices
+- 2D benchmarks: `hidden_dim ≥ 64` causes OOM on 16 GB devices (enforced at build time)
 - `Transolver2D` and `GNOT` are significantly slower per epoch than FNO-family
-- `RFNO2D` has a shape constraint; use only with 1D benchmarks
+- `PACMANN` is a scaffold stub — replace operator blocks before using in research
 
 ### Planned Directions
 
@@ -748,12 +800,7 @@ published library — `experiments.yaml` schema and `results.json` format may ch
 
 - [`RESEARCH_BRAIN.md`](./RESEARCH_BRAIN.md) — Living research driver: current strategy,
   empirical findings, SOTA gaps, session history (primary reference)
-- [`WIKI.md`](./WIKI.md) — High-level system overview
-- [`docs/SOTA.md`](./docs/SOTA.md) — Granular SOTA targets with paper references
-- [`docs/LITERATURE.md`](./docs/LITERATURE.md) — Literature survey
-- [`docs/TERMINOLOGY.md`](./docs/TERMINOLOGY.md) — Glossary
-- [`model_architectures.md`](./model_architectures.md) — Mermaid architecture diagrams
-- [`CODE_INDEX.json`](./CODE_INDEX.json) — Machine-readable symbol/docstring map
+- [`WIKI.md`](./WIKI.md) — High-level system overview and architecture diagrams
 - [MLX Documentation](https://ml-explore.github.io/mlx/) — Apple Silicon ML framework
 
 ---
@@ -770,6 +817,7 @@ autoresearch-mlx/
 │           └── SKILL.md
 ├── core/
 │   ├── __init__.py
+│   ├── brain_distiller.py
 │   ├── diagnostics.py
 │   ├── hpo.py
 │   ├── hypothesis.py
@@ -807,13 +855,6 @@ autoresearch-mlx/
 │   ├── prefetch_data.py
 │   └── prepare.py
 ├── docs/
-│   ├── archive/
-│   │   ├── AGENTS.md
-│   │   ├── CLAUDE.md
-│   │   ├── GEMINI.md
-│   │   ├── SKILL.md
-│   │   ├── models_AGENTS.md
-│   │   └── program.md
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
@@ -840,6 +881,9 @@ autoresearch-mlx/
 │   │   ├── transolver_2024.yaml
 │   │   ├── uno_2022.yaml
 │   │   └── wno_2022.yaml
+│   ├── ARCHITECTURE.md
+│   ├── BENCHMARKS.md
+│   ├── CONTRIBUTING.md
 │   ├── LICENSE
 │   ├── LITERATURE.md
 │   ├── SOTA.md
@@ -851,6 +895,10 @@ autoresearch-mlx/
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
+│   │   ├── 0d5c85aff8194650b4c9eb995c0d3c1d/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l8_adapt.log
+│   │   │       └── gnot_burgers_h128_l8_adapt_best.npz
 │   │   ├── 0d9843e5ed4f4c6696b4e751083c2cdd/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -859,9 +907,21 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_baseline_h128_l8_m24.log
 │   │   │       └── fno_burgers_baseline_h128_l8_m24_best.npz
+│   │   ├── 1595ab363eea4787a35699408245e097/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l8.log
+│   │   │       └── gnot_burgers_h128_l8_best.npz
 │   │   ├── 17e7b93e132a475fb39531e06aaee960/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_burgers_v2_best.npz
+│   │   ├── 1bdf65634b1c4aed8d443b2033769163/
+│   │   │   └── artifacts/
+│   │   │       ├── wno_burgers_h128_l8.log
+│   │   │       └── wno_burgers_h128_l8_best.npz
+│   │   ├── 258ff04b7c214361802b830be31a1ff1/
+│   │   │   └── artifacts/
+│   │   │       ├── latent_ode_burgers_h64_l4.log
+│   │   │       └── latent_ode_burgers_h64_l4_best.npz
 │   │   ├── 28a02f8a1dd146c6ae80f5ebf0f65ab4/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v3_best.npz
@@ -890,10 +950,18 @@ autoresearch-mlx/
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 66c386387e78416d92d9c2c5c439cba2/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l8_adapt.log
+│   │   │       └── gnot_burgers_h128_l8_adapt_best.npz
 │   │   ├── 6b478292309345dc826df07ce6f41195/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8_adapt.log
 │   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
+│   │   ├── 6b9c061cab004bb28ff20c4df3c0857d/
+│   │   │   └── artifacts/
+│   │   │       ├── wno_burgers_h128_l8_adapt.log
+│   │   │       └── wno_burgers_h128_l8_adapt_best.npz
 │   │   ├── 795692bf22524f1ca68cefc5331b185c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -905,14 +973,26 @@ autoresearch-mlx/
 │   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
 │   │   │   └── artifacts/
 │   │   │       └── mambano_burgers_h128_l8_h1_best.npz
+│   │   ├── 859bd38f672a4d4283e3cdd9ac2bb045/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_burgers_h128_l8_m24.log
+│   │   │       └── uno_burgers_h128_l8_m24_best.npz
 │   │   ├── 9410178ddfd7418b8dedb23f859c2d87/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── 9552f9b438df415c8e6bc221628f3791/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l8.log
+│   │   │       └── gnot_burgers_h128_l8_best.npz
 │   │   ├── 96c5b66cac274f6cb37a5ea71e5577c6/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── 9e86917f5b7b44aca58b5efe1ab25bd3/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_burgers_h128_l8_m24.log
+│   │   │       └── uno_burgers_h128_l8_m24_best.npz
 │   │   ├── b2d3c64c24cc4903be3b8d57b218e23c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8.log
@@ -920,20 +1000,40 @@ autoresearch-mlx/
 │   │   ├── b48aca5c6f9c42d4bfe9f37e38dc1ab2/
 │   │   │   └── artifacts/
 │   │   │       └── ffno_burgers_test_best.npz
+│   │   ├── ba23979f4408492f97ee446c2b7e2cf4/
+│   │   │   └── artifacts/
+│   │   │       ├── memno_burgers_h128_l8.log
+│   │   │       └── memno_burgers_h128_l8_best.npz
+│   │   ├── ba31c07677694be0b084f9524a8a8adc/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
+│   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
 │   │   ├── bf4a87c76f2a4107a71f1a281d7f27e5/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── c9489185269e4fe9b69ebcb08a00ad4e/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
+│   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
 │   │   ├── ca1b039eecd6409b839b073ab3eb404f/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v4_best.npz
 │   │   ├── e583018f152f4544bb845bdd9e553d9d/
 │   │   │   └── artifacts/
 │   │   │       └── repro_afno_bias_best.npz
+│   │   ├── e9eac498a39e469c83328d7e18835fbc/
+│   │   │   └── artifacts/
+│   │   │       ├── latent_ode_burgers_h64_l4.log
+│   │   │       └── latent_ode_burgers_h64_l4_best.npz
 │   │   ├── ec87c364298a43abb3835ae27d49bc75/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_ema_h128_l8_m24.log
 │   │   │       └── fno_burgers_ema_h128_l8_m24_best.npz
+│   │   ├── facea104fb684955ae97c8d213b26a7a/
+│   │   │   └── artifacts/
+│   │   │       ├── s4no_burgers_h128_l8.log
+│   │   │       └── s4no_burgers_h128_l8_best.npz
 │   │   └── ff0b719f90d149d49d96bc8b9b27e78d/
 │   │       └── artifacts/
 │   │           └── afno_heavy_test_best.npz
@@ -1039,10 +1139,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_kdv_h128_m24_l10_f1.log
 │   │   │       └── rfno_kdv_h128_m24_l10_f1_best.npz
+│   │   ├── 1bef46653d1948e98f6a7b7a89217f5d/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_l8_m24_aug_f1.log
+│   │   │       └── rfno_kdv_h128_l8_m24_aug_f1_best.npz
 │   │   ├── 206e3290c9a44f508b4308a471cd7f13/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_kdv_h256_m24_l8_f1.log
 │   │   │       └── rfno_kdv_h256_m24_l8_f1_best.npz
+│   │   ├── 4422da2cb28a477caed1a058c7b8fd1b/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_kdv_h128_l8_m24_aug_f1_adapt.log
+│   │   │       └── rfno_kdv_h128_l8_m24_aug_f1_adapt_best.npz
 │   │   ├── 49ccb8972c394db28edb90b58067b28f/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_kdv_h128_m24_l12_f1.log
@@ -1091,39 +1199,81 @@ autoresearch-mlx/
 │   │       └── artifacts/
 │   │           ├── energy_fno_kdv_h128_l8_m24_f1_r1.log
 │   │           └── energy_fno_kdv_h128_l8_m24_f1_r1_best.npz
-│   └── 6/
-│       ├── 41709d212b0d41b4a3fe1c6e07a94f22/
+│   ├── 6/
+│   │   ├── 139236511c4c457bb4aed3a9d4693c32/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_wave_stable_h128_l4_f1.log
+│   │   │       └── hnn_wave_stable_h128_l4_f1_best.npz
+│   │   ├── 41709d212b0d41b4a3fe1c6e07a94f22/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_wave_h64_l4_m16_f1.log
+│   │   │       └── ssno_wave_h64_l4_m16_f1_best.npz
+│   │   ├── 4930a7ed6016418c825e16a034ba57a1/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│   │   │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│   │   ├── 5a567c3696464eedb5c6d4672edf15de/
+│   │   │   └── artifacts/
+│   │   │       ├── time_deeponet_wave_h128_l4_f1.log
+│   │   │       └── time_deeponet_wave_h128_l4_f1_best.npz
+│   │   ├── 5ab268190e304f4eb68dcafe52af52a3/
+│   │   │   └── artifacts/
+│   │   │       ├── time_deeponet_wave_h64_l4_f1_adapt.log
+│   │   │       └── time_deeponet_wave_h64_l4_f1_adapt_best.npz
+│   │   ├── 6361061fb11342a496d8a0cab4ec3036/
+│   │   │   └── artifacts/
+│   │   │       ├── hnn_wave_stable_h128_l4_f1_adapt.log
+│   │   │       └── hnn_wave_stable_h128_l4_f1_adapt_best.npz
+│   │   ├── 6af3c131a637401ea11f8b11a89ad060/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│   │   │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│   │   ├── 7f91822f4c994a418658506c9ae5d312/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_wave_h128_m24_l8_v2_f1_r1.log
+│   │   │       └── fno_wave_h128_m24_l8_v2_f1_r1_best.npz
+│   │   ├── 98684af02b9345c0a833a7255cdee090/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_wave_h128_m24_l8_v2_f1_adapt.log
+│   │   │       └── fno_wave_h128_m24_l8_v2_f1_adapt_best.npz
+│   │   ├── a406f7d4587e4f9b8f608af03bcba888/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_wave_h64_l4_m16_f1_adapt.log
+│   │   │       └── ssno_wave_h64_l4_m16_f1_adapt_best.npz
+│   │   ├── c562ff4728c746aba70fdd7285aa0984/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_wave_h64_l8_m24_f1.log
+│   │   │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
+│   │   ├── df35f9fc2ab7479396b238721f0e1086/
+│   │   │   └── artifacts/
+│   │   │       ├── time_deeponet_wave_h64_l4_f1.log
+│   │   │       └── time_deeponet_wave_h64_l4_f1_best.npz
+│   │   ├── f4175ebb4d344ef6b87755649bdeabb2/
+│   │   │   └── artifacts/
+│   │   │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
+│   │   │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
+│   │   └── f7b10fc9a98e47888ad511c2fc8d485e/
+│   │       └── artifacts/
+│   │           ├── time_deeponet_wave_h128_l4_f1_adapt.log
+│   │           └── time_deeponet_wave_h128_l4_f1_adapt_best.npz
+│   ├── 7/
+│   │   ├── 5fe811b91d044cada21a9a27c6bf1062/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_swe2d_h32_l4_m8_f1_r3.log
+│   │   │       └── fno_swe2d_h32_l4_m8_f1_r3_best.npz
+│   │   └── 75bc509ea3124ec987db454097cd3ef8/
+│   │       └── artifacts/
+│   │           ├── rfno2d_swe2d_h32_l4_m8_f1_r3.log
+│   │           └── rfno2d_swe2d_h32_l4_m8_f1_r3_best.npz
+│   └── 8/
+│       ├── b17f68b7cfa4473d837392205283553c/
 │       │   └── artifacts/
-│       │       ├── ssno_wave_h64_l4_m16_f1.log
-│       │       └── ssno_wave_h64_l4_m16_f1_best.npz
-│       ├── 4930a7ed6016418c825e16a034ba57a1/
-│       │   └── artifacts/
-│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
-│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
-│       ├── 5a567c3696464eedb5c6d4672edf15de/
-│       │   └── artifacts/
-│       │       ├── time_deeponet_wave_h128_l4_f1.log
-│       │       └── time_deeponet_wave_h128_l4_f1_best.npz
-│       ├── 6af3c131a637401ea11f8b11a89ad060/
-│       │   └── artifacts/
-│       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
-│       │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
-│       ├── a406f7d4587e4f9b8f608af03bcba888/
-│       │   └── artifacts/
-│       │       ├── ssno_wave_h64_l4_m16_f1_adapt.log
-│       │       └── ssno_wave_h64_l4_m16_f1_adapt_best.npz
-│       ├── c562ff4728c746aba70fdd7285aa0984/
-│       │   └── artifacts/
-│       │       ├── energy_fno_wave_h64_l8_m24_f1.log
-│       │       └── energy_fno_wave_h64_l8_m24_f1_best.npz
-│       ├── f4175ebb4d344ef6b87755649bdeabb2/
-│       │   └── artifacts/
-│       │       ├── energy_fno_wave_h64_l8_m24_f1_adapt.log
-│       │       └── energy_fno_wave_h64_l8_m24_f1_adapt_best.npz
-│       └── f7b10fc9a98e47888ad511c2fc8d485e/
+│       │       ├── euler1d_fno_mc_h128_l8_m24_f1.log
+│       │       └── euler1d_fno_mc_h128_l8_m24_f1_best.npz
+│       └── ff2d6801c2d64b23993bedfd1f3ae3bf/
 │           └── artifacts/
-│               ├── time_deeponet_wave_h128_l4_f1_adapt.log
-│               └── time_deeponet_wave_h128_l4_f1_adapt_best.npz
+│               ├── euler1d_fno_mc_h128_l8_m24_f1_adapt.log
+│               └── euler1d_fno_mc_h128_l8_m24_f1_adapt_best.npz
 ├── models/
 │   ├── __init__.py
 │   ├── afno.py
@@ -1155,13 +1305,11 @@ autoresearch-mlx/
 ├── notebooks/
 │   └── colab_experiments.ipynb
 ├── scripts/
-│   ├── backfill_model_registry.py
-│   ├── dvc_train.py
-│   ├── gen_arch_nanobanana.py
-│   └── gen_arch_viz.py
-├── CLAUDE.md
-├── CODE_INDEX.json
-├── GEMINI.md
+│   ├── maintenance/
+│   │   ├── backfill_model_registry.py
+│   │   ├── gen_arch_nanobanana.py
+│   │   └── gen_arch_viz.py
+│   └── dvc_train.py
 ├── README.md
 ├── RESEARCH_BRAIN.md
 ├── WIKI.md
@@ -1171,15 +1319,11 @@ autoresearch-mlx/
 ├── autorun.py
 ├── dvc.yaml
 ├── experiments.yaml
-├── identify_missing.py
 ├── mlflow.db
-├── model_architectures.md
 ├── model_registry.json
 ├── params.yaml
 ├── pyproject.toml
 ├── results.json
-├── test_hf.py
-├── test_openai.py
 ├── train.py
 └── uv.lock
 ```

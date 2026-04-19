@@ -3,10 +3,10 @@
 This is ONE of TWO supported orchestration modes — choose whichever fits your
 workflow:
 
-  MODE A · External agent (program.md)          ← original, always supported
+  MODE A · External agent (RESEARCH_BRAIN.md)   ← original, always supported
   ─────────────────────────────────────────────
-  An external AI agent (Claude Code, GPT-4, etc.) reads program.md and drives
-  the research loop manually: edits train.py / experiments.py, calls autorun.py,
+  An external AI agent (Claude Code, GPT-4, etc.) reads RESEARCH_BRAIN.md and drives
+  the research loop manually: edits experiments.yaml, calls autorun.py,
   interprets results, forms hypotheses, and commits improvements.
 
   Best for: interactive research, novel architecture ideas, steering by
@@ -17,19 +17,20 @@ workflow:
   A fully automated in-process loop that replaces the need for an external
   agent to interpret results. It reads tracker.analyze_lineage(), calls
   HypothesisEngine, runs Bayesian HPO, and appends new ExperimentConfigs to
-  experiments.py — all without human intervention.
+  experiments.yaml — all without human intervention.
 
   Best for: overnight runs, saturating the queue automatically after an
   external agent session, or scaling up experiment throughput.
 
-Both modes share the same infrastructure (experiments.py queue, results.json,
+Both modes share the same infrastructure (experiments.yaml queue, results.json,
 autorun.py runner) and can be used interchangeably or together.
+See RESEARCH_BRAIN.md for the authoritative guide to operating this system.
 
 Steps performed in Mode B:
   1. Analyses current state via tracker.analyze_lineage()
   2. Identifies failure patterns via hypothesis.HypothesisEngine
   3. Generates next experiments via auto_suggest + bayesian_hpo
-  4. Writes new ExperimentConfig entries to experiments.py (gated)
+  4. Writes new ExperimentConfig entries to experiments.yaml (gated)
   5. Optionally triggers autorun.py for the next batch
 
 Usage:
@@ -246,11 +247,11 @@ def _config_to_code(cfg: dict) -> str:
 
 
 def append_configs_to_experiments(configs: list[dict]) -> int:
-    """Append new ExperimentConfig entries to experiments.py (gated: smoke-test first)."""
+    """Append new ExperimentConfig entries to experiments.yaml (gated: smoke-test first)."""
     if not configs:
         return 0
 
-    exp_path = REPO_ROOT / "experiments.py"
+    exp_path = REPO_ROOT / "experiments.yaml"
     content  = exp_path.read_text()
 
     # Validate: each config must have required fields and unique name
@@ -264,8 +265,8 @@ def append_configs_to_experiments(configs: list[dict]) -> int:
         if cfg["name"] in done:
             print(f"  SKIP {cfg['name']} — already in results")
             continue
-        if f'name={cfg["name"]!r}' in content:
-            print(f"  SKIP {cfg['name']} — already in experiments.py")
+        if f'name: {cfg["name"]}' in content:
+            print(f"  SKIP {cfg['name']} — already in experiments.yaml")
             continue
         to_add.append(cfg)
 
@@ -282,12 +283,12 @@ def append_configs_to_experiments(configs: list[dict]) -> int:
     # Insert before the closing `]` of EXPERIMENTS
     insertion_point = content.rfind("\n]")
     if insertion_point == -1:
-        print("  ERROR: could not find EXPERIMENTS closing ] in experiments.py")
+        print("  ERROR: could not find EXPERIMENTS closing ] in experiments.yaml")
         return 0
 
     new_content = content[:insertion_point] + block + content[insertion_point:]
     exp_path.write_text(new_content)
-    print(f"  Appended {len(to_add)} new configs to experiments.py")
+    print(f"  Appended {len(to_add)} new configs to experiments.yaml")
     return len(to_add)
 
 
@@ -348,7 +349,7 @@ def main() -> None:
     p.add_argument("--top", type=int, default=5,
                    help="Number of new configs to generate")
     p.add_argument("--dry-run", action="store_true",
-                   help="Analyse and plan without writing to experiments.py")
+                   help="Analyse and plan without writing to experiments.yaml")
     p.add_argument("--run", action="store_true",
                    help="After generating configs, immediately run top-3 via autorun.py")
     p.add_argument("--no-hpo", action="store_true",
@@ -368,7 +369,7 @@ def main() -> None:
     print_config_proposals(configs)
 
     if args.dry_run:
-        print("  [dry-run] Not writing to experiments.py.")
+        print("  [dry-run] Not writing to experiments.yaml.")
         print("  Proposed ExperimentConfig snippets:\n")
         for cfg in configs:
             print(_config_to_code(cfg))
