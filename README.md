@@ -643,9 +643,32 @@ open http://localhost:8000
 
 ## Results & Tracking
 
+### Results Store — SQLite + JSON (race-safe)
+
+All experiment results are written through `core/results_store.py`, which provides
+two complementary protection layers against concurrent write corruption:
+
+| Layer | Mechanism | Guarantees |
+|---|---|---|
+| **SQLite WAL** | `journal_mode=WAL`, `INSERT OR IGNORE` by `id` | Concurrent readers never blocked; duplicate-safe |
+| **FileLock + atomic rename** | `filelock` on JSON export, `os.replace()` | JSON never half-written; crash-safe |
+
+**Never write `results.json` directly.** Always use:
+
+```python
+from core.results_store import store
+store.append(row)          # insert one result (idempotent)
+store.load("burgers_1d")   # read, optionally filtered
+store.best_per_benchmark() # aggregation via SQL
+store.query("SELECT ...")  # arbitrary SQL on the results table
+```
+
+`results.json` is kept as a human-readable export and stays in sync automatically.
+`results.db` (SQLite) is the primary store and is gitignored.
+
 ### MLflow
 
-All runs are logged to `mlruns/` automatically:
+All runs are also logged to `mlruns/` automatically:
 
 ```bash
 uv run mlflow ui --port 5000
@@ -661,21 +684,17 @@ open http://localhost:5000
   "burgers_1d": {
     "path": "checkpoints/burgers_1d_FNO_h128_l8_m24.npz",
     "val_l2_rel": 0.1468,
-    "model": "FNO",
-    "hidden_dim": 128,
-    "n_layers": 8,
-    "n_modes": 24
+    "model": "FNO"
   }
 }
 ```
 
 ### Trajectory Log
 
-`logs/trajectories.jsonl` is an RL-style replay buffer. Every queued action and
-outcome is logged for post-hoc analysis:
+`logs/trajectories.jsonl` is an RL-style replay buffer logged after every run:
 
 ```jsonl
-{"timestamp": "...", "benchmark": "burgers_1d", "action": {...}, "outcome": 0.1468, "diag_snapshot": {...}}
+{"timestamp": "...", "benchmark": "burgers_1d", "action": {...}, "outcome": 0.1468, "critique": "..."}
 ```
 
 ### Diagnostics
@@ -757,28 +776,37 @@ published library — `experiments.yaml` schema and `results.json` format may ch
 
 ### Current Best Results
 
-Values from `model_registry.json` (SSoT for champion checkpoints).
+Live values from `results.db` (SQLite SSoT). Updated after every committed run.
+184 experiments completed across 14 benchmarks. **9 of 14 SOTA targets beaten.**
 
-| Benchmark | Champion | val_l2_rel | SOTA Target | Status |
+| Benchmark | Best Model | val_l2_rel | SOTA Target | Status |
 |---|---|---|---|---|
-| `wave_1d` | FNO | **0.001662** | 0.005 | ✅ 3× better than SOTA |
-| `kdv_1d` | RFNO | **0.005748** | 0.010 | ✅ beat SOTA |
+| `wave_1d` | FNO | **0.000992** | 0.005 | ✅ 5× below SOTA |
+| `kdv_1d` | RFNO | **0.002023** | 0.010 | ✅ 5× below SOTA |
+| `euler_1d` | FNO | **0.002413** | 0.003 | ✅ beat SOTA |
+| `pdebench_2d` | FEDONet2D | **0.002602** | 0.005 | ✅ beat SOTA |
 | `elasticity_2d` | FEDONet2D | **0.007734** | 0.010 | ✅ beat SOTA |
-| `pdebench_2d` | FEDONet2D | **0.0026** | 0.005 | ✅ beat SOTA |
-| `wavebench_2d` | SNO2D | **0.0099** | 0.015 | ✅ beat SOTA |
-| `swe_2d` | FNO | 0.0107 | 0.015 | ✅ beat SOTA |
-| `allen_cahn_2d` | FNO | 0.0628 | 0.080 | ✅ beat SOTA |
-| `ns_2d` | FNO | 0.0143 | 0.0128 | near SOTA |
-| `burgers_1d` | FNO | 0.1468 | 0.0031 | gap: 47× |
-| `darcy_2d` | FEDONet2D | 0.2735 | 0.0041 | gap: 67× |
-| `ns_hre_2d` | — | 1.000 | 0.050 | unsolved |
-| `mhd_2d` | — | 1.000 | 0.050 | unsolved |
-| `multiphysics_2d` | HybridDecoderDeepONet2D | 0.6923 | 0.200 | gap |
+| `wavebench_2d` | SNO2D | **0.009907** | 0.015 | ✅ beat SOTA |
+| `swe_2d` | FNO | **0.010729** | 0.015 | ✅ beat SOTA |
+| `ns_2d` | FNO | 0.014284 | 0.0128 | 1.12× — near SOTA |
+| `allen_cahn_2d` | FNO | **0.062801** | 0.080 | ✅ beat SOTA |
+| `burgers_nu_001` | RFNO | **0.077943** | 0.080 | ✅ beat SOTA (shock) |
+| `darcy_2d` | FNO | 0.059719 | 0.0041 | 14.6× gap |
+| `burgers_1d` | MambaNO | 0.181264 | 0.0031 | 58× gap |
+| `multiphysics_2d` | HybridDecoderDeepONet2D | 0.692273 | 0.200 | gap |
+| `radiative_2d` | — | 1.000 | — | unsolved |
 
-> SOTA targets use GNOT (Hao et al. 2023) for burgers/darcy and published/estimated
-> baselines for others. Full references: [`docs/SOTA.md`](./docs/SOTA.md)
+> SOTA targets: GNOT (Hao et al. 2023) for Burgers/Darcy; FNO (Li et al. 2021) for NS;
+> estimated baselines for others. Full references: [`docs/SOTA.md`](./docs/SOTA.md)
 
-Per-benchmark tuning guidance: [`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md)
+### Infrastructure Improvements (this session)
+
+- **Race-safe results store** (`core/results_store.py`): SQLite WAL + FileLock + atomic
+  rename. Stress-tested: 8 concurrent processes × 10 writes = 80/80 rows, 0 lost.
+- **einops** in `Transolver1d` and `GNOT`: replaces error-prone `reshape+transpose` chains
+- **OptunaHPO** (`core/hpo.py`): TPE sampler + MedianPruner as primary HPO backend
+- **Novelty scoring** (`agent_loop.py`): cosine similarity filter rejects near-duplicate HP proposals
+- **`train.py` 1D detection fix**: `burgers_nu_001`/`burgers_nu_01` now correctly routed to 1D model variants
 
 ### Known Limitations
 
@@ -789,9 +817,10 @@ Per-benchmark tuning guidance: [`docs/BENCHMARKS.md`](./docs/BENCHMARKS.md)
 
 ### Planned Directions
 
+- Push `burgers_1d` from 58× gap toward SOTA via PINO + physics-informed loss
+- Close `darcy_2d` (14.6×) via GNOT attention or longer budgets
+- Solve `ns_2d` last 1.12× gap with fine-grained HPO
 - Multi-PDE foundation model pretraining
-- PDE-aware tokenization for transformer operators
-- Multi-fidelity training (coarse-to-fine grid)
 - Automated paper drafting from `trajectories.jsonl`
 
 ---
@@ -904,6 +933,10 @@ autoresearch-mlx/
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
+│   │   ├── 0a3b80a52e564c02891e941a7a808b25/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m28_l6.log
+│   │   │       └── fno_h128_m28_l6_best.npz
 │   │   ├── 0d5c85aff8194650b4c9eb995c0d3c1d/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8_adapt.log
@@ -964,6 +997,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
 │   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
+│   │   ├── 4644174c59f24c9c860d933d656e9a08/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m26_l6.log
+│   │   │       └── fno_h128_m26_l6_best.npz
+│   │   ├── 46b495cc22844de1b6412382e2bba147/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l8.log
+│   │   │       └── rfno_h128_m24_l8_best.npz
 │   │   ├── 4ca8a3f087664cffb6e89dd89eb5f924/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_h64_l2.log
@@ -1074,10 +1115,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── 991723e02a734ae5bd462831d8a34dae/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h256_m24_l6_adapt.log
+│   │   │       └── fno_h256_m24_l6_adapt_best.npz
 │   │   ├── 9e86917f5b7b44aca58b5efe1ab25bd3/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
 │   │   │       └── uno_burgers_h128_l8_m24_best.npz
+│   │   ├── adb4db5fd26141379bd5ef8186fc5ef9/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l8.log
+│   │   │       └── fno_h128_m24_l8_best.npz
 │   │   ├── ae8edfc6c83f45bfa27079a1cc97a431/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h64_m16_l6.log
@@ -1171,6 +1220,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_ema_h128_l8_m24.log
 │   │   │       └── fno_burgers_ema_h128_l8_m24_best.npz
+│   │   ├── ef048e585233496aadb8b8101b0098f4/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h256_m24_l6.log
+│   │   │       └── fno_h256_m24_l6_best.npz
 │   │   ├── f1af9da58ad844fdb68fefa657a46ba1/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m16_l4.log
@@ -1179,6 +1232,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── fa0d3b808c50481d8cb1dd266f9cd2b5/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l10.log
+│   │   │       └── rfno_h128_m24_l10_best.npz
 │   │   ├── facea104fb684955ae97c8d213b26a7a/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8.log
@@ -1473,14 +1530,34 @@ autoresearch-mlx/
 │   │           ├── euler1d_fno_mc_h128_l8_m24_f1_adapt.log
 │   │           └── euler1d_fno_mc_h128_l8_m24_f1_adapt_best.npz
 │   └── 9/
+│       ├── 05542a845be644e4924ccbcd40879d7e/
+│       │   └── artifacts/
+│       │       ├── bnu001_transolver_h64_l4.log
+│       │       └── bnu001_transolver_h64_l4_best.npz
 │       ├── 16f88f4d8b5841fd8008eb959b41bfc6/
 │       │   └── artifacts/
 │       │       ├── bnu001_rfno_h128_l8_m32.log
 │       │       └── bnu001_rfno_h128_l8_m32_best.npz
+│       ├── 2de0b85b62b1499cb345a1bbe8903d3b/
+│       │   └── artifacts/
+│       │       ├── bnu001_rfno_h256_l6_m32_lowlr.log
+│       │       └── bnu001_rfno_h256_l6_m32_lowlr_best.npz
+│       ├── 3464039546ee47d5b382eda99cbc7621/
+│       │   └── artifacts/
+│       │       ├── bnu001_rfno_h256_l6_m32_lowlr.log
+│       │       └── bnu001_rfno_h256_l6_m32_lowlr_best.npz
 │       ├── 431b84df8cc542efb46491a9d2f01225/
 │       │   └── artifacts/
 │       │       ├── bnu001_wno_h128_l10_lvl6.log
 │       │       └── bnu001_wno_h128_l10_lvl6_best.npz
+│       ├── 434cd075c72444159d818906cd62f24a/
+│       │   └── artifacts/
+│       │       ├── bnu001_mambano_h64_l6.log
+│       │       └── bnu001_mambano_h64_l6_best.npz
+│       ├── 46ced2eb68be44ad980af62b4aaabbd9/
+│       │   └── artifacts/
+│       │       ├── bnu001_pino_h192_l8_m24_hi_lambda_adapt.log
+│       │       └── bnu001_pino_h192_l8_m24_hi_lambda_adapt_best.npz
 │       ├── 616ada9edab14541b133dc9d8867baff/
 │       │   └── artifacts/
 │       │       ├── bnu001_wno_h128_l10_lvl6.log
@@ -1489,14 +1566,42 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── bnu001_uno_h128_l6.log
 │       │       └── bnu001_uno_h128_l6_best.npz
+│       ├── 744f00395a004984aa69f126857cc9e6/
+│       │   └── artifacts/
+│       │       ├── bnu001_transolver_h64_l4.log
+│       │       └── bnu001_transolver_h64_l4_best.npz
 │       ├── b9c98aae78e04c758ef2673d4f7fb844/
 │       │   └── artifacts/
 │       │       ├── bnu001_wno_h128_l10_lvl6_adapt.log
 │       │       └── bnu001_wno_h128_l10_lvl6_adapt_best.npz
-│       └── c8f7176995cd490bb741b4eb7fac4196/
+│       ├── c4a8d4a1a305497696ce4662a9b3be39/
+│       │   └── artifacts/
+│       │       ├── bnu001_pino_h192_l8_m24_hi_lambda.log
+│       │       └── bnu001_pino_h192_l8_m24_hi_lambda_best.npz
+│       ├── c8f7176995cd490bb741b4eb7fac4196/
+│       │   └── artifacts/
+│       │       ├── bnu001_wno_h128_l10_lvl6.log
+│       │       └── bnu001_wno_h128_l10_lvl6_best.npz
+│       ├── d654372787d74395b263f0bd9e2b30ce/
+│       │   └── artifacts/
+│       │       ├── bnu001_mambano_h64_l6.log
+│       │       └── bnu001_mambano_h64_l6_best.npz
+│       ├── e1a71c9d563b4f49b6a673f4e4aca9eb/
+│       │   └── artifacts/
+│       │       ├── bnu001_transolver_h64_l4_adapt.log
+│       │       └── bnu001_transolver_h64_l4_adapt_best.npz
+│       ├── f2f1f30a637b4968b21bb7d7d1da67ec/
+│       │   └── artifacts/
+│       │       ├── bnu001_ffno_h96_l8_m32.log
+│       │       └── bnu001_ffno_h96_l8_m32_best.npz
+│       ├── f4028ea352f84b37894b1b279cc1ed5f/
+│       │   └── artifacts/
+│       │       ├── bnu001_ffno_h96_l8_m32.log
+│       │       └── bnu001_ffno_h96_l8_m32_best.npz
+│       └── f84f76634f49494b879265b4b21cd1e7/
 │           └── artifacts/
-│               ├── bnu001_wno_h128_l10_lvl6.log
-│               └── bnu001_wno_h128_l10_lvl6_best.npz
+│               ├── bnu001_transolver_h64_l4_adapt.log
+│               └── bnu001_transolver_h64_l4_adapt_best.npz
 ├── models/
 │   ├── __init__.py
 │   ├── afno.py
@@ -1548,7 +1653,10 @@ autoresearch-mlx/
 ├── params.yaml
 ├── pyproject.toml
 ├── results.db
+├── results.db-shm
+├── results.db-wal
 ├── results.json
+├── test_jobless.py
 ├── train.py
 └── uv.lock
 ```
