@@ -19,4 +19,5 @@ dependencies = [
     "optuna>=3.6.0",
     "duckdb>=1.0.0",
     "zarr>=2.18.0",
+    "filelock>=3.13.0",
 ]

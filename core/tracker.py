@@ -4,9 +4,7 @@ Manages results.json (the SSoT for lineage).
 Tracks branching via parent_id and structured rationale/conclusions.
 """
 
-import fcntl
 import json
-import os
 import time
 import numpy as np
 from pathlib import Path
@@ -23,40 +21,15 @@ class Tracker:
         self._load()
 
     def _load(self):
-        """Load JSON lineage."""
-        if self.json_path.exists():
-            with open(self.json_path, 'r') as f:
-                self.experiments = json.load(f)
-        else:
-            self.experiments = []
+        """Load JSON lineage via load_results (lock-protected, deduplicating)."""
+        from core.utils import load_results
+        self.experiments = load_results()
 
     def _save(self):
-        """Atomically append the latest experiment under an exclusive file lock.
-
-        Uses a lockfile to serialize concurrent autorun processes so no writer
-        reads stale state and overwrites another process's results.
-        """
-        lock_path = self.json_path.with_suffix(".lock")
-        with open(lock_path, "w") as lf:
-            fcntl.flock(lf, fcntl.LOCK_EX)
-            try:
-                # Re-read under lock so we merge, not overwrite
-                if self.json_path.exists():
-                    with open(self.json_path, "r") as f:
-                        on_disk = json.load(f)
-                else:
-                    on_disk = []
-                # Merge: add any entries from our in-memory list not yet on disk
-                on_disk_ids = {e.get("id") for e in on_disk}
-                new_entries = [e for e in self.experiments if e.get("id") not in on_disk_ids]
-                merged = on_disk + new_entries
-                tmp = self.json_path.with_suffix(".tmp")
-                with open(tmp, "w") as f:
-                    json.dump(merged, f, indent=2)
-                tmp.replace(self.json_path)
-                self.experiments = merged
-            finally:
-                fcntl.flock(lf, fcntl.LOCK_UN)
+        """Persist the latest experiment via append_result (lock + atomic rename)."""
+        from core.utils import append_result
+        if self.experiments:
+            append_result(self.experiments[-1])
 
     def log_experiment(self,
                        benchmark: str,

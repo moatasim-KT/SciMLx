@@ -892,6 +892,10 @@ autoresearch-mlx/
 │   ├── 0/
 │   │   └── meta.yaml
 │   ├── 1/
+│   │   ├── 0258b914e3b4487abaec62470a8d1953/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m22_l6.log
+│   │   │       └── fno_h128_m22_l6_best.npz
 │   │   ├── 04d31d5026ab4c8f99604425c0e8eab5/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_h64_lvl3_l4_adapt.log
@@ -1484,6 +1488,10 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── bnu001_uno_h128_l6.log
 │       │       └── bnu001_uno_h128_l6_best.npz
+│       ├── b9c98aae78e04c758ef2673d4f7fb844/
+│       │   └── artifacts/
+│       │       ├── bnu001_wno_h128_l10_lvl6_adapt.log
+│       │       └── bnu001_wno_h128_l10_lvl6_adapt_best.npz
 │       └── c8f7176995cd490bb741b4eb7fac4196/
 │           └── artifacts/
 │               ├── bnu001_wno_h128_l10_lvl6.log

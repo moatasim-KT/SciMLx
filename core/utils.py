@@ -6,8 +6,12 @@ previously duplicated across analyze.py, auto_suggest.py, autorun.py, and viz.py
 
 import csv
 import math
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional
+
+from filelock import FileLock
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +26,9 @@ PAPERS_DIR    = REPO_ROOT / "docs" / "papers"
 # Ensure directories exist
 for d in [LOGS_DIR, TELEMETRY_DIR, SENTINEL_DIR, FIGS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+# Cross-process file lock for results.json — prevents concurrent autorun corruption
+RESULTS_LOCK = FileLock(str(RESULTS_FILE) + ".lock", timeout=30)
 
 # ── SOTA targets ──────────────────────────────────────────────────────────────
 
@@ -49,31 +56,73 @@ SOTA: dict[str, float] = {
 
 def load_results(benchmark: Optional[str] = None) -> list[dict]:
     """Return all rows from results.json, optionally filtered by benchmark.
-    
+
+    Acquires the cross-process lock so reads are never concurrent with writes.
+    Deduplicates by id (self-healing after any historical race corruption).
     Each row has val_l2_rel coerced to float (nan on parse failure).
     """
     import json
-    rows: list[dict] = []
     if not RESULTS_FILE.exists():
-        return rows
+        return []
     try:
-        with open(RESULTS_FILE) as f:
-            rows = json.load(f)
+        with RESULTS_LOCK:
+            rows: list[dict] = json.loads(RESULTS_FILE.read_text())
     except Exception as e:
         print(f"Warning: Could not load {RESULTS_FILE}: {e}")
         return []
 
-    processed_rows = []
+    # Deduplicate by id — self-heals any entries doubled by past races
+    seen: set = set()
+    deduped: list[dict] = []
     for row in rows:
+        rid = row.get("id")
+        if rid not in seen:
+            seen.add(rid)
+            deduped.append(row)
+
+    processed: list[dict] = []
+    for row in deduped:
         try:
             row["val_l2_rel"] = float(row.get("val_l2_rel", float("nan")))
         except (ValueError, TypeError):
             row["val_l2_rel"] = float("nan")
-        
         if benchmark and row.get("benchmark") != benchmark:
             continue
-        processed_rows.append(row)
-    return processed_rows
+        processed.append(row)
+    return processed
+
+
+def append_result(row: dict) -> None:
+    """Safely append one result row to results.json.
+
+    Guarantees:
+    - Exclusive cross-process lock (no concurrent writer can interleave)
+    - Re-reads from disk under lock (never writes stale in-memory state)
+    - Deduplicates by id (idempotent — safe to call twice for same result)
+    - Atomic rename: a crash mid-write never leaves a truncated file
+    """
+    import json
+    with RESULTS_LOCK:
+        if RESULTS_FILE.exists():
+            try:
+                rows: list[dict] = json.loads(RESULTS_FILE.read_text())
+            except Exception:
+                rows = []
+        else:
+            rows = []
+
+        existing_ids = {r.get("id") for r in rows}
+        if row.get("id") not in existing_ids:
+            rows.append(row)
+
+        # Write to a sibling tmp file, then atomically rename
+        with tempfile.NamedTemporaryFile(
+            mode="w", dir=RESULTS_FILE.parent,
+            suffix=".tmp", delete=False
+        ) as tf:
+            json.dump(rows, tf, indent=2)
+            tmp_path = tf.name
+        os.replace(tmp_path, RESULTS_FILE)
 
 
 def best_per_benchmark(rows: list[dict]) -> dict[str, float]:
