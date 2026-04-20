@@ -1101,6 +1101,11 @@ autoresearch-mlx/
 │   │   └── ff0b719f90d149d49d96bc8b9b27e78d/
 │   │       └── artifacts/
 │   │           └── afno_heavy_test_best.npz
+│   ├── 10/
+│   │   └── 6afdce8a982f4a9d8138c3e9f41513df/
+│   │       └── artifacts/
+│   │           ├── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1.log
+│   │           └── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1_best.npz
 │   ├── 2/
 │   │   ├── 101fe0b7688e4303a829a3dcf9d7bfa8/
 │   │   │   └── artifacts/
@@ -1375,10 +1380,14 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── bnu001_wno_h128_l10_lvl6.log
 │       │       └── bnu001_wno_h128_l10_lvl6_best.npz
-│       └── 616ada9edab14541b133dc9d8867baff/
+│       ├── 616ada9edab14541b133dc9d8867baff/
+│       │   └── artifacts/
+│       │       ├── bnu001_wno_h128_l10_lvl6.log
+│       │       └── bnu001_wno_h128_l10_lvl6_best.npz
+│       └── 6316c0abac874773b1c5cf4a1548c79a/
 │           └── artifacts/
-│               ├── bnu001_wno_h128_l10_lvl6.log
-│               └── bnu001_wno_h128_l10_lvl6_best.npz
+│               ├── bnu001_uno_h128_l6.log
+│               └── bnu001_uno_h128_l6_best.npz
 ├── models/
 │   ├── __init__.py
 │   ├── afno.py
