@@ -955,6 +955,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_curriculum_h128_l8_m24.log
 │   │   │       └── fno_burgers_curriculum_h128_l8_m24_best.npz
+│   │   ├── 525ba9ad978d48728ebb7ff0add92e68/
+│   │   │   └── artifacts/
+│   │   │       ├── wno_h64_lvl3_l4_adapt.log
+│   │   │       └── wno_h64_lvl3_l4_adapt_best.npz
+│   │   ├── 52bef8df45b341258f7ef3b0283812b1/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_h64_l2.log
+│   │   │       └── uno_h64_l2_best.npz
 │   │   ├── 54625101ce2f4fed8363ecf8c6f11b4e/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1009,6 +1017,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── 8fd9f1169f8b41d1bc2260f6e105e600/
+│   │   │   └── artifacts/
+│   │   │       ├── wno_h64_lvl3_l4.log
+│   │   │       └── wno_h64_lvl3_l4_best.npz
 │   │   ├── 9410178ddfd7418b8dedb23f859c2d87/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1036,6 +1048,10 @@ autoresearch-mlx/
 │   │   ├── b48aca5c6f9c42d4bfe9f37e38dc1ab2/
 │   │   │   └── artifacts/
 │   │   │       └── ffno_burgers_test_best.npz
+│   │   ├── b51a0599257d4b19be7c77004ec67380/
+│   │   │   └── artifacts/
+│   │   │       ├── uno_h64_l1.log
+│   │   │       └── uno_h64_l1_best.npz
 │   │   ├── ba23979f4408492f97ee446c2b7e2cf4/
 │   │   │   └── artifacts/
 │   │   │       ├── memno_burgers_h128_l8.log
@@ -1044,6 +1060,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
 │   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
+│   │   ├── bedf4839a9f949028f1201abe5a0e398/
+│   │   │   └── artifacts/
+│   │   │       ├── memno_burgers_h128_l8.log
+│   │   │       └── memno_burgers_h128_l8_best.npz
 │   │   ├── bf4a87c76f2a4107a71f1a281d7f27e5/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1098,14 +1118,22 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8.log
 │   │   │       └── s4no_burgers_h128_l8_best.npz
-│   │   └── ff0b719f90d149d49d96bc8b9b27e78d/
+│   │   ├── ff0b719f90d149d49d96bc8b9b27e78d/
+│   │   │   └── artifacts/
+│   │   │       └── afno_heavy_test_best.npz
+│   │   └── ffd6c0e9ec104d73b19ed9e257ddd00b/
 │   │       └── artifacts/
-│   │           └── afno_heavy_test_best.npz
+│   │           ├── fno_h128_m16_l8.log
+│   │           └── fno_h128_m16_l8_best.npz
 │   ├── 10/
-│   │   └── 6afdce8a982f4a9d8138c3e9f41513df/
+│   │   ├── 6afdce8a982f4a9d8138c3e9f41513df/
+│   │   │   └── artifacts/
+│   │   │       ├── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1.log
+│   │   │       └── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1_best.npz
+│   │   └── e8483d3f69024373a35d9c997cec8135/
 │   │       └── artifacts/
-│   │           ├── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1.log
-│   │           └── hybridfnodeeponet_wavebench_2d_h32_l2_m8_f1_r1_best.npz
+│   │           ├── fedonet_wavebench_2d_h32_l2_m8_f1_r1.log
+│   │           └── fedonet_wavebench_2d_h32_l2_m8_f1_r1_best.npz
 │   ├── 2/
 │   │   ├── 101fe0b7688e4303a829a3dcf9d7bfa8/
 │   │   │   └── artifacts/

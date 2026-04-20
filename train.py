@@ -225,7 +225,8 @@ x_init, y_init = next(train_loader)
 t_data         = time.time()
 print(f"Data ready in {t_data - t_start:.1f}s")
 
-is_1d  = BENCHMARK.endswith("_1d")
+_1D_BENCHMARKS = {"burgers_nu_001", "burgers_nu_01", "couette_flow_1d", "poiseuille_flow_1d"}
+is_1d  = BENCHMARK.endswith("_1d") or BENCHMARK in _1D_BENCHMARKS
 is_mc  = SIM_IS_MC.get(BENCHMARK, False) or (BENCHMARK == "mhd_2d")
 n_ch   = SIM_N_CHANNELS.get(BENCHMARK, EXT_N_CHANNELS.get(BENCHMARK, 1))
 
@@ -242,7 +243,7 @@ model = MODEL_REGISTRY.build(
     _model_key,
     n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS, n_levels=N_LEVELS,
     n_head=N_HEAD, slice_num=SLICE_NUM,
-    sparsity=SPARSITY, n_sensors=GRID_SIZE,
+    sparsity=SPARSITY, n_sensors=GRID_SIZE, sensor_dim=GRID_SIZE,
     in_channels=n_ch, out_channels=n_ch,   # absorbed by **kw for non-MC models
     degree=args.degree,                    # For Chebyshev models
 )
