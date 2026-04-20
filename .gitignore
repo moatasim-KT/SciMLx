@@ -85,3 +85,11 @@ insert_exps.py
 run_all.sh
 start_command_center.sh
 /Users/moatasimfarooque/.gemini/antigravity/brain/d9e4a9e9-cd38-488b-bed4-b7605cbe8dac/scratch/smoke_test_models.py
+
+# Results store — SQLite DB and lock/temp files
+results.db
+results.db-wal
+results.db-shm
+results.json.lock
+results.json.tmp
+*.tmp

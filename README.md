@@ -828,6 +828,7 @@ autoresearch-mlx/
 │   ├── paper_registry.py
 │   ├── readme_hook.py
 │   ├── research_plugins.py
+│   ├── results_store.py
 │   ├── scaffold.py
 │   ├── tracker.py
 │   ├── trainer.py
@@ -1531,7 +1532,8 @@ autoresearch-mlx/
 │   │   ├── backfill_model_registry.py
 │   │   ├── gen_arch_nanobanana.py
 │   │   └── gen_arch_viz.py
-│   └── dvc_train.py
+│   ├── dvc_train.py
+│   └── stress_worker.py
 ├── README.md
 ├── RESEARCH_BRAIN.md
 ├── WIKI.md
@@ -1545,6 +1547,7 @@ autoresearch-mlx/
 ├── model_registry.json
 ├── params.yaml
 ├── pyproject.toml
+├── results.db
 ├── results.json
 ├── train.py
 └── uv.lock

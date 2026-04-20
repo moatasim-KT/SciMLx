@@ -21,15 +21,13 @@ class Tracker:
         self._load()
 
     def _load(self):
-        """Load JSON lineage via load_results (lock-protected, deduplicating)."""
-        from core.utils import load_results
-        self.experiments = load_results()
+        from core.results_store import store
+        self.experiments = store.load()
 
     def _save(self):
-        """Persist the latest experiment via append_result (lock + atomic rename)."""
-        from core.utils import append_result
+        from core.results_store import store
         if self.experiments:
-            append_result(self.experiments[-1])
+            store.append(self.experiments[-1])
 
     def log_experiment(self,
                        benchmark: str,

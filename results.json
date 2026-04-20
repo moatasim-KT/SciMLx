@@ -9,10 +9,11 @@
     "memory_gb": 0.28,
     "status": "keep",
     "description": "fno_kdv_h128_m24_l8 FNO  h=128  l=8  m=24",
-    "commit": "b8bf426",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "b8bf426"
   },
   {
     "id": "legacy_86_7f3a10b",
@@ -24,10 +25,11 @@
     "memory_gb": 0.38,
     "status": "discard",
     "description": "ffno_kdv_h256_m32_l8 FFNO  h=256  l=8  m=32",
-    "commit": "7f3a10b",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "7f3a10b"
   },
   {
     "id": "legacy_87_7f3a10b",
@@ -39,10 +41,11 @@
     "memory_gb": 0.29,
     "status": "keep",
     "description": "rfno_kdv_h128_m24_l8 RFNO  h=128  l=8  m=24",
-    "commit": "7f3a10b",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "7f3a10b"
   },
   {
     "id": "legacy_88_3684277",
@@ -54,10 +57,11 @@
     "memory_gb": 0.28,
     "status": "keep",
     "description": "fno_wave_h128_m24_l8 FNO  h=128  l=8  m=24",
-    "commit": "3684277",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "3684277"
   },
   {
     "id": "legacy_89_6309fb6",
@@ -69,10 +73,11 @@
     "memory_gb": 0.35,
     "status": "discard",
     "description": "rfno_kdv_h128_m24_l10 RFNO  h=128  l=10  m=24",
-    "commit": "6309fb6",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "6309fb6"
   },
   {
     "id": "legacy_90_6309fb6",
@@ -84,10 +89,11 @@
     "memory_gb": 0.35,
     "status": "discard",
     "description": "rfno_kdv_h128_m32_l8 RFNO  h=128  l=8  m=32",
-    "commit": "6309fb6",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "6309fb6"
   },
   {
     "id": "legacy_91_0f7cbca",
@@ -99,10 +105,11 @@
     "memory_gb": 0.82,
     "status": "discard",
     "description": "rfno_kdv_h256_m24_l8 RFNO  h=256  l=8  m=24",
-    "commit": "0f7cbca",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "0f7cbca"
   },
   {
     "id": "legacy_92_0f7cbca",
@@ -114,10 +121,11 @@
     "memory_gb": 0.29,
     "status": "keep",
     "description": "rfno_wave_h128_m24_l8 RFNO  h=128  l=8  m=24",
-    "commit": "0f7cbca",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "0f7cbca"
   },
   {
     "id": "legacy_93_1828b15",
@@ -129,10 +137,11 @@
     "memory_gb": 0.98,
     "status": "discard",
     "description": "fno_kdv_h256_m32_l8 FNO  h=256  l=8  m=32",
-    "commit": "1828b15",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "1828b15"
   },
   {
     "id": "legacy_94_1828b15",
@@ -144,10 +153,11 @@
     "memory_gb": 0.07,
     "status": "keep",
     "description": "fno_wave_h64_m16_l4 FNO  h=64  l=4  m=16",
-    "commit": "1828b15",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "1828b15"
   },
   {
     "id": "legacy_95_0d70ade",
@@ -159,10 +169,11 @@
     "memory_gb": 0.43,
     "status": "discard",
     "description": "rfno_kdv_h128_m24_l12 RFNO  h=128  l=12  m=24",
-    "commit": "0d70ade",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "0d70ade"
   },
   {
     "id": "legacy_98_5ff4306",
@@ -174,10 +185,11 @@
     "memory_gb": 1.81,
     "status": "keep",
     "description": "fno_darcy2d_fix_h32_m8_l4 FNO  h=32  l=4  m=8",
-    "commit": "5ff4306",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "5ff4306"
   },
   {
     "id": "legacy_99_3415d16",
@@ -189,10 +201,11 @@
     "memory_gb": 1.8,
     "status": "keep",
     "description": "fno_darcy2d_fix_h32_m8_l4 FNO h=32 l=4 m=8 (fixed f, log-normal a)",
-    "commit": "3415d16",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "3415d16"
   },
   {
     "id": "legacy_100_3415d16",
@@ -204,10 +217,11 @@
     "memory_gb": 1.8,
     "status": "keep",
     "description": "fno_ns2d_fix_h32_m8_l4 FNO baseline (corrected ICs)",
-    "commit": "3415d16",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "3415d16"
   },
   {
     "id": "legacy_101_3415d16",
@@ -219,10 +233,11 @@
     "memory_gb": 7.2,
     "status": "discard",
     "description": "fno_darcy2d_fix_h128 FNO h=128 l=8 m=24 (too large, only 2 steps)",
-    "commit": "3415d16",
     "config": {},
     "rationale": "Migrated from legacy results.tsv",
-    "conclusion": ""
+    "conclusion": "",
+    "diag": {},
+    "commit": "3415d16"
   },
   {
     "id": "darcy_2d_FNO_1775471776",
@@ -234,7 +249,6 @@
     "memory_gb": 1.7046875,
     "status": "keep",
     "description": "darcy2d_fno_h64_l6_m16 FNO  h=64  l=6  m=16",
-    "commit": "675957e",
     "config": {
       "name": "darcy2d_fno_h64_l6_m16",
       "benchmark": "darcy_2d",
@@ -263,7 +277,8 @@
     "diag": {
       "diag_low_freq_error": 0.015916,
       "diag_high_freq_error": 0.030923
-    }
+    },
+    "commit": "675957e"
   },
   {
     "id": "wave_1d_DualDeepONet_1775472080",
@@ -275,7 +290,6 @@
     "memory_gb": 0.0017578125,
     "status": "discard",
     "description": "dual_deeponet_wave_h64_l4 DualDeepONet  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "dual_deeponet_wave_h64_l4",
       "benchmark": "wave_1d",
@@ -304,7 +318,8 @@
     "diag": {
       "diag_low_freq_error": 0.071654,
       "diag_high_freq_error": 0.00576
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_EnergyFNO_1775472383",
@@ -316,7 +331,6 @@
     "memory_gb": 0.25634765625,
     "status": "discard",
     "description": "energy_fno_kdv_h128_l8_m24 EnergyFNO  h=128  l=8",
-    "commit": "80b6b97",
     "config": {
       "name": "energy_fno_kdv_h128_l8_m24",
       "benchmark": "kdv_1d",
@@ -345,7 +359,8 @@
     "diag": {
       "diag_low_freq_error": 0.002063,
       "diag_high_freq_error": 0.000335
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_EnergyFNO_1775472687",
@@ -357,7 +372,6 @@
     "memory_gb": 0.1103515625,
     "status": "discard",
     "description": "energy_fno_wave_h64_l8_m24 EnergyFNO  h=64  l=8",
-    "commit": "80b6b97",
     "config": {
       "name": "energy_fno_wave_h64_l8_m24",
       "benchmark": "wave_1d",
@@ -386,7 +400,8 @@
     "diag": {
       "diag_low_freq_error": 0.001462,
       "diag_high_freq_error": 0.000156
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_HNN_1775473296",
@@ -398,7 +413,6 @@
     "memory_gb": 0.00205078125,
     "status": "discard",
     "description": "hnn_kdv_h64_l4 HNN  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "hnn_kdv_h64_l4",
       "benchmark": "kdv_1d",
@@ -427,7 +441,8 @@
     "diag": {
       "diag_low_freq_error": NaN,
       "diag_high_freq_error": NaN
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_HNN_1775473602",
@@ -439,7 +454,6 @@
     "memory_gb": 0.00771484375,
     "status": "discard",
     "description": "hnn_wave_h128_l4 HNN  h=128  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "hnn_wave_h128_l4",
       "benchmark": "wave_1d",
@@ -468,7 +482,8 @@
     "diag": {
       "diag_low_freq_error": 0.003412,
       "diag_high_freq_error": 0.005395
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_HNN_1775473906",
@@ -480,7 +495,6 @@
     "memory_gb": 0.00205078125,
     "status": "discard",
     "description": "hnn_wave_h64_l4 HNN  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "hnn_wave_h64_l4",
       "benchmark": "wave_1d",
@@ -509,7 +523,8 @@
     "diag": {
       "diag_low_freq_error": 0.029532,
       "diag_high_freq_error": 0.016541
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_NeuralODE_1775491917",
@@ -521,7 +536,6 @@
     "memory_gb": 0.8697265625,
     "status": "discard",
     "description": "neural_ode_kdv_h64_l4_s20 NeuralODE  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "neural_ode_kdv_h64_l4_s20",
       "benchmark": "kdv_1d",
@@ -550,7 +564,8 @@
     "diag": {
       "diag_low_freq_error": 0.003986,
       "diag_high_freq_error": 0.000541
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_NeuralODE_1775494669",
@@ -562,7 +577,6 @@
     "memory_gb": 0.82001953125,
     "status": "discard",
     "description": "neural_ode_wave_h64_l4_s20 NeuralODE  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "neural_ode_wave_h64_l4_s20",
       "benchmark": "wave_1d",
@@ -591,7 +605,8 @@
     "diag": {
       "diag_low_freq_error": 0.055668,
       "diag_high_freq_error": 0.00294
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_RTFNO_1775539870",
@@ -603,7 +618,6 @@
     "memory_gb": 0.3267578125,
     "status": "discard",
     "description": "rtfno_kdv_h128_l10_m24 RTFNO  h=128  l=10",
-    "commit": "80b6b97",
     "config": {
       "name": "rtfno_kdv_h128_l10_m24",
       "benchmark": "kdv_1d",
@@ -632,7 +646,8 @@
     "diag": {
       "diag_low_freq_error": 0.00313,
       "diag_high_freq_error": 0.000527
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "darcy_2d_TFNO2D_1775540444",
@@ -644,7 +659,6 @@
     "memory_gb": 3.43564453125,
     "status": "discard",
     "description": "tfno2d_darcy_h128_m24_l4 TFNO2D  h=128  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "tfno2d_darcy_h128_m24_l4",
       "benchmark": "darcy_2d",
@@ -673,7 +687,8 @@
     "diag": {
       "diag_low_freq_error": 0.238511,
       "diag_high_freq_error": 0.495837
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "darcy_2d_TFNO2D_1775543188",
@@ -685,7 +700,6 @@
     "memory_gb": 3.07158203125,
     "status": "discard",
     "description": "tfno2d_darcy_h64_m16_l4 TFNO2D  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "tfno2d_darcy_h64_m16_l4",
       "benchmark": "darcy_2d",
@@ -714,7 +728,8 @@
     "diag": {
       "diag_low_freq_error": 0.08374,
       "diag_high_freq_error": 0.171423
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_TFNO_1775546798",
@@ -726,7 +741,6 @@
     "memory_gb": 0.7490234375,
     "status": "discard",
     "description": "tfno_kdv_h128_l8_m24 TFNO  h=128  l=8",
-    "commit": "80b6b97",
     "config": {
       "name": "tfno_kdv_h128_l8_m24",
       "benchmark": "kdv_1d",
@@ -755,7 +769,8 @@
     "diag": {
       "diag_low_freq_error": 0.00201,
       "diag_high_freq_error": 0.000162
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_TimeDeepONet_1775548000",
@@ -767,7 +782,6 @@
     "memory_gb": 0.02431640625,
     "status": "discard",
     "description": "time_deeponet_wave_h128_l4 TimeDeepONet  h=256  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "time_deeponet_wave_h128_l4",
       "benchmark": "wave_1d",
@@ -796,7 +810,8 @@
     "diag": {
       "diag_low_freq_error": 0.001652,
       "diag_high_freq_error": 0.000607
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "wave_1d_TimeDeepONet_1775549202",
@@ -808,7 +823,6 @@
     "memory_gb": 0.008203125,
     "status": "discard",
     "description": "time_deeponet_wave_h64_l4 TimeDeepONet  h=128  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "time_deeponet_wave_h64_l4",
       "benchmark": "wave_1d",
@@ -837,7 +851,8 @@
     "diag": {
       "diag_low_freq_error": 0.001533,
       "diag_high_freq_error": 0.000584
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "darcy_2d_Transolver2D_1775550598",
@@ -849,7 +864,6 @@
     "memory_gb": 6.41337890625,
     "status": "discard",
     "description": "transolver2d_darcy_h64_l4_s64 Transolver2D  h=64  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "transolver2d_darcy_h64_l4_s64",
       "benchmark": "darcy_2d",
@@ -878,7 +892,8 @@
     "diag": {
       "diag_low_freq_error": 0.585783,
       "diag_high_freq_error": 1.194245
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "kdv_1d_Transolver_1775554210",
@@ -890,7 +905,6 @@
     "memory_gb": 0.8814453125,
     "status": "discard",
     "description": "transolver_kdv_h64_l4_s32 Transolver  h=128  l=4",
-    "commit": "80b6b97",
     "config": {
       "name": "transolver_kdv_h64_l4_s32",
       "benchmark": "kdv_1d",
@@ -919,7 +933,8 @@
     "diag": {
       "diag_low_freq_error": 0.02205,
       "diag_high_freq_error": 0.006194
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "darcy_2d_FNO_1775576031",
@@ -931,7 +946,6 @@
     "memory_gb": 7.3712890625,
     "status": "discard",
     "description": "fno_darcy2d_fix_h128_l8_m24 FNO  h=128  l=8  m=24",
-    "commit": "80b6b97",
     "config": {
       "name": "fno_darcy2d_fix_h128_l8_m24",
       "benchmark": "darcy_2d",
@@ -960,7 +974,8 @@
     "diag": {
       "diag_low_freq_error": 0.389462,
       "diag_high_freq_error": 0.786471
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "allen_cahn_2d_FNO_1775666751",
@@ -972,7 +987,6 @@
     "memory_gb": 4.2484375,
     "status": "keep",
     "description": "allen_cahn_fno_h128_l4_m12 FNO  h=128  l=4  m=12",
-    "commit": "80b6b97",
     "config": {
       "name": "allen_cahn_fno_h128_l4_m12",
       "benchmark": "allen_cahn_2d",
@@ -1001,7 +1015,8 @@
     "diag": {
       "diag_low_freq_error": 0.217041,
       "diag_high_freq_error": 0.408382
-    }
+    },
+    "commit": "80b6b97"
   },
   {
     "id": "allen_cahn_2d_FNO_1775668040",
@@ -1013,7 +1028,6 @@
     "memory_gb": 3.37138671875,
     "status": "keep",
     "description": "allen_cahn_fno_h64_l4_m12 FNO  h=64  l=4  m=12",
-    "commit": "041af17",
     "config": {
       "name": "allen_cahn_fno_h64_l4_m12",
       "benchmark": "allen_cahn_2d",
@@ -1042,7 +1056,8 @@
     "diag": {
       "diag_low_freq_error": 0.040445,
       "diag_high_freq_error": 0.079105
-    }
+    },
+    "commit": "041af17"
   },
   {
     "id": "euler_1d_FNO_1775670468",
@@ -1054,7 +1069,6 @@
     "memory_gb": 0.08720703125,
     "status": "keep",
     "description": "euler1d_fno_h64_l4_m16 FNO  h=64  l=4  m=16",
-    "commit": "575e497",
     "config": {
       "name": "euler1d_fno_h64_l4_m16",
       "benchmark": "euler_1d",
@@ -1083,7 +1097,8 @@
     "diag": {
       "diag_low_freq_error": 0.000394,
       "diag_high_freq_error": 0.000921
-    }
+    },
+    "commit": "575e497"
   },
   {
     "id": "euler_1d_FNO_MC_1775670950",
@@ -1095,7 +1110,6 @@
     "memory_gb": 0.43271484375,
     "status": "discard",
     "description": "euler1d_fno_mc_h128_l8_m24 FNO_MC  h=128  l=8",
-    "commit": "a9676d6",
     "config": {
       "name": "euler1d_fno_mc_h128_l8_m24",
       "benchmark": "euler_1d",
@@ -1124,7 +1138,8 @@
     "diag": {
       "diag_low_freq_error": 0.000679,
       "diag_high_freq_error": 0.001263
-    }
+    },
+    "commit": "a9676d6"
   },
   {
     "id": "darcy_2d_FNO_1775672288",
@@ -1136,7 +1151,6 @@
     "memory_gb": 7.3712890625,
     "status": "discard",
     "description": "fno_darcy2d_fix_h128_l8_m24_h1 FNO  h=128  l=8  m=24  loss=h1",
-    "commit": "a9676d6",
     "config": {
       "name": "fno_darcy2d_fix_h128_l8_m24_h1",
       "benchmark": "darcy_2d",
@@ -1165,7 +1179,8 @@
     "diag": {
       "diag_low_freq_error": 0.538852,
       "diag_high_freq_error": 1.08474
-    }
+    },
+    "commit": "a9676d6"
   },
   {
     "id": "darcy_2d_FNO_1775673539",
@@ -1177,7 +1192,6 @@
     "memory_gb": 3.37138671875,
     "status": "discard",
     "description": "fno_darcy2d_fix_h64_m12_l4 FNO  h=64  l=4  m=12",
-    "commit": "a9676d6",
     "config": {
       "name": "fno_darcy2d_fix_h64_m12_l4",
       "benchmark": "darcy_2d",
@@ -1206,7 +1220,8 @@
     "diag": {
       "diag_low_freq_error": 0.053731,
       "diag_high_freq_error": 0.10963
-    }
+    },
+    "commit": "a9676d6"
   },
   {
     "id": "swe_2d_FNO2D_1775685392",
@@ -1218,7 +1233,6 @@
     "memory_gb": 2.49521484375,
     "status": "keep",
     "description": "fno2d_swe2d_h32_l4_m12 FNO2D  h=32  l=4",
-    "commit": "0fe5f9e",
     "config": {
       "name": "fno2d_swe2d_h32_l4_m12",
       "benchmark": "swe_2d",
@@ -1247,7 +1261,8 @@
     "diag": {
       "diag_low_freq_error": 0.005544,
       "diag_high_freq_error": 0.01229
-    }
+    },
+    "commit": "0fe5f9e"
   },
   {
     "id": "swe_2d_FNO_1775689064",
@@ -1259,7 +1274,6 @@
     "memory_gb": 3.3361328125,
     "status": "discard",
     "description": "fno_swe2d_h64_l4_m12 FNO  h=64  l=4  m=12",
-    "commit": "c025fd6",
     "config": {
       "name": "fno_swe2d_h64_l4_m12",
       "benchmark": "swe_2d",
@@ -1288,7 +1302,8 @@
     "diag": {
       "diag_low_freq_error": 0.40715,
       "diag_high_freq_error": 0.793152
-    }
+    },
+    "commit": "c025fd6"
   },
   {
     "id": "wave_1d_LatentODE_1775714624",
@@ -1300,7 +1315,6 @@
     "memory_gb": 0.00283203125,
     "status": "discard",
     "description": "latent_ode_wave_h64_l4_s20 LatentODE  h=64  l=4",
-    "commit": "3e75214",
     "config": {
       "name": "latent_ode_wave_h64_l4_s20",
       "benchmark": "wave_1d",
@@ -1329,7 +1343,8 @@
     "diag": {
       "diag_low_freq_error": 0.005213,
       "diag_high_freq_error": 0.002011
-    }
+    },
+    "commit": "3e75214"
   },
   {
     "id": "wave_1d_FNO_1775714624",
@@ -1341,7 +1356,6 @@
     "memory_gb": 0.476953125,
     "status": "discard",
     "description": "fno_wave_h128_m24_l8_v2 FNO  h=128  l=8  m=24",
-    "commit": "3e75214",
     "config": {
       "name": "fno_wave_h128_m24_l8_v2",
       "benchmark": "wave_1d",
@@ -1370,7 +1384,8 @@
     "diag": {
       "diag_low_freq_error": 0.004596,
       "diag_high_freq_error": 0.00033
-    }
+    },
+    "commit": "3e75214"
   },
   {
     "id": "wave_1d_NeuralODE_1775715895",
@@ -1382,7 +1397,6 @@
     "memory_gb": 1.62109375,
     "status": "discard",
     "description": "neural_ode_wave_h64_l4_s40 NeuralODE  h=64  l=4",
-    "commit": "3e75214",
     "config": {
       "name": "neural_ode_wave_h64_l4_s40",
       "benchmark": "wave_1d",
@@ -1411,7 +1425,8 @@
     "diag": {
       "diag_low_freq_error": 0.063078,
       "diag_high_freq_error": 0.006752
-    }
+    },
+    "commit": "3e75214"
   },
   {
     "id": "kdv_1d_RFNO_1775719382",
@@ -1423,7 +1438,6 @@
     "memory_gb": 0.46787109375,
     "status": "discard",
     "description": "rfno_kdv_h128_l8_m24_aug RFNO  h=128  l=8  m=24",
-    "commit": "3e75214",
     "config": {
       "name": "rfno_kdv_h128_l8_m24_aug",
       "benchmark": "kdv_1d",
@@ -1452,7 +1466,8 @@
     "diag": {
       "diag_low_freq_error": 0.005732,
       "diag_high_freq_error": 0.000741
-    }
+    },
+    "commit": "3e75214"
   },
   {
     "id": "kdv_1d_RFNO_1775720587",
@@ -1464,7 +1479,6 @@
     "memory_gb": 0.47958984375,
     "status": "discard",
     "description": "rfno_kdv_h128_m24_l8_aug RFNO  h=128  l=8  m=24",
-    "commit": "3e75214",
     "config": {
       "name": "rfno_kdv_h128_m24_l8_aug",
       "benchmark": "kdv_1d",
@@ -1493,7 +1507,8 @@
     "diag": {
       "diag_low_freq_error": 0.004827,
       "diag_high_freq_error": 0.000822
-    }
+    },
+    "commit": "3e75214"
   },
   {
     "id": "kdv_1d_S4NO_1775762573",
@@ -1505,7 +1520,6 @@
     "memory_gb": 0.27509765625,
     "status": "discard",
     "description": "s4d_kdv_h128_l6_p1 S4NO  h=128  l=6",
-    "commit": "daa9e49",
     "config": {
       "name": "s4d_kdv_h128_l6_p1",
       "benchmark": "kdv_1d",
@@ -1537,7 +1551,8 @@
     "diag": {
       "diag_low_freq_error": 0.019004,
       "diag_high_freq_error": 0.002151
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "darcy_2d_Transolver2D_1775763644",
@@ -1549,7 +1564,6 @@
     "memory_gb": 9.81220703125,
     "status": "discard",
     "description": "transolver2d_darcy_h128_l4_s64 Transolver2D  h=128  l=4  m=12  h=4  s=64",
-    "commit": "daa9e49",
     "config": {
       "name": "transolver2d_darcy_h128_l4_s64",
       "benchmark": "darcy_2d",
@@ -1581,7 +1595,8 @@
     "diag": {
       "diag_low_freq_error": 0.347928,
       "diag_high_freq_error": 0.719301
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "wave_1d_RFNO_1775764268",
@@ -1593,7 +1608,6 @@
     "memory_gb": 0.2056640625,
     "status": "discard",
     "description": "rfno_wave_h64_l8_m24 RFNO  h=64  l=8  m=24",
-    "commit": "daa9e49",
     "config": {
       "name": "rfno_wave_h64_l8_m24",
       "benchmark": "wave_1d",
@@ -1625,7 +1639,8 @@
     "diag": {
       "diag_low_freq_error": 0.006663,
       "diag_high_freq_error": 0.000339
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "swe_2d_FNO_1775765959",
@@ -1637,7 +1652,6 @@
     "memory_gb": 4.2484375,
     "status": "discard",
     "description": "swe2d_fno_h128_l4_m12 FNO  h=128  l=4  m=12",
-    "commit": "daa9e49",
     "config": {
       "name": "swe2d_fno_h128_l4_m12",
       "benchmark": "swe_2d",
@@ -1669,7 +1683,8 @@
     "diag": {
       "diag_low_freq_error": 0.019927,
       "diag_high_freq_error": 0.040486
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "swe_2d_FNO_1775767164",
@@ -1681,7 +1696,6 @@
     "memory_gb": 3.37138671875,
     "status": "discard",
     "description": "swe2d_fno_h64_l4_m12 FNO  h=64  l=4  m=12",
-    "commit": "daa9e49",
     "config": {
       "name": "swe2d_fno_h64_l4_m12",
       "benchmark": "swe_2d",
@@ -1713,7 +1727,8 @@
     "diag": {
       "diag_low_freq_error": 0.003631,
       "diag_high_freq_error": 0.007701
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "ns_2d_TFNO2D_1775768368",
@@ -1725,7 +1740,6 @@
     "memory_gb": 3.28359375,
     "status": "discard",
     "description": "tfno2d_ns_h64_m12_l4 TFNO2D  h=64  l=4",
-    "commit": "daa9e49",
     "config": {
       "name": "tfno2d_ns_h64_m12_l4",
       "benchmark": "ns_2d",
@@ -1757,7 +1771,8 @@
     "diag": {
       "diag_low_freq_error": 0.007109,
       "diag_high_freq_error": 0.016572
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "kdv_1d_TimeDeepONet_1775770773",
@@ -1769,7 +1784,6 @@
     "memory_gb": 0.001953125,
     "status": "discard",
     "description": "time_deeponet_kdv_h64_l4 TimeDeepONet  h=64  l=4",
-    "commit": "daa9e49",
     "config": {
       "name": "time_deeponet_kdv_h64_l4",
       "benchmark": "kdv_1d",
@@ -1801,7 +1815,8 @@
     "diag": {
       "diag_low_freq_error": 0.006454,
       "diag_high_freq_error": 0.001578
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "ns_2d_Transolver2D_1775772066",
@@ -1813,7 +1828,6 @@
     "memory_gb": 5.1158203125,
     "status": "discard",
     "description": "transolver2d_ns_h64_l4_s64 Transolver2D  h=64  l=4  m=12  h=4  s=32",
-    "commit": "daa9e49",
     "config": {
       "name": "transolver2d_ns_h64_l4_s64",
       "benchmark": "ns_2d",
@@ -1845,7 +1859,8 @@
     "diag": {
       "diag_low_freq_error": 0.235524,
       "diag_high_freq_error": 0.499804
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "wave_1d_Transolver_1775773268",
@@ -1857,7 +1872,6 @@
     "memory_gb": 0.25419921875,
     "status": "discard",
     "description": "transolver_wave_h64_l4_s32 Transolver  h=64  l=4  m=16  h=4  s=32",
-    "commit": "daa9e49",
     "config": {
       "name": "transolver_wave_h64_l4_s32",
       "benchmark": "wave_1d",
@@ -1889,7 +1903,8 @@
     "diag": {
       "diag_low_freq_error": 0.051287,
       "diag_high_freq_error": 0.019835
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "darcy_2d_FNO_1775773771_7a9e9f",
@@ -1901,7 +1916,6 @@
     "memory_gb": 2.52744140625,
     "status": "discard",
     "description": "fno_darcy2d_h32_m12_l4_480s FNO  h=32  l=4  m=12",
-    "commit": "daa9e49",
     "config": {
       "name": "fno_darcy2d_h32_m12_l4_480s",
       "benchmark": "darcy_2d",
@@ -1933,7 +1947,8 @@
     "diag": {
       "diag_low_freq_error": 0.027634,
       "diag_high_freq_error": 0.056651
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "darcy_2d_FNO_1775774257_cfb756",
@@ -1945,7 +1960,6 @@
     "memory_gb": 3.19560546875,
     "status": "discard",
     "description": "fno_darcy2d_h64_m8_l4_480s FNO  h=64  l=4  m=8",
-    "commit": "daa9e49",
     "config": {
       "name": "fno_darcy2d_h64_m8_l4_480s",
       "benchmark": "darcy_2d",
@@ -1977,7 +1991,8 @@
     "diag": {
       "diag_low_freq_error": 0.076681,
       "diag_high_freq_error": 0.148737
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "ns_2d_FNO_1775774741_c8d97c",
@@ -1989,7 +2004,6 @@
     "memory_gb": 2.52744140625,
     "status": "discard",
     "description": "fno_ns2d_h32_m12_l4_480s FNO  h=32  l=4  m=12",
-    "commit": "daa9e49",
     "config": {
       "name": "fno_ns2d_h32_m12_l4_480s",
       "benchmark": "ns_2d",
@@ -2021,7 +2035,8 @@
     "diag": {
       "diag_low_freq_error": 0.007443,
       "diag_high_freq_error": 0.014367
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "ns_2d_FNO_1775775345_30d593",
@@ -2033,7 +2048,6 @@
     "memory_gb": 2.42001953125,
     "status": "keep",
     "description": "fno_ns2d_h32_m8_l4_600s FNO  h=32  l=4  m=8",
-    "commit": "daa9e49",
     "config": {
       "name": "fno_ns2d_h32_m8_l4_600s",
       "benchmark": "ns_2d",
@@ -2065,7 +2079,8 @@
     "diag": {
       "diag_low_freq_error": 0.005874,
       "diag_high_freq_error": 0.010617
-    }
+    },
+    "commit": "daa9e49"
   },
   {
     "id": "ns_2d_FNO_1775775828_439784",
@@ -2077,7 +2092,6 @@
     "memory_gb": 2.42001953125,
     "status": "discard",
     "description": "fno_ns2d_h32_m8_l4_h1loss FNO  h=32  l=4  m=8  loss=h1",
-    "commit": "10462b1",
     "config": {
       "name": "fno_ns2d_h32_m8_l4_h1loss",
       "benchmark": "ns_2d",
@@ -2109,7 +2123,8 @@
     "diag": {
       "diag_low_freq_error": 0.01302,
       "diag_high_freq_error": 0.02544
-    }
+    },
+    "commit": "10462b1"
   },
   {
     "id": "kdv_1d_SSNO_1775795316_b4d1ec",
@@ -2121,7 +2136,6 @@
     "memory_gb": 0.22177734375,
     "status": "discard",
     "description": "ssno_kdv_h128_l8_m24 SSNO  h=128  l=8",
-    "commit": "02ee254",
     "config": {
       "name": "ssno_kdv_h128_l8_m24",
       "benchmark": "kdv_1d",
@@ -2153,7 +2167,8 @@
     "diag": {
       "diag_low_freq_error": 0.01175,
       "diag_high_freq_error": 0.000915
-    }
+    },
+    "commit": "02ee254"
   },
   {
     "id": "wave_1d_SSNO_1775795619_293c53",
@@ -2165,7 +2180,6 @@
     "memory_gb": 0.20859375,
     "status": "discard",
     "description": "ssno_wave_h64_l4_m16 SSNO  h=64  l=4",
-    "commit": "02ee254",
     "config": {
       "name": "ssno_wave_h64_l4_m16",
       "benchmark": "wave_1d",
@@ -2197,7 +2211,8 @@
     "diag": {
       "diag_low_freq_error": 0.009559,
       "diag_high_freq_error": 0.001291
-    }
+    },
+    "commit": "02ee254"
   },
   {
     "id": "darcy_2d_FNO_1775902801_28d663",
@@ -2209,7 +2224,6 @@
     "memory_gb": 1.50927734375,
     "status": "discard",
     "description": "fno_darcy2d_h32_l4_m8_h1 FNO  h=32  l=4  m=8  loss=h1",
-    "commit": "82df26e",
     "config": {
       "name": "fno_darcy2d_h32_l4_m8_h1",
       "benchmark": "darcy_2d",
@@ -2241,7 +2255,8 @@
     "diag": {
       "diag_low_freq_error": 0.026134,
       "diag_high_freq_error": 0.051617
-    }
+    },
+    "commit": "82df26e"
   },
   {
     "id": "wavebench_2d_AttentionEnhancedFNO2D_1776021654_884d37",
@@ -2253,7 +2268,6 @@
     "memory_gb": 2.0833984375,
     "status": "keep",
     "description": "AttentionEnhancedFNO2D on wavebench_2d (Stabilized Environment)",
-    "commit": "stabilization_fix",
     "config": {
       "name": "attentionenhancedfno_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -2270,7 +2284,8 @@
       "low_freq_error": 0.028874,
       "high_freq_error": 0.064562,
       "training_seconds": 324.7
-    }
+    },
+    "commit": "stabilization_fix"
   },
   {
     "id": "wavebench_2d_AttentionEnhancedFNO2D_1776085017_827809",
@@ -2282,7 +2297,6 @@
     "memory_gb": 4.02763671875,
     "status": "discard",
     "description": "attentionenhancedfno_wavebench_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
-    "commit": "536e90b",
     "config": {
       "name": "attentionenhancedfno_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -2316,7 +2330,8 @@
     "diag": {
       "diag_low_freq_error": 0.089171,
       "diag_high_freq_error": 0.184355
-    }
+    },
+    "commit": "536e90b"
   },
   {
     "id": "pdebench_2d_AttentionEnhancedFNO2D_1776086540_10acfc",
@@ -2328,7 +2343,6 @@
     "memory_gb": 4.02763671875,
     "status": "keep",
     "description": "attentionenhancedfno_pdebench_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
-    "commit": "495e353",
     "config": {
       "name": "attentionenhancedfno_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -2362,7 +2376,8 @@
     "diag": {
       "diag_low_freq_error": 0.175232,
       "diag_high_freq_error": 0.380593
-    }
+    },
+    "commit": "495e353"
   },
   {
     "id": "radiative_2d_AttentionEnhancedFNO2D_1776087288_d960cc",
@@ -2374,7 +2389,6 @@
     "memory_gb": 4.02763671875,
     "status": "keep",
     "description": "attentionenhancedfno_radiative_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
-    "commit": "58385be",
     "config": {
       "name": "attentionenhancedfno_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -2408,7 +2422,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "58385be"
   },
   {
     "id": "wave_1d_HNN_1776100506_a1a2b9",
@@ -2420,7 +2435,6 @@
     "memory_gb": 0.09248046875,
     "status": "discard",
     "description": "hnn_wave_stable_h128_l4 HNN  h=128  l=4  lr=5e-04",
-    "commit": "1b87c1b",
     "config": {
       "name": "hnn_wave_stable_h128_l4",
       "benchmark": "wave_1d",
@@ -2454,7 +2468,8 @@
     "diag": {
       "diag_low_freq_error": 0.007959,
       "diag_high_freq_error": 0.000202
-    }
+    },
+    "commit": "1b87c1b"
   },
   {
     "id": "burgers_nu_001_WNO_1776114789_c074a7",
@@ -2466,7 +2481,6 @@
     "memory_gb": 0.23017578125,
     "status": "keep",
     "description": "wno_burgers_l8_nu0.01 WNO  h=128  l=8  lvl=4",
-    "commit": "1b87c1b",
     "config": {
       "name": "wno_burgers_l8_nu0.01",
       "benchmark": "burgers_nu_001",
@@ -2500,7 +2514,8 @@
     "diag": {
       "diag_low_freq_error": 0.095207,
       "diag_high_freq_error": 0.349572
-    }
+    },
+    "commit": "1b87c1b"
   },
   {
     "id": "ns_2d_MambaNO_1776149957_709ede",
@@ -2512,7 +2527,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "mambano_ns_2d_h32_l4 MambaNO  h=32  l=4",
-    "commit": "3e6934b",
     "config": {
       "name": "mambano_ns_2d_h32_l4",
       "benchmark": "ns_2d",
@@ -2545,7 +2559,8 @@
     },
     "rationale": "MambaNO on Navier-Stokes 2D",
     "conclusion": "crash:BroadcastingError ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "swe_2d_MemNO_1776149980_68d2ba",
@@ -2557,7 +2572,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "memno_swe_2d_h32_l4 MemNO  h=32  l=4",
-    "commit": "3e6934b",
     "config": {
       "name": "memno_swe_2d_h32_l4",
       "benchmark": "swe_2d",
@@ -2590,7 +2604,8 @@
     },
     "rationale": "MemNO on Shallow Water Equations 2D",
     "conclusion": "crash:BroadcastingError ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "allen_cahn_2d_MambaNO_1776150015_3ab6ba",
@@ -2602,7 +2617,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "mambano_allen_cahn_h32_l4 MambaNO  h=32  l=4",
-    "commit": "3e6934b",
     "config": {
       "name": "mambano_allen_cahn_h32_l4",
       "benchmark": "allen_cahn_2d",
@@ -2635,7 +2649,8 @@
     },
     "rationale": "MambaNO on Allen-Cahn phase transition",
     "conclusion": "crash:BroadcastingError ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "mhd_2d_FNO_1776150021_424a5d",
@@ -2647,7 +2662,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_mhd_2d_h32_l4 FNO  h=32  l=4  m=8",
-    "commit": "3e6934b",
     "config": {
       "name": "fno_mhd_2d_h32_l4",
       "benchmark": "mhd_2d",
@@ -2680,7 +2694,8 @@
     },
     "rationale": "Baseline FNO for new MHD benchmark",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "swe_2d_FNO_1776152127_16fdfd",
@@ -2692,7 +2707,6 @@
     "memory_gb": 1.6513671875,
     "status": "discard",
     "description": "fno_swe2d_h32_l4_m8 FNO  h=32  l=4  m=8",
-    "commit": "3e6934b",
     "config": {
       "name": "fno_swe2d_h32_l4_m8",
       "benchmark": "swe_2d",
@@ -2728,7 +2742,8 @@
     "diag": {
       "diag_low_freq_error": 0.027193,
       "diag_high_freq_error": 0.056211
-    }
+    },
+    "commit": "3e6934b"
   },
   {
     "id": "swe_2d_RFNO2D_1776153830_16f956",
@@ -2740,7 +2755,6 @@
     "memory_gb": 2.52548828125,
     "status": "discard",
     "description": "rfno2d_swe2d_h32_l4_m8 RFNO2D  h=32  l=4",
-    "commit": "3e6934b",
     "config": {
       "name": "rfno2d_swe2d_h32_l4_m8",
       "benchmark": "swe_2d",
@@ -2776,7 +2790,8 @@
     "diag": {
       "diag_low_freq_error": 0.013585,
       "diag_high_freq_error": 0.02803
-    }
+    },
+    "commit": "3e6934b"
   },
   {
     "id": "swe_2d_GNOT2D_1776153839_c3fea4",
@@ -2788,7 +2803,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "gnot2d_swe2d_h32_l4 GNOT2D  h=32  l=4",
-    "commit": "3e6934b",
     "config": {
       "name": "gnot2d_swe2d_h32_l4",
       "benchmark": "swe_2d",
@@ -2821,7 +2835,8 @@
     },
     "rationale": "Unrun GNOT2D model on untouched swe_2d benchmark.",
     "conclusion": "crash:OOM ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "swe_2d_UNO_1776153841_a02a35",
@@ -2833,7 +2848,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "uno_swe2d_h32_l4_m12 UNO  h=32  l=4  m=12",
-    "commit": "3e6934b",
     "config": {
       "name": "uno_swe2d_h32_l4_m12",
       "benchmark": "swe_2d",
@@ -2866,7 +2880,8 @@
     },
     "rationale": "UNO (multi-scale FNO) on untouched swe_2d benchmark.",
     "conclusion": "crash:IncompatibleDimensions ",
-    "diag": {}
+    "diag": {},
+    "commit": "3e6934b"
   },
   {
     "id": "ns_hre_2d_FNO_1776193209_8d0114",
@@ -2878,7 +2893,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_nshre2d_h64_l4_m12 FNO  h=64  l=4  m=12",
-    "commit": "6dd7ff5",
     "config": {
       "name": "fno_nshre2d_h64_l4_m12",
       "benchmark": "ns_hre_2d",
@@ -2911,7 +2925,8 @@
     },
     "rationale": "Baseline FNO for untouched ns_hre_2d benchmark.",
     "conclusion": "",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_hre_2d_GNOT2D_1776193639_3bc527",
@@ -2923,7 +2938,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "gnot2d_nshre2d_h32_l4 GNOT2D  h=32  l=4",
-    "commit": "6dd7ff5",
     "config": {
       "name": "gnot2d_nshre2d_h32_l4",
       "benchmark": "ns_hre_2d",
@@ -2956,7 +2970,8 @@
     },
     "rationale": "Unrun GNOT2D model on untouched ns_hre_2d benchmark.",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_hre_2d_FNO2D_1776193662_13af48",
@@ -2968,7 +2983,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno2d_nshre2d_h32_l4_m12 FNO2D  h=32  l=4",
-    "commit": "6dd7ff5",
     "config": {
       "name": "fno2d_nshre2d_h32_l4_m12",
       "benchmark": "ns_hre_2d",
@@ -3001,7 +3015,8 @@
     },
     "rationale": "Unrun FNO2D model on untouched ns_hre_2d benchmark.",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_hre_2d_Transolver2D_1776193691_aa6454",
@@ -3013,7 +3028,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "transolver2d_nshre2d_h32_l4 Transolver2D  h=32  l=4  m=16  h=4  s=32",
-    "commit": "6dd7ff5",
     "config": {
       "name": "transolver2d_nshre2d_h32_l4",
       "benchmark": "ns_hre_2d",
@@ -3046,7 +3060,8 @@
     },
     "rationale": "Transolver2D on high-Re Navier-Stokes.",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "allen_cahn_2d_UNO_1776193695_68199f",
@@ -3058,7 +3073,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "uno_allen_cahn_h32_l4_m12 UNO  h=32  l=4  m=12",
-    "commit": "6dd7ff5",
     "config": {
       "name": "uno_allen_cahn_h32_l4_m12",
       "benchmark": "allen_cahn_2d",
@@ -3091,7 +3105,8 @@
     },
     "rationale": "UNO on allen_cahn_2d (barely touched).",
     "conclusion": "crash:IncompatibleDimensions ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "allen_cahn_2d_WNO_1776193698_2f2ba3",
@@ -3103,7 +3118,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "wno_allen_cahn_h32_l4 WNO  h=32  l=4  lvl=3",
-    "commit": "6dd7ff5",
     "config": {
       "name": "wno_allen_cahn_h32_l4",
       "benchmark": "allen_cahn_2d",
@@ -3136,7 +3150,8 @@
     },
     "rationale": "WNO on allen_cahn_2d (barely touched).",
     "conclusion": "crash:IncompatibleDimensions ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_2d_FNO_1776193751_0cecee",
@@ -3148,7 +3163,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "ns2d_fno_h128_l6_m16 FNO  h=128  l=6  m=16",
-    "commit": "6dd7ff5",
     "config": {
       "name": "ns2d_fno_h128_l6_m16",
       "benchmark": "ns_2d",
@@ -3181,7 +3195,8 @@
     },
     "rationale": "Medium-size FNO; balance between capacity and training steps for 2D",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "darcy_2d_RFNO2D_1776193784_014d41",
@@ -3193,7 +3208,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "darcy2d_rfno2d_h32_l4_m8 RFNO2D  h=32  l=4",
-    "commit": "6dd7ff5",
     "config": {
       "name": "darcy2d_rfno2d_h32_l4_m8",
       "benchmark": "darcy_2d",
@@ -3226,7 +3240,8 @@
     },
     "rationale": "RFNO2D safe 2D config; pre-LN stability for Darcy net",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "darcy_2d_FNO_1776193795_45e824",
@@ -3238,7 +3253,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "darcy2d_fno_h32_l4_m8 FNO  h=32  l=4  m=8",
-    "commit": "6dd7ff5",
     "config": {
       "name": "darcy2d_fno_h32_l4_m8",
       "benchmark": "darcy_2d",
@@ -3271,7 +3285,8 @@
     },
     "rationale": "FNO h=32 \u2014 goldilocks safe size for 2D budget",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "darcy_2d_FNO_1776193998_ceb87c",
@@ -3283,7 +3298,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_darcy2d_h32_l4_m8 FNO  h=32  l=4  m=8",
-    "commit": "6dd7ff5",
     "config": {
       "name": "fno_darcy2d_h32_l4_m8",
       "benchmark": "darcy_2d",
@@ -3316,7 +3330,8 @@
     },
     "rationale": "Darcy fix on safe 2D config (h=32 l=4 m=8).",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "darcy_2d_RFNO2D_1776194030_ce8fc4",
@@ -3328,7 +3343,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "rfno2d_darcy2d_h32_m12_l4_480s RFNO2D  h=32  l=4",
-    "commit": "6dd7ff5",
     "config": {
       "name": "rfno2d_darcy2d_h32_m12_l4_480s",
       "benchmark": "darcy_2d",
@@ -3361,7 +3375,8 @@
     },
     "rationale": "RFNO2D on Darcy 2D with 480s budget. Pre-LN residual stability matters for 2D spectral conv. RFNO2D won KdV \u2014 test on Darcy.",
     "conclusion": "crash:NoOutput ",
-    "diag": {}
+    "diag": {},
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_2d_RFNO2D_1776195233_f51036",
@@ -3373,7 +3388,6 @@
     "memory_gb": 2.45712890625,
     "status": "discard",
     "description": "rfno2d_ns2d_h32_m8_l4_480s RFNO2D  h=32  l=4",
-    "commit": "6dd7ff5",
     "config": {
       "name": "rfno2d_ns2d_h32_m8_l4_480s",
       "benchmark": "ns_2d",
@@ -3409,7 +3423,8 @@
     "diag": {
       "diag_low_freq_error": 0.009219,
       "diag_high_freq_error": 0.018442
-    }
+    },
+    "commit": "6dd7ff5"
   },
   {
     "id": "ns_hre_2d_RFNO2D_1776216972_b6793d",
@@ -3421,7 +3436,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "agent_rfno2d_nshre_h32_l4_m8 RFNO2D  h=32  l=4",
-    "commit": "be16336",
     "config": {
       "name": "agent_rfno2d_nshre_h32_l4_m8",
       "benchmark": "ns_hre_2d",
@@ -3454,7 +3468,8 @@
     },
     "rationale": "Exploring Pre-LN residuals (RFNO2D) on high-Re NS on safe config.",
     "conclusion": "",
-    "diag": {}
+    "diag": {},
+    "commit": "be16336"
   },
   {
     "id": "ns_2d_RFNO2D_1776236894_699359",
@@ -3466,7 +3481,6 @@
     "memory_gb": 2.45712890625,
     "status": "discard",
     "description": "agent_rfno2d_ns2d_h32_l4_m8 RFNO2D  h=32  l=4",
-    "commit": "be16336",
     "config": {
       "name": "agent_rfno2d_ns2d_h32_l4_m8",
       "benchmark": "ns_2d",
@@ -3502,7 +3516,8 @@
     "diag": {
       "diag_low_freq_error": 0.008968,
       "diag_high_freq_error": 0.018801
-    }
+    },
+    "commit": "be16336"
   },
   {
     "id": "darcy_2d_RFNO2D_1776237983_c578ec",
@@ -3514,7 +3529,6 @@
     "memory_gb": 2.45712890625,
     "status": "discard",
     "description": "agent_rfno2d_darcy_h32_l4_m8 RFNO2D  h=32  l=4",
-    "commit": "be16336",
     "config": {
       "name": "agent_rfno2d_darcy_h32_l4_m8",
       "benchmark": "darcy_2d",
@@ -3550,7 +3564,8 @@
     "diag": {
       "diag_low_freq_error": 0.132694,
       "diag_high_freq_error": 0.262915
-    }
+    },
+    "commit": "be16336"
   },
   {
     "id": "wavebench_2d_HybridDecoderDeepONet2D_1776239181_14698a",
@@ -3562,7 +3577,6 @@
     "memory_gb": 1.401171875,
     "status": "keep",
     "description": "hybriddecoderdeeponet_wavebench_2d_h32_l2_m8 HybridDecoderDeepONet2D  h=32  l=2",
-    "commit": "be16336",
     "config": {
       "name": "hybriddecoderdeeponet_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3598,7 +3612,8 @@
     "diag": {
       "diag_low_freq_error": 0.003568,
       "diag_high_freq_error": 0.008112
-    }
+    },
+    "commit": "be16336"
   },
   {
     "id": "wavebench_2d_HybridFNODeepONet2D_1776239880_d4703d",
@@ -3610,7 +3625,6 @@
     "memory_gb": 1.45625,
     "status": "discard",
     "description": "hybridfnodeeponet_wavebench_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
-    "commit": "07f9061",
     "config": {
       "name": "hybridfnodeeponet_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3646,7 +3660,8 @@
     "diag": {
       "diag_low_freq_error": 0.003817,
       "diag_high_freq_error": 0.008863
-    }
+    },
+    "commit": "07f9061"
   },
   {
     "id": "wavebench_2d_FEDONet2D_1776241079_6a5546",
@@ -3658,7 +3673,6 @@
     "memory_gb": 0.92568359375,
     "status": "discard",
     "description": "fedonet_wavebench_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
-    "commit": "07f9061",
     "config": {
       "name": "fedonet_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3694,7 +3708,8 @@
     "diag": {
       "diag_low_freq_error": 0.003783,
       "diag_high_freq_error": 0.008896
-    }
+    },
+    "commit": "07f9061"
   },
   {
     "id": "wavebench_2d_HANO2D_1776242836_f170d1",
@@ -3706,7 +3721,6 @@
     "memory_gb": 3.52958984375,
     "status": "discard",
     "description": "hano_wavebench_2d_h32_l2_m8 HANO2D  h=32  l=2",
-    "commit": "07f9061",
     "config": {
       "name": "hano_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3742,7 +3756,8 @@
     "diag": {
       "diag_low_freq_error": 0.010424,
       "diag_high_freq_error": 0.023192
-    }
+    },
+    "commit": "07f9061"
   },
   {
     "id": "wavebench_2d_SNO2D_1776244038_b827f3",
@@ -3754,7 +3769,6 @@
     "memory_gb": 1.3935546875,
     "status": "keep",
     "description": "sno_wavebench_2d_h32_l2_m8 SNO2D  h=32  l=2",
-    "commit": "07f9061",
     "config": {
       "name": "sno_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3790,7 +3804,8 @@
     "diag": {
       "diag_low_freq_error": 0.00341,
       "diag_high_freq_error": 0.007733
-    }
+    },
+    "commit": "07f9061"
   },
   {
     "id": "wavebench_2d_VSMNO2D_1776244625_8c0634",
@@ -3802,7 +3817,6 @@
     "memory_gb": 2.32421875,
     "status": "discard",
     "description": "vsmno_wavebench_2d_h32_l2_m8 VSMNO2D  h=32  l=2",
-    "commit": "e52ea04",
     "config": {
       "name": "vsmno_wavebench_2d_h32_l2_m8",
       "benchmark": "wavebench_2d",
@@ -3838,7 +3852,8 @@
     "diag": {
       "diag_low_freq_error": 0.007276,
       "diag_high_freq_error": 0.015758
-    }
+    },
+    "commit": "e52ea04"
   },
   {
     "id": "multiphysics_2d_HybridDecoderDeepONet2D_1776245825_fd2742",
@@ -3850,7 +3865,6 @@
     "memory_gb": 1.41083984375,
     "status": "keep",
     "description": "hybriddecoderdeeponet_multiphysics_2d_h32_l2_m8 HybridDecoderDeepONet2D  h=32  l=2",
-    "commit": "e52ea04",
     "config": {
       "name": "hybriddecoderdeeponet_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -3886,7 +3900,8 @@
     "diag": {
       "diag_low_freq_error": 0.188511,
       "diag_high_freq_error": 0.298433
-    }
+    },
+    "commit": "e52ea04"
   },
   {
     "id": "multiphysics_2d_AttentionEnhancedFNO2D_1776246565_085ab7",
@@ -3898,7 +3913,6 @@
     "memory_gb": 4.03349609375,
     "status": "discard",
     "description": "attentionenhancedfno_multiphysics_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "attentionenhancedfno_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -3934,7 +3948,8 @@
     "diag": {
       "diag_low_freq_error": 0.327708,
       "diag_high_freq_error": 0.499979
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "multiphysics_2d_HybridFNODeepONet2D_1776247764_db6130",
@@ -3946,7 +3961,6 @@
     "memory_gb": 1.408203125,
     "status": "discard",
     "description": "hybridfnodeeponet_multiphysics_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "hybridfnodeeponet_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -3982,7 +3996,8 @@
     "diag": {
       "diag_low_freq_error": 0.225121,
       "diag_high_freq_error": 0.292657
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "multiphysics_2d_FEDONet2D_1776248249_09b5e7",
@@ -3994,7 +4009,6 @@
     "memory_gb": 1.0244140625,
     "status": "discard",
     "description": "fedonet_multiphysics_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "fedonet_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -4030,7 +4044,8 @@
     "diag": {
       "diag_low_freq_error": 0.272262,
       "diag_high_freq_error": 0.39868
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "multiphysics_2d_HANO2D_1776248744_892ef0",
@@ -4042,7 +4057,6 @@
     "memory_gb": 3.53544921875,
     "status": "discard",
     "description": "hano_multiphysics_2d_h32_l2_m8 HANO2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "hano_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -4078,7 +4092,8 @@
     "diag": {
       "diag_low_freq_error": 0.289355,
       "diag_high_freq_error": 0.42947
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "multiphysics_2d_SNO2D_1776249234_869376",
@@ -4090,7 +4105,6 @@
     "memory_gb": 1.3701171875,
     "status": "discard",
     "description": "sno_multiphysics_2d_h32_l2_m8 SNO2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "sno_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -4126,7 +4140,8 @@
     "diag": {
       "diag_low_freq_error": 0.327716,
       "diag_high_freq_error": 0.499996
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "multiphysics_2d_VSMNO2D_1776249729_5d33f2",
@@ -4138,7 +4153,6 @@
     "memory_gb": 2.330078125,
     "status": "discard",
     "description": "vsmno_multiphysics_2d_h32_l2_m8 VSMNO2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "vsmno_multiphysics_2d_h32_l2_m8",
       "benchmark": "multiphysics_2d",
@@ -4174,7 +4188,8 @@
     "diag": {
       "diag_low_freq_error": 0.290245,
       "diag_high_freq_error": 0.441537
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "pdebench_2d_HybridDecoderDeepONet2D_1776250219_cfa002",
@@ -4186,7 +4201,6 @@
     "memory_gb": 1.4298828125,
     "status": "keep",
     "description": "hybriddecoderdeeponet_pdebench_2d_h32_l2_m8 HybridDecoderDeepONet2D  h=32  l=2",
-    "commit": "8295235",
     "config": {
       "name": "hybriddecoderdeeponet_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4222,7 +4236,8 @@
     "diag": {
       "diag_low_freq_error": 0.000961,
       "diag_high_freq_error": 0.002061
-    }
+    },
+    "commit": "8295235"
   },
   {
     "id": "pdebench_2d_HybridFNODeepONet2D_1776251418_62e708",
@@ -4234,7 +4249,6 @@
     "memory_gb": 1.452734375,
     "status": "discard",
     "description": "hybridfnodeeponet_pdebench_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
-    "commit": "3a9c4a7",
     "config": {
       "name": "hybridfnodeeponet_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4270,7 +4284,8 @@
     "diag": {
       "diag_low_freq_error": 0.002372,
       "diag_high_freq_error": 0.004754
-    }
+    },
+    "commit": "3a9c4a7"
   },
   {
     "id": "pdebench_2d_FEDONet2D_1776251904_4a464c",
@@ -4282,7 +4297,6 @@
     "memory_gb": 0.9248046875,
     "status": "keep",
     "description": "fedonet_pdebench_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
-    "commit": "3a9c4a7",
     "config": {
       "name": "fedonet_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4318,7 +4332,8 @@
     "diag": {
       "diag_low_freq_error": 0.000801,
       "diag_high_freq_error": 0.001372
-    }
+    },
+    "commit": "3a9c4a7"
   },
   {
     "id": "pdebench_2d_HANO2D_1776255344_da2348",
@@ -4330,7 +4345,6 @@
     "memory_gb": 0.923828125,
     "status": "discard",
     "description": "hano_pdebench_2d_h32_l2_m8 HANO2D  h=32  l=2",
-    "commit": "dc26ae8",
     "config": {
       "name": "hano_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4366,7 +4380,8 @@
     "diag": {
       "diag_low_freq_error": 0.001168,
       "diag_high_freq_error": 0.002102
-    }
+    },
+    "commit": "dc26ae8"
   },
   {
     "id": "pdebench_2d_SNO2D_1776255928_28426f",
@@ -4378,7 +4393,6 @@
     "memory_gb": 1.3642578125,
     "status": "discard",
     "description": "sno_pdebench_2d_h32_l2_m8 SNO2D  h=32  l=2",
-    "commit": "dc26ae8",
     "config": {
       "name": "sno_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4414,7 +4428,8 @@
     "diag": {
       "diag_low_freq_error": 0.000961,
       "diag_high_freq_error": 0.00177
-    }
+    },
+    "commit": "dc26ae8"
   },
   {
     "id": "pdebench_2d_VSMNO2D_1776256430_725f1c",
@@ -4426,7 +4441,6 @@
     "memory_gb": 2.32421875,
     "status": "discard",
     "description": "vsmno_pdebench_2d_h32_l2_m8 VSMNO2D  h=32  l=2",
-    "commit": "dc26ae8",
     "config": {
       "name": "vsmno_pdebench_2d_h32_l2_m8",
       "benchmark": "pdebench_2d",
@@ -4462,7 +4476,8 @@
     "diag": {
       "diag_low_freq_error": 0.00199,
       "diag_high_freq_error": 0.00365
-    }
+    },
+    "commit": "dc26ae8"
   },
   {
     "id": "elasticity_2d_HybridDecoderDeepONet2D_1776257633_4841e5",
@@ -4474,7 +4489,6 @@
     "memory_gb": 1.41083984375,
     "status": "keep",
     "description": "hybriddecoderdeeponet_elasticity_2d_h32_l2_m8 HybridDecoderDeepONet2D  h=32  l=2",
-    "commit": "dc26ae8",
     "config": {
       "name": "hybriddecoderdeeponet_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4510,7 +4524,8 @@
     "diag": {
       "diag_low_freq_error": 0.002083,
       "diag_high_freq_error": 0.00405
-    }
+    },
+    "commit": "dc26ae8"
   },
   {
     "id": "elasticity_2d_AttentionEnhancedFNO2D_1776261130_c4db48",
@@ -4522,7 +4537,6 @@
     "memory_gb": 1.4099609375,
     "status": "discard",
     "description": "attentionenhancedfno_elasticity_2d_h32_l2_m8 AttentionEnhancedFNO2D  h=32  l=2",
-    "commit": "2043f9d",
     "config": {
       "name": "attentionenhancedfno_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4558,7 +4572,8 @@
     "diag": {
       "diag_low_freq_error": 0.002699,
       "diag_high_freq_error": 0.005095
-    }
+    },
+    "commit": "2043f9d"
   },
   {
     "id": "elasticity_2d_HybridFNODeepONet2D_1776261972_a857d2",
@@ -4570,7 +4585,6 @@
     "memory_gb": 1.4263671875,
     "status": "discard",
     "description": "hybridfnodeeponet_elasticity_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
-    "commit": "2043f9d",
     "config": {
       "name": "hybridfnodeeponet_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4606,7 +4620,8 @@
     "diag": {
       "diag_low_freq_error": 0.00244,
       "diag_high_freq_error": 0.005637
-    }
+    },
+    "commit": "2043f9d"
   },
   {
     "id": "elasticity_2d_FEDONet2D_1776263177_e46021",
@@ -4618,7 +4633,6 @@
     "memory_gb": 0.93427734375,
     "status": "keep",
     "description": "fedonet_elasticity_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
-    "commit": "2043f9d",
     "config": {
       "name": "fedonet_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4654,7 +4668,8 @@
     "diag": {
       "diag_low_freq_error": 0.001921,
       "diag_high_freq_error": 0.003595
-    }
+    },
+    "commit": "2043f9d"
   },
   {
     "id": "elasticity_2d_HANO2D_1776265456_ed8fc0",
@@ -4666,7 +4681,6 @@
     "memory_gb": 1.8884765625,
     "status": "discard",
     "description": "hano_elasticity_2d_h32_l2_m8 HANO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "hano_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4702,7 +4716,8 @@
     "diag": {
       "diag_low_freq_error": 0.034615,
       "diag_high_freq_error": 0.071753
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "elasticity_2d_SNO2D_1776265944_578d2a",
@@ -4714,7 +4729,6 @@
     "memory_gb": 1.373046875,
     "status": "discard",
     "description": "sno_elasticity_2d_h32_l2_m8 SNO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "sno_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4750,7 +4764,8 @@
     "diag": {
       "diag_low_freq_error": 0.002354,
       "diag_high_freq_error": 0.004306
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "elasticity_2d_VSMNO2D_1776266460_076ccf",
@@ -4762,7 +4777,6 @@
     "memory_gb": 2.330078125,
     "status": "discard",
     "description": "vsmno_elasticity_2d_h32_l2_m8 VSMNO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "vsmno_elasticity_2d_h32_l2_m8",
       "benchmark": "elasticity_2d",
@@ -4798,7 +4812,8 @@
     "diag": {
       "diag_low_freq_error": 0.002929,
       "diag_high_freq_error": 0.00539
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_HybridDecoderDeepONet2D_1776266950_c3f65a",
@@ -4810,7 +4825,6 @@
     "memory_gb": 1.40009765625,
     "status": "discard",
     "description": "hybriddecoderdeeponet_radiative_2d_h32_l2_m8 HybridDecoderDeepONet2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "hybriddecoderdeeponet_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -4846,7 +4860,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_HybridFNODeepONet2D_1776267439_6ad229",
@@ -4858,7 +4873,6 @@
     "memory_gb": 1.3974609375,
     "status": "discard",
     "description": "hybridfnodeeponet_radiative_2d_h32_l2_m8 HybridFNODeepONet2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "hybridfnodeeponet_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -4894,7 +4908,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_FEDONet2D_1776267927_3e4c79",
@@ -4906,7 +4921,6 @@
     "memory_gb": 0.9228515625,
     "status": "discard",
     "description": "fedonet_radiative_2d_h32_l2_m8 FEDONet2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "fedonet_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -4942,7 +4956,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_HANO2D_1776268728_6ee00d",
@@ -4954,7 +4969,6 @@
     "memory_gb": 3.52958984375,
     "status": "discard",
     "description": "hano_radiative_2d_h32_l2_m8 HANO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "hano_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -4990,7 +5004,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_SNO2D_1776269219_4dfba5",
@@ -5002,7 +5017,6 @@
     "memory_gb": 1.36328125,
     "status": "discard",
     "description": "sno_radiative_2d_h32_l2_m8 SNO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "sno_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -5038,7 +5052,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "radiative_2d_VSMNO2D_1776269708_eaa5a2",
@@ -5050,7 +5065,6 @@
     "memory_gb": 2.3251953125,
     "status": "discard",
     "description": "vsmno_radiative_2d_h32_l2_m8 VSMNO2D  h=32  l=2",
-    "commit": "46a6793",
     "config": {
       "name": "vsmno_radiative_2d_h32_l2_m8",
       "benchmark": "radiative_2d",
@@ -5086,7 +5100,8 @@
     "diag": {
       "diag_low_freq_error": 0.240112,
       "diag_high_freq_error": 0.495142
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "kdv_1d_HNN_1776270111_92c7bd",
@@ -5098,7 +5113,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "hnn_kdv_stable_h64_l4 HNN  h=64  l=4  lr=5e-04",
-    "commit": "46a6793",
     "config": {
       "name": "hnn_kdv_stable_h64_l4",
       "benchmark": "kdv_1d",
@@ -5131,7 +5145,8 @@
     },
     "rationale": "Stable HNN with epsilon=0.1 and weight rescaling to fix KdV NaNs",
     "conclusion": "crash:EarlyStop ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "mhd_2d_FNO_1776270120_41f915",
@@ -5143,7 +5158,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_mhd_2d_fix_h32_l4 FNO  h=32  l=4  m=8",
-    "commit": "46a6793",
     "config": {
       "name": "fno_mhd_2d_fix_h32_l4",
       "benchmark": "mhd_2d",
@@ -5176,7 +5190,8 @@
     },
     "rationale": "Remediation: Verified 2-channel input for MHD 2D after registry fix",
     "conclusion": "crash:IncompatibleDimensions ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "burgers_nu_01_FNO_1776270133_b95028",
@@ -5188,7 +5203,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_burgers_curriculum_step1 FNO  h=128  l=8  m=24",
-    "commit": "46a6793",
     "config": {
       "name": "fno_burgers_curriculum_step1",
       "benchmark": "burgers_nu_01",
@@ -5221,7 +5235,8 @@
     },
     "rationale": "Phase 8 Curriculum Stage 1: training on high-viscosity smooth Burgers",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "burgers_nu_001_FNO_1776270145_dd7170",
@@ -5233,7 +5248,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno_burgers_curriculum_step2 FNO  h=128  l=8  m=24",
-    "commit": "46a6793",
     "config": {
       "name": "fno_burgers_curriculum_step2",
       "benchmark": "burgers_nu_001",
@@ -5266,7 +5280,8 @@
     },
     "rationale": "Phase 8 Curriculum Stage 2: refining on medium-viscosity Burgers",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "darcy_2d_GNOT_Axial2d_1776337078_a4c6ef",
@@ -5278,7 +5293,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "gnot_axial_darcy_pino GNOT_Axial2d  h=32  l=4  h=4  s=32  pino=0.1",
-    "commit": "46a6793",
     "config": {
       "name": "gnot_axial_darcy_pino",
       "benchmark": "darcy_2d",
@@ -5312,7 +5326,8 @@
     },
     "rationale": "GNOT-Axial with PINO to close Darcy gap.",
     "conclusion": "crash:UnknownError ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "darcy_2d_UNO2d_1776337086_5b75c7",
@@ -5324,7 +5339,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "uno2d_darcy_pino UNO2d  h=32  l=2  m=12  pino=0.1",
-    "commit": "46a6793",
     "config": {
       "name": "uno2d_darcy_pino",
       "benchmark": "darcy_2d",
@@ -5358,7 +5372,8 @@
     },
     "rationale": "UNO2d multiscale representation for Darcy non-periodicity.",
     "conclusion": "crash:UnknownError ",
-    "diag": {}
+    "diag": {},
+    "commit": "46a6793"
   },
   {
     "id": "darcy_2d_Transolver2D_1776414300_352f0a",
@@ -5370,7 +5385,6 @@
     "memory_gb": 1.63095703125,
     "status": "discard",
     "description": "transolver2d_darcy_h32_l4_s32_h1 Transolver2D  h=32  l=4  m=16  h=4  s=32  lr=5e-04  loss=h1",
-    "commit": "46a6793",
     "config": {
       "name": "transolver2d_darcy_h32_l4_s32_h1",
       "benchmark": "darcy_2d",
@@ -5411,7 +5425,8 @@
       "diag_high_freq_error": 0.78824,
       "diag_grad_norm_max": 473.976,
       "diag_grad_norm_mean": 278.1023333333333
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "darcy_2d_FEDONet2D_1776414906_b2174e",
@@ -5423,7 +5438,6 @@
     "memory_gb": 0.40927734375,
     "status": "discard",
     "description": "fedonet2d_darcy_h32_l4 FEDONet2D  h=32  l=4",
-    "commit": "46a6793",
     "config": {
       "name": "fedonet2d_darcy_h32_l4",
       "benchmark": "darcy_2d",
@@ -5464,7 +5478,8 @@
       "diag_high_freq_error": 0.111092,
       "diag_grad_norm_max": 201.24,
       "diag_grad_norm_mean": 51.8487461538462
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "ns_2d_FNO_1776421471_1ab0a5",
@@ -5476,7 +5491,6 @@
     "memory_gb": 2.42001953125,
     "status": "discard",
     "description": "ns2d_fno_h32_l4_m8 FNO  h=32  l=4  m=8",
-    "commit": "46a6793",
     "config": {
       "name": "ns2d_fno_h32_l4_m8",
       "benchmark": "ns_2d",
@@ -5517,7 +5531,8 @@
       "diag_high_freq_error": 0.019471,
       "diag_grad_norm_max": 7.676,
       "diag_grad_norm_mean": 4.229717277486912
-    }
+    },
+    "commit": "46a6793"
   },
   {
     "id": "darcy_2d_Transolver2D_1776478637_34e7d2",
@@ -5529,7 +5544,6 @@
     "memory_gb": 2.25595703125,
     "status": "discard",
     "description": "transolver2d_darcy_s16_h24_l3 Transolver2D  h=24  l=3  m=8  h=4  s=16",
-    "commit": "b725df7",
     "config": {
       "name": "transolver2d_darcy_s16_h24_l3",
       "benchmark": "darcy_2d",
@@ -5574,7 +5588,8 @@
       "diag_high_freq_error": 0.499395,
       "diag_grad_norm_max": 376.608,
       "diag_grad_norm_mean": 74.11323076923077
-    }
+    },
+    "commit": "b725df7"
   },
   {
     "id": "darcy_2d_FNO2D_1776481541_bcaee5",
@@ -5586,7 +5601,6 @@
     "memory_gb": 2.38701171875,
     "status": "discard",
     "description": "fno2d_darcy_h32_l4_m8_h1 FNO2D  h=32  l=4  loss=h1",
-    "commit": "b725df7",
     "config": {
       "name": "fno2d_darcy_h32_l4_m8_h1",
       "benchmark": "darcy_2d",
@@ -5631,7 +5645,8 @@
       "diag_high_freq_error": 0.047199,
       "diag_grad_norm_max": 219.292,
       "diag_grad_norm_mean": 113.67356521739134
-    }
+    },
+    "commit": "b725df7"
   },
   {
     "id": "darcy_2d_FNO2D_1776486751_60798c",
@@ -5643,7 +5658,6 @@
     "memory_gb": 2.49521484375,
     "status": "keep",
     "description": "fno2d_darcy_h32_l4_m12_h1_aug FNO2D  h=32  l=4  loss=h1",
-    "commit": "b725df7",
     "config": {
       "name": "fno2d_darcy_h32_l4_m12_h1_aug",
       "benchmark": "darcy_2d",
@@ -5688,7 +5702,8 @@
       "diag_high_freq_error": 0.017885,
       "diag_grad_norm_max": 228.663,
       "diag_grad_norm_mean": 136.0148756957329
-    }
+    },
+    "commit": "b725df7"
   },
   {
     "id": "darcy_2d_FNO2D_1776486766_69fb3c",
@@ -5700,7 +5715,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "fno2d_darcy_h32_l4_m8_h1adaptive FNO2D  h=32  l=4  loss=h1_adaptive",
-    "commit": "e4339d1",
     "config": {
       "name": "fno2d_darcy_h32_l4_m8_h1adaptive",
       "benchmark": "darcy_2d",
@@ -5740,7 +5754,8 @@
     },
     "rationale": "Adaptive H1 loss auto-scales alpha so gradient term contributes ~30% of total loss. Avoids over-regularising late training.",
     "conclusion": "crash:UnknownError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "rayleigh_benard_2d_FNO2D_1776503885_70fec6",
@@ -5752,7 +5767,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "autogen_rayleigh_benard_2d_fno2d_h1_2746 FNO2D  h=32  l=4  loss=h1",
-    "commit": "e4339d1",
     "config": {
       "name": "autogen_rayleigh_benard_2d_fno2d_h1_2746",
       "benchmark": "rayleigh_benard_2d",
@@ -5792,7 +5806,8 @@
     },
     "rationale": "auto_suggest: H1 loss on best model (FNO2D, val=1.0000)",
     "conclusion": "crash:Killed ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "couette_flow_1d_FNO_1776517224_954860",
@@ -5804,7 +5819,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "autogen_couette_flow_1d_fno_h1_2755 FNO  h=128  l=8  m=24  loss=h1",
-    "commit": "e4339d1",
     "config": {
       "name": "autogen_couette_flow_1d_fno_h1_2755",
       "benchmark": "couette_flow_1d",
@@ -5844,7 +5858,8 @@
     },
     "rationale": "auto_suggest: H1 loss on best model (FNO, val=1.0000)",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "couette_flow_1d_FNO_1776517232_df75b0",
@@ -5856,7 +5871,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "autogen_couette_flow_1d_fno_h1adapt_2755 FNO  h=128  l=8  m=24  loss=h1_adaptive",
-    "commit": "e4339d1",
     "config": {
       "name": "autogen_couette_flow_1d_fno_h1adapt_2755",
       "benchmark": "couette_flow_1d",
@@ -5896,7 +5910,8 @@
     },
     "rationale": "auto_suggest: adaptive H1 loss auto-scales alpha per batch",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "poiseuille_flow_1d_FNO_1776517241_b4e4fd",
@@ -5908,7 +5923,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "autogen_poiseuille_flow_1d_fno_h1_2761 FNO  h=128  l=8  m=24  loss=h1",
-    "commit": "e4339d1",
     "config": {
       "name": "autogen_poiseuille_flow_1d_fno_h1_2761",
       "benchmark": "poiseuille_flow_1d",
@@ -5948,7 +5962,8 @@
     },
     "rationale": "auto_suggest: H1 loss on best model (FNO, val=1.0000)",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "poiseuille_flow_1d_FNO_1776517249_507deb",
@@ -5960,7 +5975,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "autogen_poiseuille_flow_1d_fno_h1adapt_2761 FNO  h=128  l=8  m=24  loss=h1_adaptive",
-    "commit": "e4339d1",
     "config": {
       "name": "autogen_poiseuille_flow_1d_fno_h1adapt_2761",
       "benchmark": "poiseuille_flow_1d",
@@ -6000,7 +6014,8 @@
     },
     "rationale": "auto_suggest: adaptive H1 loss auto-scales alpha per batch",
     "conclusion": "crash:ValueError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_FFNO_1776521743_a5dd2d",
@@ -6012,7 +6027,6 @@
     "memory_gb": 0.46962890625,
     "status": "discard",
     "description": "ffno_kdv_h256_m32_l8_f1 FFNO  h=128  l=8  m=32  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "ffno_kdv_h256_m32_l8_f1",
       "benchmark": "kdv_1d",
@@ -6057,7 +6071,8 @@
       "diag_high_freq_error": 0.000459,
       "diag_grad_norm_max": 6.943,
       "diag_grad_norm_mean": 3.596597541633624
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_RFNO_1776528449_6ac71e",
@@ -6069,7 +6084,6 @@
     "memory_gb": 0.61806640625,
     "status": "discard",
     "description": "rfno_kdv_h128_m24_l10_f1 RFNO  h=128  l=8  m=24  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "rfno_kdv_h128_m24_l10_f1",
       "benchmark": "kdv_1d",
@@ -6114,7 +6128,8 @@
       "diag_high_freq_error": 0.002017,
       "diag_grad_norm_max": 4.218,
       "diag_grad_norm_mean": 3.088841032608698
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_RFNO_1776531077_31b583",
@@ -6126,7 +6141,6 @@
     "memory_gb": 0.723046875,
     "status": "discard",
     "description": "rfno_kdv_h128_m32_l8_f1 RFNO  h=128  l=8  m=32  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "rfno_kdv_h128_m32_l8_f1",
       "benchmark": "kdv_1d",
@@ -6171,7 +6185,8 @@
       "diag_high_freq_error": 0.001485,
       "diag_grad_norm_max": 4.235,
       "diag_grad_norm_mean": 3.03700713012478
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_RFNO_1776532898_c1564f",
@@ -6183,7 +6198,6 @@
     "memory_gb": 0.61806640625,
     "status": "discard",
     "description": "rfno_kdv_h256_m24_l8_f1 RFNO  h=128  l=8  m=24  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "rfno_kdv_h256_m24_l8_f1",
       "benchmark": "kdv_1d",
@@ -6228,7 +6242,8 @@
       "diag_high_freq_error": 0.001824,
       "diag_grad_norm_max": 4.077,
       "diag_grad_norm_mean": 2.9781843971631208
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_FNO_1776537393_7cde7a",
@@ -6240,7 +6255,6 @@
     "memory_gb": 0.72568359375,
     "status": "discard",
     "description": "fno_kdv_h256_m32_l8_f1 FNO  h=128  l=8  m=32  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "fno_kdv_h256_m32_l8_f1",
       "benchmark": "kdv_1d",
@@ -6285,7 +6299,8 @@
       "diag_high_freq_error": 0.001492,
       "diag_grad_norm_max": 5.838,
       "diag_grad_norm_mean": 4.1608156599552615
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_RFNO_1776540684_2731b0",
@@ -6297,7 +6312,6 @@
     "memory_gb": 0.61806640625,
     "status": "discard",
     "description": "rfno_kdv_h128_m24_l12_f1 RFNO  h=128  l=8  m=24  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "rfno_kdv_h128_m24_l12_f1",
       "benchmark": "kdv_1d",
@@ -6342,7 +6356,8 @@
       "diag_high_freq_error": 0.001786,
       "diag_grad_norm_max": 4.02,
       "diag_grad_norm_mean": 3.0189059829059834
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "wave_1d_DualDeepONet_1776542869_550d87",
@@ -6354,7 +6369,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "dual_deeponet_wave_h64_l4_f1 DualDeepONet  h=64  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "dual_deeponet_wave_h64_l4_f1",
       "benchmark": "wave_1d",
@@ -6394,7 +6408,8 @@
     },
     "rationale": "[ClosedLoop] Follow-up to dual_deeponet_wave_h64_l4 (val=0.0823). val=0.0823 \u2014 reasonable but below best. Try full training stack.",
     "conclusion": "crash:EarlyStop ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_EnergyFNO_1776547162_1180bb",
@@ -6406,7 +6421,6 @@
     "memory_gb": 0.148046875,
     "status": "discard",
     "description": "energy_fno_kdv_h128_l8_m24_f1 EnergyFNO  h=128  l=8  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "energy_fno_kdv_h128_l8_m24_f1",
       "benchmark": "kdv_1d",
@@ -6451,7 +6465,8 @@
       "diag_high_freq_error": 0.000699,
       "diag_grad_norm_max": 4.181,
       "diag_grad_norm_mean": 3.2490342805593264
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "wave_1d_EnergyFNO_1776550788_bd71d2",
@@ -6463,7 +6478,6 @@
     "memory_gb": 0.133984375,
     "status": "discard",
     "description": "energy_fno_wave_h64_l8_m24_f1 EnergyFNO  h=64  l=8  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "energy_fno_wave_h64_l8_m24_f1",
       "benchmark": "wave_1d",
@@ -6508,7 +6522,8 @@
       "diag_high_freq_error": 0.000512,
       "diag_grad_norm_max": 4.041,
       "diag_grad_norm_mean": 2.9103041649137573
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_HNN_1776557950_329416",
@@ -6520,7 +6535,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "hnn_kdv_h64_l4_f1 HNN  h=64  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "hnn_kdv_h64_l4_f1",
       "benchmark": "kdv_1d",
@@ -6563,7 +6577,8 @@
     "diag": {
       "diag_grad_norm_max": 1.853,
       "diag_grad_norm_mean": 0.782563025210084
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "wave_1d_HNN_1776561072_f39afa",
@@ -6575,7 +6590,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "hnn_wave_h128_l4_f1 HNN  h=128  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "hnn_wave_h128_l4_f1",
       "benchmark": "wave_1d",
@@ -6618,7 +6632,8 @@
     "diag": {
       "diag_grad_norm_max": 0.358,
       "diag_grad_norm_mean": 0.28099999999999997
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "wave_1d_HNN_1776564285_c8f327",
@@ -6630,7 +6645,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "hnn_wave_h64_l4_f1 HNN  h=64  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "hnn_wave_h64_l4_f1",
       "benchmark": "wave_1d",
@@ -6673,7 +6687,8 @@
     "diag": {
       "diag_grad_norm_max": 1.007,
       "diag_grad_norm_mean": 0.3417326732673268
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_NeuralODE_1776567835_251108",
@@ -6685,7 +6700,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "neural_ode_kdv_h64_l4_s20_f1 NeuralODE  h=64  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "neural_ode_kdv_h64_l4_s20_f1",
       "benchmark": "kdv_1d",
@@ -6725,7 +6739,8 @@
     },
     "rationale": "[ClosedLoop] Follow-up to neural_ode_kdv_h64_l4_s20 (val=0.0077). val=0.0077 \u2014 reasonable but below best. Try full training stack.",
     "conclusion": "crash:UnknownError ",
-    "diag": {}
+    "diag": {},
+    "commit": "e4339d1"
   },
   {
     "id": "wave_1d_NeuralODE_1776571217_e09a28",
@@ -6737,7 +6752,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "neural_ode_wave_h64_l4_s20_f1 NeuralODE  h=64  l=4  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "neural_ode_wave_h64_l4_s20_f1",
       "benchmark": "wave_1d",
@@ -6780,7 +6794,8 @@
     "diag": {
       "diag_grad_norm_max": 0.252,
       "diag_grad_norm_mean": 0.252
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "kdv_1d_RTFNO_1776580240_c38c9e",
@@ -6792,7 +6807,6 @@
     "memory_gb": 0.61806640625,
     "status": "discard",
     "description": "rtfno_kdv_h128_l10_m24_f1 RTFNO  h=128  l=8  curric",
-    "commit": "e4339d1",
     "config": {
       "name": "rtfno_kdv_h128_l10_m24_f1",
       "benchmark": "kdv_1d",
@@ -6837,7 +6851,8 @@
       "diag_high_freq_error": 0.00173,
       "diag_grad_norm_max": 4.077,
       "diag_grad_norm_mean": 2.942444078947369
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "burgers_1d_FNO_1776584208_0c929f",
@@ -6849,7 +6864,6 @@
     "memory_gb": 0.2927734375,
     "status": "keep",
     "description": "fno_burgers_onecycle_aug_h128_l8_m24 FNO  h=128  l=8  m=24",
-    "commit": "e4339d1",
     "config": {
       "name": "fno_burgers_onecycle_aug_h128_l8_m24",
       "benchmark": "burgers_1d",
@@ -6893,7 +6907,8 @@
       "diag_high_freq_error": 0.072515,
       "diag_grad_norm_max": 4.509,
       "diag_grad_norm_mean": 1.7148836996336987
-    }
+    },
+    "commit": "e4339d1"
   },
   {
     "id": "burgers_1d_MambaNO_1776587914_3e6ed6",
@@ -6905,7 +6920,6 @@
     "memory_gb": 0.42587890625,
     "status": "keep",
     "description": "mambano_burgers_curriculum MambaNO  h=64  l=8  cur_ep=20",
-    "commit": "3fcc13c",
     "config": {
       "name": "mambano_burgers_curriculum",
       "benchmark": "burgers_1d",
@@ -6949,7 +6963,8 @@
       "diag_high_freq_error": 0.045378,
       "diag_grad_norm_max": 5.132,
       "diag_grad_norm_mean": 2.3112944606414008
-    }
+    },
+    "commit": "3fcc13c"
   },
   {
     "id": "burgers_1d_MambaNO_1776591428_a7e768",
@@ -6961,7 +6976,6 @@
     "memory_gb": 0.47373046875,
     "status": "keep",
     "description": "mambano_burgers_h128_l8 MambaNO  h=128  l=8",
-    "commit": "34c06ba",
     "config": {
       "name": "mambano_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7005,7 +7019,8 @@
       "diag_high_freq_error": 0.041249,
       "diag_grad_norm_max": 5.132,
       "diag_grad_norm_mean": 2.3208876611418066
-    }
+    },
+    "commit": "34c06ba"
   },
   {
     "id": "burgers_1d_MemNO_1776594043_1c1418",
@@ -7017,7 +7032,6 @@
     "memory_gb": 0.5740234375,
     "status": "discard",
     "description": "memno_burgers_h128_l8 MemNO  h=128  l=8",
-    "commit": "806e832",
     "config": {
       "name": "memno_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7061,7 +7075,8 @@
       "diag_high_freq_error": 0.068696,
       "diag_grad_norm_max": 60.787,
       "diag_grad_norm_mean": 3.675511869436201
-    }
+    },
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_S4NO_1776598571_02f343",
@@ -7073,7 +7088,6 @@
     "memory_gb": 0.37470703125,
     "status": "discard",
     "description": "s4no_burgers_h128_l8 S4NO  h=128  l=8",
-    "commit": "806e832",
     "config": {
       "name": "s4no_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7117,7 +7131,8 @@
       "diag_high_freq_error": 0.120887,
       "diag_grad_norm_max": 24.596,
       "diag_grad_norm_mean": 4.469123602484467
-    }
+    },
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_WNO_1776602483_49cbe3",
@@ -7129,7 +7144,6 @@
     "memory_gb": 0.2595703125,
     "status": "discard",
     "description": "wno_burgers_h128_l8 WNO  h=128  l=8  lvl=3",
-    "commit": "806e832",
     "config": {
       "name": "wno_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7173,7 +7187,8 @@
       "diag_high_freq_error": 0.535902,
       "diag_grad_norm_max": 0.617,
       "diag_grad_norm_mean": 0.2408053097345132
-    }
+    },
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_UNO_1776607021_f4cdd5",
@@ -7185,7 +7200,6 @@
     "memory_gb": 0.42587890625,
     "status": "discard",
     "description": "uno_burgers_h128_l8_m24 UNO  h=128  l=8  m=24",
-    "commit": "806e832",
     "config": {
       "name": "uno_burgers_h128_l8_m24",
       "benchmark": "burgers_1d",
@@ -7231,7 +7245,8 @@
       "diag_stability_signature_gnorm_max": 6.046,
       "diag_grad_norm_max": 5.132,
       "diag_grad_norm_mean": 2.32935314091681
-    }
+    },
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_GNOT_1776616078_63fe00",
@@ -7243,7 +7258,6 @@
     "memory_gb": 0.44345703125,
     "status": "discard",
     "description": "gnot_burgers_h128_l8 GNOT  h=128  l=8  h=4  s=32",
-    "commit": "806e832",
     "config": {
       "name": "gnot_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7289,7 +7303,8 @@
       "diag_high_freq_error": 0.063417,
       "diag_grad_norm_max": 5.132,
       "diag_grad_norm_mean": 2.3112359550561807
-    }
+    },
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_UDE_1776617753_80fbb4",
@@ -7301,7 +7316,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "ude_burgers_h32_l3 UDE  h=32  l=3",
-    "commit": "806e832",
     "config": {
       "name": "ude_burgers_h32_l3",
       "benchmark": "burgers_1d",
@@ -7340,7 +7354,8 @@
     },
     "rationale": "Universal Differential Equations on burgers_1d.",
     "conclusion": "crash:EarlyStop  | Critique: Architecture discovery halted by EarlyStop.",
-    "diag": {}
+    "diag": {},
+    "commit": "806e832"
   },
   {
     "id": "burgers_1d_LatentODE_1776626838_1aec51",
@@ -7352,7 +7367,6 @@
     "memory_gb": 0.4298828125,
     "status": "discard",
     "description": "latent_ode_burgers_h64_l4 LatentODE  h=64  l=4",
-    "commit": "03194c4",
     "config": {
       "name": "latent_ode_burgers_h64_l4",
       "benchmark": "burgers_1d",
@@ -7398,7 +7412,8 @@
       "diag_high_freq_error": 0.043628,
       "diag_grad_norm_max": 5.132,
       "diag_grad_norm_mean": 2.2628571428571425
-    }
+    },
+    "commit": "03194c4"
   },
   {
     "id": "burgers_1d_PODDeepONet_1776626897_70a555",
@@ -7410,7 +7425,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "pod_deeponet_burgers_h128_l8 PODDeepONet  h=128  l=8",
-    "commit": "03194c4",
     "config": {
       "name": "pod_deeponet_burgers_h128_l8",
       "benchmark": "burgers_1d",
@@ -7449,7 +7463,8 @@
     },
     "rationale": "POD-DeepONet on burgers_1d.",
     "conclusion": "crash:UnknownError  | Critique: Architecture discovery halted by UnknownError.",
-    "diag": {}
+    "diag": {},
+    "commit": "03194c4"
   },
   {
     "id": "burgers_1d_FNO_1776629522_a0976e",
@@ -7461,7 +7476,6 @@
     "memory_gb": 0.23486328125,
     "status": "discard",
     "description": "fno_h128_m16_l4 FNO  h=128  l=4  m=16",
-    "commit": "03194c4",
     "config": {
       "name": "fno_h128_m16_l4",
       "benchmark": "burgers_1d",
@@ -7507,7 +7521,8 @@
       "diag_high_freq_error": 0.049504,
       "diag_grad_norm_max": 3.323,
       "diag_grad_norm_mean": 1.426156035328754
-    }
+    },
+    "commit": "03194c4"
   },
   {
     "id": "burgers_1d_FNO_1776632136_829d28",
@@ -7519,7 +7534,6 @@
     "memory_gb": 0.52216796875,
     "status": "discard",
     "description": "fno_h256_m16_l4 FNO  h=256  l=4  m=16",
-    "commit": "31d452f",
     "config": {
       "name": "fno_h256_m16_l4",
       "benchmark": "burgers_1d",
@@ -7565,7 +7579,8 @@
       "diag_high_freq_error": 0.050203,
       "diag_grad_norm_max": 5.57,
       "diag_grad_norm_mean": 2.0203133333333336
-    }
+    },
+    "commit": "31d452f"
   },
   {
     "id": "burgers_1d_FNO_1776633795_fdf58b",
@@ -7577,7 +7592,6 @@
     "memory_gb": 0.126171875,
     "status": "discard",
     "description": "fno_h64_m16_l6 FNO  h=64  l=6  m=16",
-    "commit": "6b93847",
     "config": {
       "name": "fno_h64_m16_l6",
       "benchmark": "burgers_1d",
@@ -7623,7 +7637,8 @@
       "diag_high_freq_error": 0.058495,
       "diag_grad_norm_max": 5.258,
       "diag_grad_norm_mean": 2.0715534213685487
-    }
+    },
+    "commit": "6b93847"
   },
   {
     "id": "burgers_nu_001_RFNO_1776635345_ba0157",
@@ -7635,7 +7650,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "bnu001_rfno_h128_l8_m32 RFNO  h=128  l=8  m=32",
-    "commit": "19ce3dd",
     "config": {
       "name": "bnu001_rfno_h128_l8_m32",
       "benchmark": "burgers_nu_001",
@@ -7674,7 +7688,8 @@
     },
     "rationale": "RL-sweep: RFNO with high modes for near-inviscid shock resolution. More spectral modes capture steep gradients.",
     "conclusion": "crash:ValueError  | Critique: Architecture discovery halted by ValueError.",
-    "diag": {}
+    "diag": {},
+    "commit": "19ce3dd"
   },
   {
     "id": "burgers_1d_UNO_1776635752_ada972",
@@ -7686,7 +7701,6 @@
     "memory_gb": 0.1732421875,
     "status": "discard",
     "description": "uno_h64_l1 UNO  h=64  l=1  m=16",
-    "commit": "19ce3dd",
     "config": {
       "name": "uno_h64_l1",
       "benchmark": "burgers_1d",
@@ -7732,7 +7746,8 @@
       "diag_high_freq_error": 0.082637,
       "diag_grad_norm_max": 2.536,
       "diag_grad_norm_mean": 1.1178268792710713
-    }
+    },
+    "commit": "19ce3dd"
   },
   {
     "id": "burgers_nu_001_WNO_1776639880_df3e43",
@@ -7744,7 +7759,6 @@
     "memory_gb": 0.23232421875,
     "status": "keep",
     "description": "bnu001_wno_h128_l10_lvl6 WNO  h=128  l=10  lvl=6  lr=5e-04",
-    "commit": "e90a223",
     "config": {
       "name": "bnu001_wno_h128_l10_lvl6",
       "benchmark": "burgers_nu_001",
@@ -7790,7 +7804,8 @@
       "diag_high_freq_error": 0.093053,
       "diag_grad_norm_max": 3.055,
       "diag_grad_norm_mean": 1.143632385120351
-    }
+    },
+    "commit": "e90a223"
   },
   {
     "id": "burgers_nu_001_PINO_1776639891_19805a",
@@ -7802,7 +7817,6 @@
     "memory_gb": 0.0,
     "status": "crash",
     "description": "bnu001_pino_fno_h128_l6_m24 PINO  h=128  l=6  pino=0.05",
-    "commit": "664ada6",
     "config": {
       "name": "bnu001_pino_fno_h128_l6_m24",
       "benchmark": "burgers_nu_001",
@@ -7841,7 +7855,8 @@
     },
     "rationale": "RL-sweep: PINO adds Burgers PDE residual loss \u2014 physics constraint forces shock to satisfy conservation law.",
     "conclusion": "crash:UnknownError  | Critique: Architecture discovery halted by UnknownError.",
-    "diag": {}
+    "diag": {},
+    "commit": "664ada6"
   },
   {
     "id": "burgers_1d_UNO_1776640390_4630bf",
@@ -7853,7 +7868,6 @@
     "memory_gb": 0.23310546875,
     "status": "discard",
     "description": "uno_h64_l2 UNO  h=64  l=2  m=16",
-    "commit": "664ada6",
     "config": {
       "name": "uno_h64_l2",
       "benchmark": "burgers_1d",
@@ -7899,7 +7913,8 @@
       "diag_high_freq_error": 0.078229,
       "diag_grad_norm_max": 3.795,
       "diag_grad_norm_mean": 1.3949405144694538
-    }
+    },
+    "commit": "664ada6"
   },
   {
     "id": "burgers_nu_001_UNO_1776644394_644e42",
@@ -7911,7 +7926,6 @@
     "memory_gb": 1.404296875,
     "status": "keep",
     "description": "bnu001_uno_h128_l6 UNO  h=128  l=6  m=24",
-    "commit": "8282bea",
     "config": {
       "name": "bnu001_uno_h128_l6",
       "benchmark": "burgers_nu_001",
@@ -7957,7 +7971,8 @@
       "diag_high_freq_error": 0.035748,
       "diag_grad_norm_max": 2990.022,
       "diag_grad_norm_mean": 11.981791245791234
-    }
+    },
+    "commit": "8282bea"
   },
   {
     "id": "burgers_1d_WNO_1776644773_001176",
@@ -7969,7 +7984,6 @@
     "memory_gb": 0.08642578125,
     "status": "discard",
     "description": "wno_h64_lvl3_l4 WNO  h=64  l=4  lvl=3",
-    "commit": "5aae815",
     "config": {
       "name": "wno_h64_lvl3_l4",
       "benchmark": "burgers_1d",
@@ -8015,7 +8029,8 @@
       "diag_high_freq_error": 0.538489,
       "diag_grad_norm_max": 0.529,
       "diag_grad_norm_mean": 0.22419469026548683
-    }
+    },
+    "commit": "5aae815"
   },
   {
     "id": "burgers_1d_FNO_1776649336_3581ea",
@@ -8027,7 +8042,6 @@
     "memory_gb": 0.38115234375,
     "status": "discard",
     "description": "fno_h128_m16_l8 FNO  h=128  l=8  m=16",
-    "commit": "5aae815",
     "config": {
       "name": "fno_h128_m16_l8",
       "benchmark": "burgers_1d",
@@ -8073,7 +8087,8 @@
       "diag_high_freq_error": 0.07563,
       "diag_grad_norm_max": 5.884,
       "diag_grad_norm_mean": 2.595488457987075
-    }
+    },
+    "commit": "5aae815"
   },
   {
     "id": "burgers_1d_FNO_1776654033_c5594a",
@@ -8085,7 +8100,6 @@
     "memory_gb": 0.82275390625,
     "status": "discard",
     "description": "fno_h256_m16_l6 FNO  h=256  l=6  m=16",
-    "commit": "ba82cc7",
     "config": {
       "name": "fno_h256_m16_l6",
       "benchmark": "burgers_1d",
@@ -8131,7 +8145,8 @@
       "diag_high_freq_error": 0.083146,
       "diag_grad_norm_max": 4.339,
       "diag_grad_norm_mean": 2.1652500000000003
-    }
+    },
+    "commit": "ba82cc7"
   },
   {
     "id": "burgers_nu_001_RFNO_1776655731_bc21fc",
@@ -8143,7 +8158,6 @@
     "memory_gb": 0.5490234375,
     "status": "keep",
     "description": "bnu001_rfno_h128_l8_m32 RFNO  h=128  l=8  m=32",
-    "commit": "ba82cc7",
     "config": {
       "name": "bnu001_rfno_h128_l8_m32",
       "benchmark": "burgers_nu_001",
@@ -8189,7 +8203,8 @@
       "diag_high_freq_error": 0.017265,
       "diag_grad_norm_max": 3.477,
       "diag_grad_norm_mean": 1.733799999999998
-    }
+    },
+    "commit": "ba82cc7"
   },
   {
     "id": "burgers_1d_FNO_1776656066_d61cae",
@@ -8201,7 +8216,6 @@
     "memory_gb": 0.36474609375,
     "status": "discard",
     "description": "fno_h128_m24_l6_v2 FNO  h=128  l=6  m=24",
-    "commit": "e3a0254",
     "config": {
       "name": "fno_h128_m24_l6_v2",
       "benchmark": "burgers_1d",
@@ -8247,7 +8261,8 @@
       "diag_high_freq_error": 0.043543,
       "diag_grad_norm_max": 4.763,
       "diag_grad_norm_mean": 2.258829457364342
-    }
+    },
+    "commit": "e3a0254"
   },
   {
     "id": "burgers_1d_FNO_1776660775_9419ac",
@@ -8259,7 +8274,6 @@
     "memory_gb": 0.337890625,
     "status": "discard",
     "description": "fno_h128_m20_l6 FNO  h=128  l=6  m=20",
-    "commit": "e3a0254",
     "config": {
       "name": "fno_h128_m20_l6",
       "benchmark": "burgers_1d",
@@ -8305,7 +8319,8 @@
       "diag_high_freq_error": 0.06319,
       "diag_grad_norm_max": 4.409,
       "diag_grad_norm_mean": 2.045312354312356
-    }
+    },
+    "commit": "e3a0254"
   },
   {
     "id": "burgers_1d_FNO_1776665478_c4a9f1",
@@ -8317,7 +8332,6 @@
     "memory_gb": 0.3880859375,
     "status": "discard",
     "description": "fno_h128_m22_l6 FNO  h=128  l=6  m=22",
-    "commit": "7e61daa",
     "config": {
       "name": "fno_h128_m22_l6",
       "benchmark": "burgers_1d",
@@ -8363,6 +8377,7 @@
       "diag_high_freq_error": 0.046888,
       "diag_grad_norm_max": 4.513,
       "diag_grad_norm_mean": 2.00159842519685
-    }
+    },
+    "commit": "7e61daa"
   }
 ]
