@@ -1005,6 +1005,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l8.log
 │   │   │       └── rfno_h128_m24_l8_best.npz
+│   │   ├── 49314515a0bf48f4b9ac34ab89058f77/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l12.log
+│   │   │       └── rfno_h128_m24_l12_best.npz
 │   │   ├── 4ca8a3f087664cffb6e89dd89eb5f924/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_h64_l2.log
@@ -1056,6 +1060,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8_adapt.log
 │   │   │       └── gnot_burgers_h128_l8_adapt_best.npz
+│   │   ├── 6880651ca46848b4b9bd66bdafd142e8/
+│   │   │   └── artifacts/
+│   │   │       ├── afno_h128_m24_l8.log
+│   │   │       └── afno_h128_m24_l8_best.npz
+│   │   ├── 6961141d109a4a0889d076157be65b61/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l12.log
+│   │   │       └── rfno_h128_m24_l12_best.npz
 │   │   ├── 6b478292309345dc826df07ce6f41195/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8_adapt.log
@@ -1091,6 +1103,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
 │   │   │       └── uno_burgers_h128_l8_m24_best.npz
+│   │   ├── 85f086e93ea7436297756d936587b32c/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l10.log
+│   │   │       └── rfno_h128_m24_l10_best.npz
 │   │   ├── 8c68e130491a4227ac647c5e2ec8c956/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1538,6 +1554,10 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── bnu001_rfno_h128_l8_m32.log
 │       │       └── bnu001_rfno_h128_l8_m32_best.npz
+│       ├── 1c7c0aee885c4e359640a9ca50f21730/
+│       │   └── artifacts/
+│       │       ├── bnu001_gnot_h64_l4_n4.log
+│       │       └── bnu001_gnot_h64_l4_n4_best.npz
 │       ├── 2de0b85b62b1499cb345a1bbe8903d3b/
 │       │   └── artifacts/
 │       │       ├── bnu001_rfno_h256_l6_m32_lowlr.log
@@ -1566,10 +1586,22 @@ autoresearch-mlx/
 │       │   └── artifacts/
 │       │       ├── bnu001_uno_h128_l6.log
 │       │       └── bnu001_uno_h128_l6_best.npz
+│       ├── 6a012c1373114556ab26526b1974efc2/
+│       │   └── artifacts/
+│       │       ├── bnu001_pino_h192_l8_m24_hi_lambda_adapt.log
+│       │       └── bnu001_pino_h192_l8_m24_hi_lambda_adapt_best.npz
 │       ├── 744f00395a004984aa69f126857cc9e6/
 │       │   └── artifacts/
 │       │       ├── bnu001_transolver_h64_l4.log
 │       │       └── bnu001_transolver_h64_l4_best.npz
+│       ├── a03ea0773732424f8091bd27adcaced9/
+│       │   └── artifacts/
+│       │       ├── bnu001_gnot_h64_l4_n4_adapt.log
+│       │       └── bnu001_gnot_h64_l4_n4_adapt_best.npz
+│       ├── a58923dd83984459b26b2a95b4f16d73/
+│       │   └── artifacts/
+│       │       ├── bnu001_pino_h192_l8_m24_hi_lambda.log
+│       │       └── bnu001_pino_h192_l8_m24_hi_lambda_best.npz
 │       ├── b9c98aae78e04c758ef2673d4f7fb844/
 │       │   └── artifacts/
 │       │       ├── bnu001_wno_h128_l10_lvl6_adapt.log
