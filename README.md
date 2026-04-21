@@ -888,9 +888,11 @@ autoresearch-mlx/
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
+│   │   ├── cosmic_reionization_pinn_2023.yaml
 │   │   ├── curriculum_2009.yaml
 │   │   ├── deeponet_2021.yaml
 │   │   ├── ensemble_uq_2023.yaml
+│   │   ├── fbpinn_2023.yaml
 │   │   ├── ffno_2023.yaml
 │   │   ├── fno_2020.yaml
 │   │   ├── gnot_2023.yaml
@@ -899,12 +901,19 @@ autoresearch-mlx/
 │   │   ├── inverse_pinn_2023.yaml
 │   │   ├── mambano_2024.yaml
 │   │   ├── memno_2025.yaml
+│   │   ├── modal_pinn_2024.yaml
 │   │   ├── mppde_2022.yaml
 │   │   ├── neural_ode_ude_2020.yaml
+│   │   ├── neural_pde_solver_2023.yaml
+│   │   ├── packed_ensemble_2023.yaml
+│   │   ├── pdebench_2024.yaml
 │   │   ├── physicsnemo_2024.yaml
 │   │   ├── pikan_2025.yaml
+│   │   ├── pinnacle_2024.yaml
 │   │   ├── pino_2021.yaml
+│   │   ├── pod_dl_rom_2023.yaml
 │   │   ├── rfno_2024.yaml
+│   │   ├── spline_pinn_2024.yaml
 │   │   ├── ssm_s4_2022.yaml
 │   │   ├── tfno_2022.yaml
 │   │   ├── time_marching_deeponet_2025.yaml
@@ -926,10 +935,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m22_l6.log
 │   │   │       └── fno_h128_m22_l6_best.npz
+│   │   ├── 036f9e9cfc1d436b8392457236ab9f89/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m22_l8.log
+│   │   │       └── fno_h128_m22_l8_best.npz
 │   │   ├── 04d31d5026ab4c8f99604425c0e8eab5/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_h64_lvl3_l4_adapt.log
 │   │   │       └── wno_h64_lvl3_l4_adapt_best.npz
+│   │   ├── 054086fb31a54923b573d1d0501babab/
+│   │   │   └── artifacts/
+│   │   │       ├── afno_v2_h128_m24_l10.log
+│   │   │       └── afno_v2_h128_m24_l10_best.npz
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
@@ -960,6 +977,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8_adapt.log
 │   │   │       └── s4no_burgers_h128_l8_adapt_best.npz
+│   │   ├── 1bb148e954a9421f81c429f95f1a326b/
+│   │   │   └── artifacts/
+│   │   │       ├── afno_v2_h128_m24_l8.log
+│   │   │       └── afno_v2_h128_m24_l8_best.npz
 │   │   ├── 1bdf65634b1c4aed8d443b2033769163/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
@@ -1076,6 +1097,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8_adapt.log
 │   │   │       └── wno_burgers_h128_l8_adapt_best.npz
+│   │   ├── 714b02e5c5344c30ba3f85da295a3d79/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l8_bs16.log
+│   │   │       └── fno_h128_m24_l8_bs16_best.npz
 │   │   ├── 795692bf22524f1ca68cefc5331b185c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -1107,6 +1132,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l10.log
 │   │   │       └── rfno_h128_m24_l10_best.npz
+│   │   ├── 86b8791007f64f67813e9b709d059adb/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l8_h1.log
+│   │   │       └── fno_h128_m24_l8_h1_best.npz
 │   │   ├── 8c68e130491a4227ac647c5e2ec8c956/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1139,6 +1168,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
 │   │   │       └── uno_burgers_h128_l8_m24_best.npz
+│   │   ├── a26c551734b94ff2b2930594907b8dbf/
+│   │   │   └── artifacts/
+│   │   │       ├── ffno_h256_m24_l8.log
+│   │   │       └── ffno_h256_m24_l8_best.npz
+│   │   ├── aa40ae6963d044eba253aa8b083ba1bb/
+│   │   │   └── artifacts/
+│   │   │       ├── afno_h128_m24_l10.log
+│   │   │       └── afno_h128_m24_l10_best.npz
 │   │   ├── adb4db5fd26141379bd5ef8186fc5ef9/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l8.log
@@ -1147,6 +1184,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h64_m16_l6.log
 │   │   │       └── fno_h64_m16_l6_best.npz
+│   │   ├── aff05d12782d494eab9cc00bf449377f/
+│   │   │   └── artifacts/
+│   │   │       ├── ffno_h128_m32_l8.log
+│   │   │       └── ffno_h128_m32_l8_best.npz
 │   │   ├── b2d3c64c24cc4903be3b8d57b218e23c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8.log
@@ -1174,6 +1215,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── c12e1f741b594e3a988f26be54da062e/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l8_aug.log
+│   │   │       └── fno_h128_m24_l8_aug_best.npz
 │   │   ├── c1e1b2c04a4f458a8e3b5bc53d036045/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m16_l4.log
@@ -1190,6 +1235,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
 │   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
+│   │   ├── c94b0083578c4da5853ae41b097971bc/
+│   │   │   └── artifacts/
+│   │   │       ├── ffno_h256_m32_l8.log
+│   │   │       └── ffno_h256_m32_l8_best.npz
+│   │   ├── c967cb588b454d998ed3a7f68a9fe61e/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l10.log
+│   │   │       └── fno_h128_m24_l10_best.npz
 │   │   ├── ca1b039eecd6409b839b073ab3eb404f/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v4_best.npz
@@ -1248,6 +1301,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── f631c6eaf2764f9ca7b408bef8fa4791/
+│   │   │   └── artifacts/
+│   │   │       ├── afno_h128_m24_l8.log
+│   │   │       └── afno_h128_m24_l8_best.npz
 │   │   ├── fa0d3b808c50481d8cb1dd266f9cd2b5/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l10.log
@@ -1263,6 +1320,10 @@ autoresearch-mlx/
 │   │   ├── ff0b719f90d149d49d96bc8b9b27e78d/
 │   │   │   └── artifacts/
 │   │   │       └── afno_heavy_test_best.npz
+│   │   ├── ffa2c1205a884005b33ca0e642885329/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_h128_m24_l12.log
+│   │   │       └── fno_h128_m24_l12_best.npz
 │   │   └── ffd6c0e9ec104d73b19ed9e257ddd00b/
 │   │       └── artifacts/
 │   │           ├── fno_h128_m16_l8.log
@@ -1276,7 +1337,25 @@ autoresearch-mlx/
 │   │       └── artifacts/
 │   │           ├── fedonet_wavebench_2d_h32_l2_m8_f1_r1.log
 │   │           └── fedonet_wavebench_2d_h32_l2_m8_f1_r1_best.npz
+│   ├── 11/
+│   │   ├── 8d605b0d74c24d59841414a2d612f943/
+│   │   │   └── artifacts/
+│   │   │       └── iterative_fno_poisson_best.npz
+│   │   ├── 9e9ba58f345543d2815681012f527aaa/
+│   │   │   └── artifacts/
+│   │   │       ├── iterative_fno_poisson_h32_l4_it10.log
+│   │   │       └── iterative_fno_poisson_h32_l4_it10_best.npz
+│   │   └── ee2a10908bb64769aab023a30425dd87/
+│   │       └── artifacts/
+│   │           └── smoke_test_poisson_best.npz
+│   ├── 12/
+│   │   └── c16ecaaa3bb04ad593d6ad4a74cb455e/
+│   │       └── artifacts/
+│   │           └── pinn_reionization_1d_best.npz
 │   ├── 2/
+│   │   ├── 0fca3d63b6b7453c8c00605500d68496/
+│   │   │   └── artifacts/
+│   │   │       └── modal_pinn_ns2d_best.npz
 │   │   ├── 101fe0b7688e4303a829a3dcf9d7bfa8/
 │   │   │   └── artifacts/
 │   │   │       ├── ns2d_fno_h32_l4_m8.log
@@ -1288,10 +1367,13 @@ autoresearch-mlx/
 │   │   ├── d6877b1b2654460aaae90343a0496d8e/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ns2d_cleanup_best.npz
-│   │   └── ee35c7503a604f2fa109f8f154abad94/
+│   │   ├── ee35c7503a604f2fa109f8f154abad94/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno2d_ns2d_h32_m8_l4_480s_f1.log
+│   │   │       └── rfno2d_ns2d_h32_m8_l4_480s_f1_best.npz
+│   │   └── f01b41f06b784bcca073bb56d704ce7f/
 │   │       └── artifacts/
-│   │           ├── rfno2d_ns2d_h32_m8_l4_480s_f1.log
-│   │           └── rfno2d_ns2d_h32_m8_l4_480s_f1_best.npz
+│   │           └── smoke_test_modalpinn_best.npz
 │   ├── 3/
 │   │   ├── 2800e885ed3f406cbd1b857dfa1f40dd/
 │   │   │   └── artifacts/
@@ -1690,6 +1772,7 @@ autoresearch-mlx/
 ├── results.json
 ├── test_jobless.py
 ├── train.py
+├── train.py_end_fix.py
 └── uv.lock
 ```
 <!-- STRUCTURE_END -->
