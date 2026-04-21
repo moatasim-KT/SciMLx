@@ -913,6 +913,7 @@ autoresearch-mlx/
 │   │   ├── pino_2021.yaml
 │   │   ├── pod_dl_rom_2023.yaml
 │   │   ├── rfno_2024.yaml
+│   │   ├── sar_2026.yaml
 │   │   ├── spline_pinn_2024.yaml
 │   │   ├── ssm_s4_2022.yaml
 │   │   ├── tfno_2022.yaml
@@ -1003,6 +1004,10 @@ autoresearch-mlx/
 │   │   ├── 2a133368cbbb4025802d02d1f79c1e61/
 │   │   │   └── artifacts/
 │   │   │       └── validation_curriculum_smooth_best.npz
+│   │   ├── 2d13377e005a469083d6ab6a52b78bc8/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_h128_m24_l8_aug.log
+│   │   │       └── rfno_h128_m24_l8_aug_best.npz
 │   │   ├── 39abf812035746f28f5bed6347d02e16/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
@@ -1058,6 +1063,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── 56344d1764a64e709d728deefa6d767b/
+│   │   │   └── artifacts/
+│   │   │       ├── tfno_burgers_h128_l8_m24_r05.log
+│   │   │       └── tfno_burgers_h128_l8_m24_r05_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
@@ -1364,6 +1373,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── agent_rfno2d_ns2d_h32_l4_m8_f1_r3.log
 │   │   │       └── agent_rfno2d_ns2d_h32_l4_m8_f1_r3_best.npz
+│   │   ├── bfd27a6fee0640d6af4466f80bd9119c/
+│   │   │   └── artifacts/
+│   │   │       ├── modal_pinn_ns2d_sparse.log
+│   │   │       └── modal_pinn_ns2d_sparse_best.npz
 │   │   ├── d6877b1b2654460aaae90343a0496d8e/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ns2d_cleanup_best.npz
