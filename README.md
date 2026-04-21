@@ -940,6 +940,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m22_l8.log
 │   │   │       └── fno_h128_m22_l8_best.npz
+│   │   ├── 03bfe1eab8f1464eab3f7aad3258021d/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h64_l4_s32_adapt.log
+│   │   │       └── transolver_burgers_h64_l4_s32_adapt_best.npz
 │   │   ├── 04d31d5026ab4c8f99604425c0e8eab5/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_h64_lvl3_l4_adapt.log
@@ -978,6 +982,10 @@ autoresearch-mlx/
 │   │   ├── 17e7b93e132a475fb39531e06aaee960/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_burgers_v2_best.npz
+│   │   ├── 18c6e4e5edc540ac8fd14097a3ecb603/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32.log
+│   │   │       └── transolver_burgers_h128_l6_s32_best.npz
 │   │   ├── 1b67e87475cb48168969c8703ce1a06e/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8_adapt.log
@@ -1008,6 +1016,10 @@ autoresearch-mlx/
 │   │   ├── 2a133368cbbb4025802d02d1f79c1e61/
 │   │   │   └── artifacts/
 │   │   │       └── validation_curriculum_smooth_best.npz
+│   │   ├── 2bf32601721a4e04969ed0d65e09b15f/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h64_l4_s32_adapt.log
+│   │   │       └── transolver_burgers_h64_l4_s32_adapt_best.npz
 │   │   ├── 2d13377e005a469083d6ab6a52b78bc8/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l8_aug.log
@@ -1205,6 +1217,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h64_m16_l6.log
 │   │   │       └── fno_h64_m16_l6_best.npz
+│   │   ├── aed508c3d3b1401d95cf9d21b6645316/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h64_l4_s32.log
+│   │   │       └── transolver_burgers_h64_l4_s32_best.npz
 │   │   ├── aff05d12782d494eab9cc00bf449377f/
 │   │   │   └── artifacts/
 │   │   │       ├── ffno_h128_m32_l8.log
