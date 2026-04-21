@@ -885,6 +885,26 @@ autoresearch-mlx/
 │   ├── prefetch_data.py
 │   └── prepare.py
 ├── docs/
+│   ├── benchmarks/
+│   │   ├── allen_cahn_2d.md
+│   │   ├── burgers_1d.md
+│   │   ├── burgers_nu_001.md
+│   │   ├── burgers_nu_01.md
+│   │   ├── darcy_2d.md
+│   │   ├── elasticity_2d.md
+│   │   ├── euler_1d.md
+│   │   ├── kdv_1d.md
+│   │   ├── mhd_2d.md
+│   │   ├── multiphysics_2d.md
+│   │   ├── ns_2d.md
+│   │   ├── ns_hre_2d.md
+│   │   ├── pdebench_2d.md
+│   │   ├── poisson_2d.md
+│   │   ├── radiative_2d.md
+│   │   ├── reionization_1d.md
+│   │   ├── swe_2d.md
+│   │   ├── wave_1d.md
+│   │   └── wavebench_2d.md
 │   ├── papers/
 │   │   ├── afno_2022.yaml
 │   │   ├── augmentation_2023.yaml
@@ -979,6 +999,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8.log
 │   │   │       └── gnot_burgers_h128_l8_best.npz
+│   │   ├── 15f38020e0334f1fa2e14e10d3300c31/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_adapt_best.npz
 │   │   ├── 17e7b93e132a475fb39531e06aaee960/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_burgers_v2_best.npz
@@ -1028,6 +1052,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver_burgers_h64_l4_s32.log
 │   │   │       └── transolver_burgers_h64_l4_s32_best.npz
+│   │   ├── 34b364ecd68d477e9f51202557599866/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32.log
+│   │   │       └── transolver_burgers_h128_l6_s32_best.npz
 │   │   ├── 39abf812035746f28f5bed6347d02e16/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
@@ -1087,6 +1115,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── tfno_burgers_h128_l8_m24_r05.log
 │   │   │       └── tfno_burgers_h128_l8_m24_r05_best.npz
+│   │   ├── 57c605adb9064feebe9216e4233635db/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_adapt_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
@@ -1822,7 +1854,6 @@ autoresearch-mlx/
 ├── results.json
 ├── test_jobless.py
 ├── train.py
-├── train.py_end_fix.py
 └── uv.lock
 ```
 <!-- STRUCTURE_END -->
