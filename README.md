@@ -959,6 +959,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8_adapt.log
 │   │   │       └── gnot_burgers_h128_l8_adapt_best.npz
+│   │   ├── 0d61084b8100471b8f0831e36deeba07/
+│   │   │   └── artifacts/
+│   │   │       ├── tfno_burgers_h128_l8_m24_r075.log
+│   │   │       └── tfno_burgers_h128_l8_m24_r075_best.npz
 │   │   ├── 0d9843e5ed4f4c6696b4e751083c2cdd/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -1008,6 +1012,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l8_aug.log
 │   │   │       └── rfno_h128_m24_l8_aug_best.npz
+│   │   ├── 2e2d876c637c4565b8a2300b3d036292/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h64_l4_s32.log
+│   │   │       └── transolver_burgers_h64_l4_s32_best.npz
 │   │   ├── 39abf812035746f28f5bed6347d02e16/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
@@ -1173,6 +1181,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m24_l6_adapt.log
 │   │   │       └── fno_h256_m24_l6_adapt_best.npz
+│   │   ├── 9e436ea10c03493ea87ed7524418505c/
+│   │   │   └── artifacts/
+│   │   │       ├── rtfno_burgers_h128_l10_m24.log
+│   │   │       └── rtfno_burgers_h128_l10_m24_best.npz
 │   │   ├── 9e86917f5b7b44aca58b5efe1ab25bd3/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
@@ -1358,6 +1370,10 @@ autoresearch-mlx/
 │   │       └── artifacts/
 │   │           └── smoke_test_poisson_best.npz
 │   ├── 12/
+│   │   ├── 0bd24e6f510e448997dacc9f0b8c97b9/
+│   │   │   └── artifacts/
+│   │   │       ├── pinn_reionization_1d_h128.log
+│   │   │       └── pinn_reionization_1d_h128_best.npz
 │   │   └── c16ecaaa3bb04ad593d6ad4a74cb455e/
 │   │       └── artifacts/
 │   │           └── pinn_reionization_1d_best.npz
@@ -1384,9 +1400,13 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno2d_ns2d_h32_m8_l4_480s_f1.log
 │   │   │       └── rfno2d_ns2d_h32_m8_l4_480s_f1_best.npz
-│   │   └── f01b41f06b784bcca073bb56d704ce7f/
+│   │   ├── f01b41f06b784bcca073bb56d704ce7f/
+│   │   │   └── artifacts/
+│   │   │       └── smoke_test_modalpinn_best.npz
+│   │   └── f742c0445a25453aa8ec89fbc317840d/
 │   │       └── artifacts/
-│   │           └── smoke_test_modalpinn_best.npz
+│   │           ├── modal_pinn_ns2d_sparse_adapt.log
+│   │           └── modal_pinn_ns2d_sparse_adapt_best.npz
 │   ├── 3/
 │   │   ├── 2800e885ed3f406cbd1b857dfa1f40dd/
 │   │   │   └── artifacts/
@@ -1750,6 +1770,7 @@ autoresearch-mlx/
 │   ├── pacmann.py
 │   ├── pinn.py
 │   ├── s4d.py
+│   ├── sar.py
 │   ├── sno.py
 │   ├── ssno.py
 │   ├── tfno.py
