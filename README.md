@@ -987,6 +987,10 @@ autoresearch-mlx/
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
+│   │   ├── 08d763ef5fc148b1be4e8e2d42917ea0/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_lr3e4.log
+│   │   │       └── ssno_burgers_h128_l8_lr3e4_best.npz
 │   │   ├── 093f5e23fdd147f7b4de8eda73497724/
 │   │   │   └── artifacts/
 │   │   │       ├── ssno_burgers_h128_l8_m24.log
@@ -1238,6 +1242,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h64_m16_l6.log
 │   │   │       └── fno_h64_m16_l6_best.npz
+│   │   ├── 8168c95bfb874a9c9e512d1486378ab8/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug.log
+│   │   │       └── gnot_burgers_h128_l6_aug_best.npz
 │   │   ├── 82983239f8fe4ae889d7ab5f2ef9d183/
 │   │   │   └── artifacts/
 │   │   │       └── mambano_burgers_h128_l8_h1_best.npz
@@ -1451,6 +1459,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8_adapt.log
 │   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
+│   │   ├── e2ffd93d67834570a334cd04552c535b/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_lr3e4.log
+│   │   │       └── ssno_burgers_h128_l8_lr3e4_best.npz
 │   │   ├── e34c128cc4c84d36b87f6e1936a07c70/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_h64_l4_m16_wave_transfer.log
@@ -1967,17 +1979,14 @@ autoresearch-mlx/
 │   ├── vsmno.py
 │   └── wno.py
 ├── notebooks/
-│   └── colab_experiments.ipynb
 ├── scripts/
 │   ├── maintenance/
 │   │   ├── backfill_model_registry.py
 │   │   ├── gen_arch_nanobanana.py
 │   │   └── gen_arch_viz.py
-│   ├── dvc_train.py
-│   └── stress_worker.py
+│   └── dvc_train.py
 ├── README.md
 ├── RESEARCH_BRAIN.md
-├── WIKI.md
 ├── agent_loop.py
 ├── analyze.py
 ├── auto_suggest.py
@@ -1992,7 +2001,6 @@ autoresearch-mlx/
 ├── results.db-shm
 ├── results.db-wal
 ├── results.json
-├── test_jobless.py
 ├── train.py
 └── uv.lock
 ```

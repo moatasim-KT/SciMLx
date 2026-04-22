@@ -154,8 +154,6 @@ Full list: `core/research_plugins.py`. All new models must be registered there.
 | Date | Insight | Action | Outcome |
 |---|---|---|---|
 <!-- LESSONS_START -->
-| 2026-04-21 | current_val (0.3101) is >2x best (0.1468). Replicating best ... | S4NO on burgers_1d | **0.310095 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.174077 (discard)** |
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.178343 (discard)** |
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.172114 (discard)** |
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.214153 (discard)** |
@@ -164,6 +162,8 @@ Full list: `core/research_plugins.py`. All new models must be registered there.
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
 | 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.170058 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.170058 (discard)** |
 <!-- LESSONS_END -->
 
 ### Architecture Evolution
