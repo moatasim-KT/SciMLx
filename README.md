@@ -844,6 +844,18 @@ autoresearch-mlx/
 │   └── skills/
 │       └── SciMLx/
 │           └── SKILL.md
+├── artifacts/
+│   └── presentation/
+│       ├── assets/
+│       │   ├── example_cascade.png
+│       │   ├── gp_surrogate.png
+│       │   ├── hypothesis_engine.png
+│       │   ├── loop_diagram.png
+│       │   ├── novelty_filter.png
+│       │   ├── retry_ladder.png
+│       │   ├── sota_table.png
+│       │   └── system_shape.png
+│       └── Agent_Driven_Scientific_Discovery.pptx
 ├── core/
 │   ├── __init__.py
 │   ├── brain_distiller.py
@@ -984,6 +996,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── afno_v2_h128_m24_l10.log
 │   │   │       └── afno_v2_h128_m24_l10_best.npz
+│   │   ├── 077b93a202654d3494c71a77c60995ba/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h1.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h1_best.npz
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
@@ -1167,6 +1183,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver_burgers_h128_l6_s32_adapt.log
 │   │   │       └── transolver_burgers_h128_l6_s32_adapt_best.npz
+│   │   ├── 58cc5c705e9c424ea498a5dda1302666/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h1.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h1_best.npz
 │   │   ├── 5909705c9704423a8d9698967614671a/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l6_aug_adapt.log
@@ -1190,6 +1210,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m16_l4.log
 │   │   │       └── fno_h256_m16_l4_best.npz
+│   │   ├── 5f97e7d02a054fa3aa6ce3a60ae7f970/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug_adapt.log
+│   │   │       └── gnot_burgers_h128_l6_aug_adapt_best.npz
 │   │   ├── 606d9c2740674f18aa79fc6e8ab6832e/
 │   │   │   └── artifacts/
 │   │   │       ├── s4no_burgers_h128_l8.log
@@ -1439,6 +1463,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_h128_l8_m24_curriculum_v2.log
 │   │   │       └── fno_burgers_h128_l8_m24_curriculum_v2_best.npz
+│   │   ├── cb875142a31d40fa9440392ec8aa8905/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h1_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h1_adapt_best.npz
 │   │   ├── cb983bf1ac8745aba584d041471fea91/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m20_l6.log
@@ -1475,6 +1503,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8_adapt.log
 │   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
+│   │   ├── e0ec1c5a6dfd4a5abca85799a7147717/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug_adapt.log
+│   │   │       └── gnot_burgers_h128_l6_aug_adapt_best.npz
 │   │   ├── e2ffd93d67834570a334cd04552c535b/
 │   │   │   └── artifacts/
 │   │   │       ├── ssno_burgers_h128_l8_lr3e4.log
@@ -2005,12 +2037,14 @@ autoresearch-mlx/
 │   │   ├── gen_arch_nanobanana.py
 │   │   └── gen_arch_viz.py
 │   └── dvc_train.py
+├── Agent Driven Scientific Discovery.html
 ├── README.md
 ├── RESEARCH_BRAIN.md
 ├── agent_loop.py
 ├── analyze.py
 ├── auto_suggest.py
 ├── autorun.py
+├── deck-stage.js
 ├── dvc.yaml
 ├── experiments.yaml
 ├── mlflow.db
