@@ -1167,6 +1167,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver_burgers_h128_l6_s32_adapt.log
 │   │   │       └── transolver_burgers_h128_l6_s32_adapt_best.npz
+│   │   ├── 5909705c9704423a8d9698967614671a/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug_adapt.log
+│   │   │       └── gnot_burgers_h128_l6_aug_adapt_best.npz
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
@@ -1174,6 +1178,14 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── ude_burgers_fixed_h128_l4_adapt.log
 │   │   │       └── ude_burgers_fixed_h128_l4_adapt_best.npz
+│   │   ├── 5bbdd78d306040b2953ef735ab55eb46/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug.log
+│   │   │       └── gnot_burgers_h128_l6_aug_best.npz
+│   │   ├── 5c4898d87de74aeca2671b789756abce/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug.log
+│   │   │       └── gnot_burgers_h128_l6_aug_best.npz
 │   │   ├── 5cd42e5777d548909041c2da816c4df6/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m16_l4.log
@@ -1384,6 +1396,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
 │   │   │       └── fno_burgers_onecycle_aug_h128_l8_m24_best.npz
+│   │   ├── c0bfe1c5ee264090a0f8e7fcb0e4b9c3/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug_adapt.log
+│   │   │       └── gnot_burgers_h128_l6_aug_adapt_best.npz
 │   │   ├── c12e1f741b594e3a988f26be54da062e/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l8_aug.log
@@ -1518,6 +1534,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── afno_h128_m24_l8.log
 │   │   │       └── afno_h128_m24_l8_best.npz
+│   │   ├── f85d686890fa4ac79c9fa707318558d0/
+│   │   │   └── artifacts/
+│   │   │       ├── gnot_burgers_h128_l6_aug.log
+│   │   │       └── gnot_burgers_h128_l6_aug_best.npz
 │   │   ├── fa0d3b808c50481d8cb1dd266f9cd2b5/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l10.log
