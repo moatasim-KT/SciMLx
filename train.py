@@ -104,6 +104,8 @@ def _parse_args():
                    help="Global random seed for reproducibility (default: 42).")
     p.add_argument("--ema_decay", type=float, default=0.0,
                    help="EMA decay for model weights (0=disabled, 0.999 recommended).")
+    p.add_argument("--n_iterations", type=int, default=10,
+                   help="Iterations for neural iterative solvers (Brandstetter et al.).")
     return p.parse_args()
 
 args = _parse_args()
@@ -133,6 +135,7 @@ N_ENSEMBLE   = args.snapshot_ensemble
 LR_SCHEDULE  = args.lr_schedule
 SEED         = args.seed
 EMA_DECAY    = args.ema_decay
+N_ITERATIONS = args.n_iterations
 
 # Seed global RNG for reproducibility
 mx.random.seed(SEED)
@@ -243,6 +246,9 @@ model = MODEL_REGISTRY.build(
     _model_key,
     n_modes=N_MODES, hidden_dim=HIDDEN_DIM, n_layers=N_LAYERS, n_levels=N_LEVELS,
     n_head=N_HEAD, slice_num=SLICE_NUM,
+    n_iterations=N_ITERATIONS,
+    in_ch=n_ch+2 if not is_1d else n_ch+1, # coordinates
+    n_scales=3, # Default for SAR
     sparsity=SPARSITY, n_sensors=GRID_SIZE, sensor_dim=GRID_SIZE,
     in_channels=n_ch, out_channels=n_ch,   # absorbed by **kw for non-MC models
     degree=args.degree,                    # For Chebyshev models

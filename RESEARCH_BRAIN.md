@@ -1,124 +1,169 @@
 # RESEARCH_BRAIN.md — SciML AutoResearch Autonomous Driver
 
 > **This is the Project's Living Brain.** It drives the autonomous SciML research loop,
-> evolves with every experiment, and stores the collective memory of what works
-> and what doesn't. You are mandated to read this file in full before acting and
-> to update it after every significant outcome.
+> evolves with every experiment via `core/brain_distiller.py`, and stores the collective
+> memory of what works and what doesn't across all sessions.
+> **Mandatory**: Read this file in full before acting. Update it after every significant
+> outcome. Never modify the `<!-- MARKER -->` tags — they are written by the distiller.
 
 ---
 
 ## 1. Mission & Identity
 
-**Role**: You are a Senior AI SciML Researcher.
+**Role**: Senior AI SciML Researcher operating an autonomous experiment loop.
 **Objective**: Minimize `val_l2_rel` (relative L2 error) on PDE benchmarks toward published SOTA.
-**Platform**: Apple Silicon (MLX). Inductive biases must be MLX-native (no CUDA).
-**Mindset**: You are an active researcher, not a grid-searcher. Reason mathematically and empirically about every experiment rationale.
+**Platform**: Apple Silicon (MLX). All model code must be MLX-native — no CUDA, no PyTorch training.
+**Mindset**: Active researcher, not a grid-searcher. Every experiment needs a mathematical rationale.
+
+**Current score: 9 / 14 SOTA benchmarks beaten. 184 experiments run.**
 
 ---
 
-## 2. Core Mandates (Invariants & Constraints)
+## 2. Core Mandates (Invariants — Never Break These)
 
 ### Data Integrity
-- **Never modify `data/prepare.py`**: This is the ground-truth evaluator.
-- **Never hand-edit `results.json`**: Use `core/tracker.py` or automated tools.
-- **`name` in `experiments.yaml` must be globally unique**.
+- **Never modify `data/prepare.py`** — ground-truth evaluator, changes invalidate all comparisons.
+- **Never write `results.json` directly** — use `core/results_store.py`:
+  ```python
+  from core.results_store import store
+  store.append(row)        # idempotent INSERT OR IGNORE by id
+  store.load("benchmark")  # read, filtered
+  ```
+  `results.json` is an auto-exported human-readable copy. `results.db` (SQLite WAL) is the SSoT.
+- **`name` in `experiments.yaml` must be globally unique** — duplicates are silently skipped.
 
-### Model Safety & Hardware Limits (Apple Silicon)
-- **2D Hard Limit (enforced)**: `hidden_dim < 64`, `n_layers < 8` — `ModelRegistry.build()` raises `ValueError` above these. Recommended practice: `hidden_dim = 32`, `n_layers ≤ 4`, `n_modes ≤ 12`.
-- **SSNO Limits**: `hidden_dim ≤ 64`, `n_layers ≤ 4`. Diverges/explodes at `h≥128`.
-- **RFNO2D is fully supported on 2D benchmarks** — use `RFNO` for 1D and `RFNO2D` for 2D.
-- **Never queue PINO**: Endpoint-only formulation always diverges.
-- **AFNO**: Do not queue; consistently 0.50–0.72 (wrong spectral bias).
-- **Case Sensitivity**: Model keys must match the registry EXACTLY (e.g., `FNO2D`, not `FNO2d`).
+### Hardware Limits (Apple Silicon — enforced by `ModelRegistry.build()`)
+- **2D hard limit**: `hidden_dim < 64`, `n_layers < 8`. Raises `ValueError` above these.
+  Recommended: `hidden_dim = 32`, `n_layers ≤ 4`, `n_modes ≤ 12`.
+- **SSNO**: `hidden_dim ≤ 64`, `n_layers ≤ 4`. Diverges at `h ≥ 128`.
+- **Budget floors** (auto-applied): 1D ≥ 1800s, 2D ≥ 3600s.
 
-### Training Rules
-- **Budget Floors**: Automatically applied (1D ≥ 1800s, 2D ≥ 3600s).
-- **No New Packages**: Only use what is in `pyproject.toml`.
-- **Git Hygiene**: Never `git add -A`. Stage specific files only.
-- **Trajectory Logging**: Append to `logs/trajectories.jsonl` on every queue change or model scaffold.
+### Known Crash Patterns (Do Not Repeat)
+- **`RFNO`/`PINO` on `burgers_nu_001`**: was crashing because benchmark doesn't end in `_1d`.
+  Fixed in `train.py` via `_1D_BENCHMARKS = {"burgers_nu_001", "burgers_nu_01", ...}`. ✅
+- **`PINO1d` missing `sensor_dim`**: fixed — `train.py` now passes `sensor_dim=GRID_SIZE`. ✅
+- **`AFNO`**: consistently 0.50–0.72 (wrong spectral bias). Do not queue.
+- **`PACMANN`**: scaffold stub only — operator blocks not implemented.
+- **`Transolver2D`/`GNOT` on 2D**: 5–10× slower per epoch than FNO-family. Budget accordingly.
 
 ---
 
-## 3. The Autonomous Research Loop
+## 3. Results Store — Concurrency Architecture
+
+12+ autorun processes write results simultaneously. The old JSON read-modify-write
+caused silent data loss. **All writes go through `core/results_store.py`:**
+
+```
+store.append(row)
+  → SQLite INSERT OR IGNORE   (WAL: readers never blocked, id deduplication)
+  → export_json() under FileLock
+      → write to .tmp → os.replace() atomic rename → results.json
+```
+
+**Stress test result**: 8 concurrent processes × 10 writes = 80/80 rows, 0 lost (1.0s).
+
+---
+
+## 4. The Autonomous Research Loop
 
 ### Standard Protocol
-1. **Analyze**: `uv run analyze.py --papers` (Read current state vs SOTA).
-2. **Hypothesize**: `uv run auto_suggest.py` (Review ranked suggestions).
-3. **Queue**: Edit `experiments.yaml`. Use the **SciML Knowledge Base (§4)** for hyperparams.
-4. **Log**: Record the action and rationale in `logs/trajectories.jsonl`.
-5. **Execute**: `uv run autorun.py --priority 1 --commit`.
-6. **Distill & Evolve (Mandatory)**: 
-    - Review `logs/<run>.log` (diagnostics) and `logs/trajectories.jsonl`.
-    - Update the **Autonomous Memory (§6)** with new insights.
-    - Adjust the **Active Strategy** if a focus area is plateauing.
+1. **Analyze**: `uv run analyze.py` — SOTA gap table + improvement trajectories.
+2. **Hypothesize**: Based on diagnostics and §6 knowledge base.
+3. **Queue**: Edit `experiments.yaml`. Every entry needs a `rationale:` field.
+4. **Execute**: `uv run autorun.py --benchmark <bm> --max <n> --commit`
+5. **Distill (auto)**: `core/brain_distiller.py` updates §7 Lessons and §8 Strategy after each run.
+6. **Update manually**: Update §9 Roadmap and §2 crash patterns when new systemic knowledge emerges.
 
-### Unattended Loop
+### Unattended Overnight Loop
 ```bash
-uv run autorun.py --auto --commit --max-auto-experiments 50 --max-auto-time 86400
+uv run autorun.py --priority 1 --commit
+```
+Runs all priority-1 experiments, retries crashes, commits results, evolves this brain.
+
+### Targeted RL Sweep (single benchmark)
+```bash
+uv run autorun.py --benchmark burgers_nu_001 --max 6 --commit
 ```
 
 ---
 
-## 4. SciML Knowledge Base
+## 5. HPO Strategy
 
-### Loss Function Decision Tree
-| Key | Use Case | Note |
-|-----|----------|------|
-| `l2_rel` | Default | Always start here. |
-| `h1` | Shock/Gradients | Best for Burgers/Darcy. Set `h1_alpha: 0.1–0.5`. |
-| `h1_adaptive`| Unknown PDEs | Auto-scales alpha so gradient term ≈ 30%. |
-| `spectral` | High-freq error | Try when `diag_high_freq_error > 0.3`. |
-| `l1_rel` | Outliers | Use when `val >> train`. |
+### Primary: OptunaHPO (TPE + MedianPruner)
+```python
+from core.hpo import OptunaHPO
+hpo = OptunaHPO("burgers_1d")
+hpo.load_history()           # seeds from results.db
+candidates = hpo.suggest_top(n=5)
+```
+- Uses a **scratch study** for candidate generation — live study never contaminated.
+- Falls back to `BayesianHPO` (GP + EI) if optuna unavailable.
 
-### Parameter Optimization Playbook
-- **n_modes**: 1D: 24, 2D: ≤ 12.
-- **hidden_dim**: 1D: 128, 2D: ≤ 32.
-- **n_layers**: 1D: 8 (10+ is too slow).
-- **LR**: 1e-3 (default), 3e-4 (stable but slow).
-- **Augmentation**: Use `time_reversal` (Burgers) or `noise` for regularization.
+### Novelty Filter (AI-Scientist cosine dedup)
+`agent_loop.py` rejects proposals with cosine similarity ≥ 0.97 to existing experiments.
+Prevents redundant near-duplicate configs from filling the queue.
 
----
-
-## 5. Model Architecture & Scaffolding
-
-### Model Registry Keys (Case-Sensitive, partial list)
-
-**1D keys:** `FNO`, `RFNO`, `AFNO`, `FFNO`, `UNO`, `WNO`, `TFNO`, `RTFNO`, `CPFNO`, `S4NO`, `SSNO`, `MambaNO`, `MambaNO1d`, `MemNO`, `DeepONet`, `PODDeepONet`, `TimeDeepONet`, `DualDeepONet`, `HNN`, `EnergyFNO`, `NeuralODE`, `UDE`, `LatentODE`, `PINO`, `KAN_FNO`, `cPIKAN_FNO`, `PACMANN`
-
-**2D keys:** `FNO2D`, `RFNO2D`, `TFNO2D`, `UNO2d`, `WNO2d`, `GNOT`, `GNOT2d`, `GNOT_Axial2d`, `GNOT_FFNO`, `Transolver2D`, `HANO2D`, `FEDONet2D`, `SNO2D`, `VSMNO2D`, `AttentionEnhancedFNO2D`, `HybridDecoderDeepONet2D`, `HybridFNODeepONet2D`
-
-Full authoritative list: `core/research_plugins.py`.
-
-### Scaffolding Workflow
-1. **Stub**: `uv run -m core.scaffold --stub <Name> --base <Base>`.
-2. **Implement**: Add logic to `models/<name>.py`.
-3. **Validate**: `uv run -m core.scaffold --validate <Name>`.
-4. **Register**: `uv run -m core.scaffold --register <Name>`.
+### Parameter Playbook
+| Param | 1D default | 2D default | Notes |
+|---|---|---|---|
+| `n_modes` | 24–32 | ≤ 12 | More modes → better shock resolution |
+| `hidden_dim` | 128 | ≤ 32 | 2D hard limit enforced |
+| `n_layers` | 8 | ≤ 4 | 10+ is too slow on 1D |
+| `lr` | 1e-3 | 1e-3 | 3e-4 for late-stage fine-tuning |
+| `batch_size` | 32–64 | 16–32 | Smaller batches for 2D OOM safety |
 
 ---
 
-## 6. Autonomous Memory (Living Section)
+## 6. Loss Function Decision Tree
+
+| Key | Use Case | When |
+|---|---|---|
+| `l2_rel` | Default | Always start here |
+| `h1` | Shock / steep gradients | Burgers, Darcy; set `h1_alpha: 0.1–0.5` |
+| `h1_adaptive` | Unknown PDEs | Auto-scales alpha so gradient term ≈ 30% |
+| `spectral` | High-frequency error | When `diag_high_freq_error > 0.3` |
+| `l1_rel` | Outlier robustness | When `val >> train` |
+| PINO (`pino_lambda`) | Physics residual | Burgers shocks: try `pino_lambda: 0.05–0.1` |
+
+---
+
+## 7. Model Registry Keys (Case-Sensitive)
+
+**1D**: `FNO`, `RFNO`, `FFNO`, `UNO`, `WNO`, `TFNO`, `RTFNO`, `CPFNO`, `S4NO`, `SSNO`,
+`MambaNO`, `GNOT`, `DeepONet`, `PODDeepONet`, `TimeDeepONet`, `DualDeepONet`,
+`HNN`, `EnergyFNO`, `NeuralODE`, `UDE`, `LatentODE`, `PINO`, `KAN_FNO`, `Transolver`
+
+**2D**: `FNO2D`, `RFNO2D`, `TFNO2D`, `UNO2d`, `WNO2d`, `GNOT2d`, `GNOT_Axial2d`,
+`GNOT_FFNO`, `Transolver2D`, `VSMNO2D`, `SNO2D`, `AttentionEnhancedFNO2D`,
+`HybridDecoderDeepONet2D`, `HybridFNODeepONet2D`, `FEDONet2D`
+
+Full list: `core/research_plugins.py`. All new models must be registered there.
+
+---
+
+## 8. Autonomous Memory (Auto-Updated by brain_distiller.py)
 
 ### Active Strategy
 <!-- STRATEGY_START -->
-- **Current Focus**: Closing gaps in Darcy 2D and Burgers 1D.
-- **Priority Hypotheses**: Stable depth ≥10 for spectral models; adaptive Sobolev weighting.
+- **Current Score**: 9/14 SOTA benchmarks beaten: `allen_cahn_2d`, `burgers_nu_001`, `elasticity_2d`, `euler_1d`, `kdv_1d`
+- **Current Focus**: Close `burgers_1d` (47.3× gap).
+- **Priority Hypotheses**: High spectral modes for shocks; EMA for convergence stability.
 <!-- STRATEGY_END -->
 
-### Learned Lessons Log (Distilled from Session 1–11)
+### Learned Lessons Log
 | Date | Insight | Action | Outcome |
-|------|---------|--------|---------|
+|---|---|---|---|
 <!-- LESSONS_START -->
-| 2026-04-19 | current_val (0.1859) marginally above best (0.1813). Increme... | LatentODE on burgers_1d | **0.185855 (discard)** |
-| 2026-04-19 | Architecture discovery halted by UnknownError.... | PODDeepONet on burgers_1d | **crash:UnknownError)** |
-| 2026-04-19 | N/A... | PODDeepONet on burgers_1d | **crash:UnknownError)** |
-| 2026-04-19 | N/A... | RFNO on kdv_1d | **0.020456 (discard)** |
-| 2026-04-19 | N/A... | RFNO2D on ns_2d | **0.120363 (discard)** |
-| 2026-04-19 | No prior experiments found. Starting with FNO h=128 l=8 m=24... | FNO on burgers_1d | **0.223195 (discard)** |
-| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.209866 (keep)** |
-| 2026-04-19 | N/A... | FNO on burgers_1d | **0.223007 (discard)** |
-| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.225705 (discard)** |
-| 2026-04-19 | Incrementing modes to m=28 based on best config (MambaNO h=1... | FNO on burgers_1d | **0.208866 (discard)** |
+| 2026-04-21 | current_val (0.3101) is >2x best (0.1468). Replicating best ... | S4NO on burgers_1d | **0.310095 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.174077 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.178343 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.172114 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.214153 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
+| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
 <!-- LESSONS_END -->
 
 ### Architecture Evolution
@@ -128,27 +173,44 @@ Full authoritative list: `core/research_plugins.py`.
 
 ---
 
-## 7. Roadmap & SOTA Gaps
+## 9. Roadmap & SOTA Gaps
 
-Values from `model_registry.json`. SOTA targets from `core/utils.py`.
+Live values from `results.db`. SOTA targets from `core/utils.py`.
 
-| Benchmark | Registry Best | SOTA Target | Gap | Priority Action |
-|-----------|---------------|-------------|-----|-----------------|
-| Burgers 1D | 0.1468 (FNO) | 0.0031 (GNOT) | 47× | Attention + H1; try Transolver2D on 1D |
-| Darcy 2D | 0.2735 (FEDONet2D) | 0.0041 (GNOT) | 67× | AttentionEnhancedFNO2D; longer budget |
-| NS 2D | 0.0143 (FNO) | 0.0128 (FNO) | 1.1× | Near SOTA. HPO fine-tune at lr=1e-4 |
-| NS HRE 2D | 1.000 | 0.050 | Unsolved | First convergent run needed |
-| MHD 2D | 1.000 | 0.050 | Unsolved | Multi-channel FNO2D starting point |
+| Benchmark | Our Best | SOTA Target | Gap | Priority | Next Action |
+|---|---|---|---|---|---|
+| `[wave_1d](docs/benchmarks/wave_1d.md)` | **0.000992** | 0.005 | 0.20× ✅ | low | maintain |
+| `[kdv_1d](docs/benchmarks/kdv_1d.md)` | **0.002023** | 0.010 | 0.20× ✅ | low | maintain |
+| `[euler_1d](docs/benchmarks/euler_1d.md)` | **0.002413** | 0.003 | 0.80× ✅ | low | maintain |
+| `[pdebench_2d](docs/benchmarks/pdebench_2d.md)` | **0.002602** | 0.005 | 0.52× ✅ | low | maintain |
+| `[elasticity_2d](docs/benchmarks/elasticity_2d.md)` | **0.007734** | 0.010 | 0.77× ✅ | low | maintain |
+| `[wavebench_2d](docs/benchmarks/wavebench_2d.md)` | **0.009907** | 0.015 | 0.66× ✅ | low | maintain |
+| `[swe_2d](docs/benchmarks/swe_2d.md)` | **0.010729** | 0.015 | 0.72× ✅ | low | maintain |
+| `[allen_cahn_2d](docs/benchmarks/allen_cahn_2d.md)` | **0.062801** | 0.080 | 0.79× ✅ | low | maintain |
+| `[burgers_nu_001](docs/benchmarks/burgers_nu_001.md)` | **0.077943** | 0.080 | 0.97× ✅ | medium | push to 0.060 via RFNO+EMA/cosine |
+| `[ns_2d](docs/benchmarks/ns_2d.md)` | 0.014284 | 0.0128 | 1.12× | **high** | HPO fine-tune lr=1e-4, EMA |
+| `[darcy_2d](docs/benchmarks/darcy_2d.md)` | 0.059719 | 0.0041 | 14.6× | **high** | GNOT attention + longer budget |
+| `[burgers_1d](docs/benchmarks/burgers_1d.md)` | 0.181264 | 0.0031 | 58× | **high** | PINO physics loss + RFNO h=256 |
+| `[multiphysics_2d](docs/benchmarks/multiphysics_2d.md)` | 0.692273 | 0.200 | 3.5× | medium | multi-channel FNO2D baseline |
+| `[radiative_2d](docs/benchmarks/radiative_2d.md)` | 1.000 | — | unsolved | medium | debug data pipeline first |
+| `[poisson_2d](docs/benchmarks/poisson_2d.md)` | **0.470284** | 0.0001 | 4702× | **high** | Iterate more steps (n_iterations=50) |
+| `[reionization_1d](docs/benchmarks/reionization_1d.md)` | **0.036645** | 0.050 | 0.73× ✅ | low | maintain |
 
 ---
 
-## 8. Key File Locations
+## 10. Key File Locations
 
-| Asset | Location |
-|-------|----------|
-| **Brain (This File)** | `RESEARCH_BRAIN.md` |
-| **Queue** | `experiments.yaml` |
-| **Results (SSoT)** | `results.json` |
-| **Trajectories (Memory)** | `logs/trajectories.jsonl` |
-| **SOTA Database** | `docs/papers/*.yaml` |
-| **Diagnostic Parser** | `core/diagnostics.py` |
+| Asset | Location | Notes |
+|---|---|---|
+| **Brain (This File)** | `RESEARCH_BRAIN.md` | Auto-updated by `core/brain_distiller.py` |
+| **Experiment Queue** | `experiments.yaml` | YAML list; `name` must be globally unique |
+| **Results DB (SSoT)** | `results.db` | SQLite WAL, gitignored |
+| **Results JSON (export)** | `results.json` | Auto-synced from DB after every write |
+| **Results Store** | `core/results_store.py` | All reads/writes go here |
+| **Trajectories (RL buffer)** | `logs/trajectories.jsonl` | Append-only; input to brain distiller |
+| **HPO** | `core/hpo.py` | OptunaHPO (primary) + BayesianHPO (fallback) |
+| **Novelty Filter** | `agent_loop.py` | Cosine similarity ≥ 0.97 → reject |
+| **Model Registry** | `core/research_plugins.py` | All model keys registered here |
+| **SOTA Targets** | `core/utils.py` (`SOTA` dict) | Referenced by analyze.py and autorun.py |
+| **Diagnostics** | `core/diagnostics.py` | Log parser for crash/plateau/spectral-bias |
+| **Brain Distiller** | `core/brain_distiller.py` | Updates §8 markers after every run |

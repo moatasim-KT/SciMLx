@@ -47,6 +47,7 @@ class ExperimentConfig:
     ema_decay:   float = 0.0      # EMA decay for model weights (0=disabled, 0.999 recommended)
     patience:    int  = 5         # early-stop patience: halt after this many consecutive non-improving evals (0=off)
     snapshot_ensemble: int = 0    # Phase 12: Snapshot ensembling (number of snapshots to average)
+    n_iterations: int = 10        # Phase 14: Iterations for Neural Iterative Solver (Brandstetter et al.)
 
     def to_cli_args(self) -> List[str]:
         args = [
@@ -84,6 +85,8 @@ class ExperimentConfig:
             args += ["--refine_grid"]
         if self.model == "cPIKAN_FNO":
             args += ["--degree", str(self.cheb_degree)]
+        if self.model in ("IterativeFNO2D", "IterativeFNO2d"):
+            args += ["--n_iterations", str(self.n_iterations)]
         args += ["--budget", str(self.budget_s)]
         args += ["--seed", str(self.seed)]
         if self.lr_schedule != "warmup_cosine":

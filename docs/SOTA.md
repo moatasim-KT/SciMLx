@@ -17,6 +17,8 @@ Numbers from published papers on their respective test sets.
 | UNO                       | ~0.012      | Rahman et al. 2022                 |
 | WNO                       | ~0.015      | Tripura et al. 2022                |
 | GNOT (paper)              | 0.0031      | Hao et al. 2023                    |
+| PINN-NTK (PINNacle)       | 0.0130      | Hao et al. NeurIPS 2024 [MLiS]     |
+| FBPINN (PINNacle)         | 0.0132      | Moseley et al. 2023 [MLiS]         |
 | **This repo (best)**      | **0.1468**  | FNO h=128 l=8 m=24                 |
 
 **Gap to SOTA:** ~47× vs GNOT. Key levers: architecture (GNOT, Transolver), more
@@ -82,6 +84,8 @@ modes, SOTA loss (H1/spectral), longer budget.
 |----------------------|-------------|-------------------------|
 | FNO (paper)          | 0.0128      | Li et al. 2020          |
 | AFNO                 | ~0.008      | Guibas et al. 2022      |
+| Vanilla PINN         | 0.0942      | PINNacle NeurIPS 2024 [MLiS] |
+| FBPINN               | 0.0245      | Best PINN — PINNacle 2024 [MLiS] |
 | **This repo (best)** | **0.01428** | Competitive — near SOTA |
 
 **Gap to SOTA:** ~1.1× vs FNO (near-SOTA performance).
@@ -99,10 +103,15 @@ modes, SOTA loss (H1/spectral), longer budget.
 
 ### Allen-Cahn 2D (phase separation)
 
-| Model                | Relative L2 | Notes     |
-|----------------------|-------------|-----------|
-| FNO baseline         | ~0.08       | Estimated |
-| **This repo (best)** | **0.06280** |           |
+| Model                | Relative L2 | Notes                                      |
+|----------------------|-------------|--------------------------------------------|
+| FNO baseline         | ~0.08       | Estimated                                  |
+| Vanilla PINN         | ~0.498      | PINNacle 2024 — **all PINN variants fail** |
+| FBPINN               | ~0.30       | Best PINN; still hard [MLiS/PINNacle]      |
+| **This repo (best)** | **0.06280** | FNO beats all PINN variants                |
+
+**Note:** PINNacle 2024 (MLiS) identifies Allen-Cahn as a pathological PINN
+failure mode due to multi-scale sharp interfaces. FNO is the clear winner here.
 
 ---
 
@@ -160,6 +169,35 @@ Try physics-informed losses and architecture families with symmetry constraints.
 |----------------------|-------------|-------------------|
 | Baseline             | ~0.2        |                   |
 | **This repo (best)** | **0.6923**  | Early experiments |
+
+---
+
+## 3D & Specialized Benchmarks
+
+### Hemodynamics 3D (POD-DL-ROM)
+
+| Model                | Relative L2 | Notes                              |
+|----------------------|-------------|------------------------------------|
+| POD-DL-ROM (EPFL)    | ~0.05       | Deparis et al. 2023                |
+| **This repo (best)** | **null**    | Pending implementation             |
+
+---
+
+### Airfoil 2D (Packed Ensembles)
+
+| Model                | Relative L2 | Notes                              |
+|----------------------|-------------|------------------------------------|
+| Packed Ensemble FNO  | ~0.025      | Kalaydjian et al. 2023             |
+| **This repo (best)** | **null**    | Pending implementation             |
+
+---
+
+### Navier-Stokes 3D Steady (SplinePINN)
+
+| Model                | Relative L2 | Notes                              |
+|----------------------|-------------|------------------------------------|
+| SplinePINN (EPFL)    | ~0.03       | Jaggi et al. 2024                  |
+| **This repo (best)** | **null**    | Pending implementation             |
 
 ---
 

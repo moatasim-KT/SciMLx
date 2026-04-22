@@ -1,0 +1,50 @@
+id: sar_2026
+title: "One Scale at a Time: Scale-Autoregressive Modeling for Fluid Flow Distributions"
+arxiv: "2604.11403"
+venue: "ArXiv 2026"
+authors: ["Mario Lino", "Nils Thuerey"]
+year: 2026
+
+key_idea: >
+  SAR (Scale-Autoregressive) modeling factorizes fluid flow distributions across
+  multiple spatial scales. It samples resolution scales autoregressively (coarse-to-fine)
+  and uses a scale-adaptive flow-matching sampler. This concentrates computation
+  on uncertainty at coarse scales while using fewer denoising steps at finer scales,
+  enabling global attention at high resolutions.
+
+architecture: SAR (Scale-Autoregressive + Flow-Matching)
+model_class: Generative/Flow-Matching
+status: pending  # implemented | partial | pending | failed
+
+benchmarks:
+  ellipse_2d:
+    reported_val_l2_rel: 0.015  # Estimated from charts (surface pressure)
+    paper_notes: "Laminar flow Re 500-1000, 2D ellipse surface pressure."
+  ellipse_flow_2d:
+    reported_val_l2_rel: 0.025  # Estimated for full velocity/pressure fields
+    paper_notes: "3-7x faster than Flow-Matching Transolver."
+  wing_3d:
+    reported_val_l2_rel: 0.045  # Estimated for 3D turbulent surface pressure
+    paper_notes: "Generalizes across unseen geometries; captures pressure variance."
+
+key_hyperparams:
+  n_scales: 4
+  denoising_steps: [10, 5, 2, 1]  # Scale-adaptive steps (coarse-to-fine)
+  hidden_dim: 128
+  n_layers: 8
+  sampler: "Flow-Matching"
+  ar_integration: "Conditioning on coarser-scale predictions"
+
+suggested_experiments:
+  - name: "sar_ellipse_2d_base"
+    rationale: "Basic SAR implementation on the Ellipse task (2D laminar flow)."
+    expected: "0.01-0.03 rel-L2; 3x speedup over standard Flow-Matching."
+  - name: "sar_scale_adaptive_sweep"
+    rationale: "Sweep across denoising steps per scale to find the optimal speed-accuracy trade-off."
+    expected: "Finer scales require < 2 steps if coarse scale is accurate."
+
+remaining_levers:
+  - "Conditioning strength for AR module"
+  - "Global attention vs. Mixed local/global for finer scales"
+  - "Integration with unstructured mesh loaders (GNN-style nodes)"
+  - "Flow-Matching vs. Diffusion samplers in the SAR framework"

@@ -1,4 +1,36 @@
-# Per-Benchmark Tuning Guide
+# SciML Benchmark Index & Tuning Guide
+
+This document serves as a master index for the PDE benchmarks covered in the SciML AutoResearch project. Each benchmark has a detailed technical specification including mathematical formulation, solver details, and visualization prompts.
+
+---
+
+## 📊 Benchmark Index
+
+| ID | Dimension | Category | Status | Details |
+|---|---|---|---|---|
+| `burgers_1d` | 1D | Fluid (Shock) | [STABLE] | [Spec](benchmarks/burgers_1d.md) |
+| `burgers_nu_01` | 1D | Fluid (Viscous) | [STABLE] | [Spec](benchmarks/burgers_nu_01.md) |
+| `burgers_nu_001` | 1D | Fluid (Strong Shock) | [STABLE] | [Spec](benchmarks/burgers_nu_001.md) |
+| `kdv_1d` | 1D | Fluid (Soliton) | [STABLE] | [Spec](benchmarks/kdv_1d.md) |
+| `wave_1d` | 1D | Waves | [STABLE] | [Spec](benchmarks/wave_1d.md) |
+| `euler_1d` | 1D | Compressible Flow | [STABLE] | [Spec](benchmarks/euler_1d.md) |
+| `reionization_1d` | 1D | Cosmology | [STABLE] | [Spec](benchmarks/reionization_1d.md) |
+| `darcy_2d` | 2D | Elliptic Flow | [FIXED (EXT)] | [Spec](benchmarks/darcy_2d.md) |
+| `ns_2d` | 2D | Incompressible Flow | [FIXED (EXT)] | [Spec](benchmarks/ns_2d.md) |
+| `ns_hre_2d` | 2D | Turbulence (Re=1000) | [FIXED (EXT)] | [Spec](benchmarks/ns_hre_2d.md) |
+| `swe_2d` | 2D | Gravity Waves | [STABLE] | [Spec](benchmarks/swe_2d.md) |
+| `allen_cahn_2d` | 2D | Phase Field | [STABLE] | [Spec](benchmarks/allen_cahn_2d.md) |
+| `mhd_2d` | 2D | Plasma Physics | [STABLE] | [Spec](benchmarks/mhd_2d.md) |
+| `elasticity_2d` | 2D | Solid Mechanics | [STABLE] | [Spec](benchmarks/elasticity_2d.md) |
+| `wavebench_2d` | 2D | Spectral Waves | [STABLE] | [Spec](benchmarks/wavebench_2d.md) |
+| `pdebench_2d` | 2D | Reaction-Diffusion | [STABLE] | [Spec](benchmarks/pdebench_2d.md) |
+| `multiphysics_2d` | 2D | Coupled Fields | [STABLE] | [Spec](benchmarks/multiphysics_2d.md) |
+| `poisson_2d` | 2D | Elliptic Potential | [STABLE] | [Spec](benchmarks/poisson_2d.md) |
+| `radiative_2d` | 2D | Angular Transport | [STABLE] | [Spec](benchmarks/radiative_2d.md) |
+
+---
+
+## Per-Benchmark Tuning Guide
 
 Reference for choosing hyperparameters, loss functions, and models for each PDE
 benchmark. Read alongside `docs/SOTA.md` for paper references.

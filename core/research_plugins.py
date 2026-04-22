@@ -119,6 +119,10 @@ class BenchmarkRegistry:
         return name in self._loaders
 
 
+    # SARModel2d
+    from models.sar import SARModel2d
+    MODEL_REGISTRY.register_class("SARModel2d", SARModel2d)
+
 BENCHMARK_REGISTRY = BenchmarkRegistry()
 
 # ── Populate registries from existing codebase ────────────────────────────────
@@ -151,7 +155,9 @@ def _register_defaults():
     MODEL_REGISTRY.register_lazy("GNOT_FFNO", "gnot", "GNOT_FFNO")
     MODEL_REGISTRY.register_lazy("MambaNO", "mamba_no", "MambaNO1d")
     MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
+    MODEL_REGISTRY.register_lazy("ModalPINN", "pinn", "ModalPINN")
     MODEL_REGISTRY.register_lazy("FNO2D", "fno", "FNO2d")
+    MODEL_REGISTRY.register_lazy("IterativeFNO2D", "fno", "IterativeFNO2d")
     MODEL_REGISTRY.register_lazy("RFNO2D", "fno", "RFNO2d")
     MODEL_REGISTRY.register_lazy("FNO_MC", "fno", "FNO1dMC")
     MODEL_REGISTRY.register_lazy("TFNO", "tfno", "TFNO1d")
@@ -220,6 +226,8 @@ def _register_defaults():
                 "swe_2d":       "2D Shallow Water Equations",
                 "allen_cahn_2d": "2D Allen-Cahn phase separation",
                 "mhd_2d":        "2D Magnetohydrodynamics",
+                "poisson_2d":    "2D Poisson equation (steady-state)",
+                "reionization_1d": "1D Cosmic Reionization toy model",
             }.get(bm, ""),
         )
 

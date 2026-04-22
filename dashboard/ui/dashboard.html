@@ -1678,6 +1678,165 @@ function BenchmarksTab({ sota, registry, experiments, archMap }) {
   );
 }
 
+// ── Reflection Tab ────────────────────────────────────────────────────────────
+function ReflectionTab({ reflection, experiments, sota }) {
+  if (!reflection) return <div className="empty">Loading reflection data…</div>;
+
+  const { strategy, lessons, arch_evolution, trajectories, score } = reflection;
+
+  // Group trajectories by benchmark for the recent activity feed
+  const recentTrajs = [...(trajectories || [])].reverse().slice(0, 30);
+
+  // Build benchmark-level win stats from experiments
+  const bmWins = useMemo(() => {
+    const wins = {};
+    (experiments || []).forEach(e => {
+      const bm = e.benchmark;
+      const target = sota?.[bm]?.sota;
+      if (!target) return;
+      if (!wins[bm] || e.val_l2_rel < wins[bm].best) {
+        wins[bm] = { best: e.val_l2_rel, beats: e.val_l2_rel < target };
+      }
+    });
+    return wins;
+  }, [experiments, sota]);
+
+  return (
+    <div style={{display:"flex",flex:1,overflow:"hidden",gap:0}}>
+
+      {/* Left column: strategy + lessons + arch */}
+      <div style={{flex:"0 0 420px",overflow:"auto",borderRight:"1px solid var(--border)",
+                   padding:"16px",display:"flex",flexDirection:"column",gap:16}}>
+
+        {/* Score pill */}
+        {score && (
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
+                       background:"var(--bg2)",borderRadius:8,border:"1px solid var(--border)"}}>
+            <span style={{fontSize:28,fontFamily:"var(--mono)",fontWeight:700,color:"var(--green)"}}>
+              {score.beaten}
+            </span>
+            <div>
+              <div style={{fontSize:11,color:"var(--txt2)"}}>SOTA benchmarks beaten</div>
+              <div style={{fontSize:10,color:"var(--txt3)"}}>out of {score.total} total</div>
+            </div>
+            <div style={{marginLeft:"auto",height:8,width:120,background:"var(--bg0)",borderRadius:4,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${(score.beaten/score.total*100).toFixed(1)}%`,
+                           background:"var(--green)",borderRadius:4}}/>
+            </div>
+          </div>
+        )}
+
+        {/* Active strategy */}
+        <div>
+          <div className="sec-label">Active Strategy</div>
+          <div style={{background:"var(--bg2)",borderRadius:6,padding:"10px 12px",
+                       border:"1px solid var(--border)",fontSize:12,lineHeight:1.6,
+                       whiteSpace:"pre-wrap",color:"var(--txt)"}}>
+            {strategy || "No strategy data yet."}
+          </div>
+        </div>
+
+        {/* Architecture evolution */}
+        <div>
+          <div className="sec-label">Architecture Evolution</div>
+          <div style={{background:"var(--bg2)",borderRadius:6,padding:"10px 12px",
+                       border:"1px solid var(--border)",fontSize:12,lineHeight:1.6,
+                       whiteSpace:"pre-wrap",color:"var(--txt2)"}}>
+            {arch_evolution || "No architecture notes yet."}
+          </div>
+        </div>
+
+        {/* Learned lessons */}
+        <div>
+          <div className="sec-label">Learned Lessons ({(lessons||[]).length})</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {(lessons||[]).slice().reverse().map((l,i) => (
+              <div key={i} style={{background:"var(--bg2)",borderRadius:6,padding:"8px 10px",
+                                   border:"1px solid var(--border)"}}>
+                <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4}}>
+                  <span style={{fontSize:10,color:"var(--txt3)",fontFamily:"var(--mono)"}}>{l.date}</span>
+                  <span style={{fontSize:11,color:"var(--purple)",fontFamily:"var(--mono)",
+                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                                maxWidth:200}}>{l.action}</span>
+                </div>
+                <div style={{fontSize:11,color:"var(--amber)",fontWeight:700}}>{l.outcome}</div>
+                <div style={{fontSize:10,color:"var(--txt2)",marginTop:3,lineHeight:1.5,
+                             display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",
+                             overflow:"hidden"}}>{l.insight}</div>
+              </div>
+            ))}
+            {(!lessons || lessons.length === 0) && (
+              <div style={{color:"var(--txt3)",fontSize:11}}>No lessons distilled yet.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right column: recent trajectories feed */}
+      <div style={{flex:1,overflow:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
+        <div className="sec-label">Recent Trajectory Entries ({recentTrajs.length})</div>
+        {recentTrajs.map((t, i) => {
+          const hasOutcome = !!t.outcome;
+          const val = t.outcome ? parseFloat(t.outcome.match(/[\d.]+/)?.[0] || "0") : null;
+          const sotaTarget = sota?.[t.benchmark]?.sota;
+          const beats = val && sotaTarget && val < sotaTarget;
+          return (
+            <div key={i} style={{background:"var(--bg1)",borderRadius:8,padding:"10px 12px",
+                                  border:`1px solid ${beats ? "var(--green)" : "var(--border)"}`,
+                                  display:"flex",flexDirection:"column",gap:6}}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontSize:10,color:"var(--cyan)",fontFamily:"var(--mono)",fontWeight:700}}>
+                  {t.benchmark}
+                </span>
+                <span style={{fontSize:10,color:"var(--purple)",fontFamily:"var(--mono)"}}>
+                  {t.model}
+                </span>
+                <span style={{fontSize:10,color:"var(--txt3)",fontFamily:"var(--mono)"}}>
+                  {t.exp_name}
+                </span>
+                {t.action && <span style={{fontSize:10,color:"var(--txt3)",marginLeft:"auto",
+                  fontStyle:"italic",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",
+                  whiteSpace:"nowrap"}}>{t.action}</span>}
+              </div>
+              {/* Hypothesis */}
+              {t.hypothesis && (
+                <div style={{fontSize:11,color:"var(--txt2)",lineHeight:1.5}}>{t.hypothesis}</div>
+              )}
+              {/* Outcome */}
+              {hasOutcome && (
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:12,fontFamily:"var(--mono)",fontWeight:700,
+                                color: beats ? "var(--green)" : val && sotaTarget && val/sotaTarget < 1.5 ?
+                                  "var(--amber)" : "var(--red)"}}>
+                    {t.outcome}
+                  </span>
+                  {beats && <span style={{fontSize:10,color:"var(--green)"}}>✓ SOTA beaten</span>}
+                  {sotaTarget && val && (
+                    <span style={{fontSize:10,color:"var(--txt3)"}}>
+                      SOTA {sotaTarget} ({(val/sotaTarget).toFixed(2)}×)
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* Critique */}
+              {t.critique && (
+                <div style={{fontSize:10,color:"var(--txt3)",lineHeight:1.5,
+                             borderTop:"1px solid var(--border)",paddingTop:6,marginTop:2}}>
+                  <span style={{color:"var(--txt2)",fontWeight:600}}>Critique: </span>{t.critique}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {recentTrajs.length === 0 && (
+          <div className="empty">No trajectory entries yet — run an experiment to populate.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MLflow Runs Table ─────────────────────────────────────────────────────────
 function MLflowRunsTable({ runs, sota, bmFilter }) {
   const [search, setSearch] = useState("");
@@ -1767,7 +1926,7 @@ function MLflowRunsTable({ runs, sota, bmFilter }) {
               })}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="empty">No MLflow runs yet — run an experiment to populate.</div>}
+          {filtered.length === 0 && <div className="empty">No runs found — run an experiment to populate.</div>}
         </div>
       </div>
       {/* Run detail panel */}
@@ -1821,6 +1980,7 @@ function App() {
   const [registry, setRegistry] = useState({});
   const [mlflowRuns, setMlflowRuns] = useState([]);
   const [archMap, setArchMap] = useState({});
+  const [reflection, setReflection] = useState(null);
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState("results");
   const [bmFilter, setBmFilter] = useState("all");
@@ -1828,7 +1988,7 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [expR, qR, sotaR, stR, actR, linR, regR, mlfR, archR] = await Promise.all([
+      const [expR, qR, sotaR, stR, actR, linR, regR, mlfR, archR, refR] = await Promise.all([
         fetch(`${API}/api/experiments`),
         fetch(`${API}/api/queue`),
         fetch(`${API}/api/sota`),
@@ -1838,11 +1998,12 @@ function App() {
         fetch(`${API}/api/model-registry`),
         fetch(`${API}/api/mlflow/runs`),
         fetch(`${API}/api/arch-map`),
+        fetch(`${API}/api/reflection`),
       ]);
       if (!expR.ok) throw new Error(`API ${expR.status}`);
-      const [exps, q, s, st, act, lin, reg, mlf, arch] = await Promise.all([
+      const [exps, q, s, st, act, lin, reg, mlf, arch, ref] = await Promise.all([
         expR.json(), qR.json(), sotaR.json(), stR.json(), actR.json(),
-        linR.json(), regR.json(), mlfR.json(), archR.json(),
+        linR.json(), regR.json(), mlfR.json(), archR.json(), refR.json(),
       ]);
       setExperiments([...exps].reverse());
       setQueue(q.experiments || []);
@@ -1853,6 +2014,7 @@ function App() {
       setRegistry(reg || {});
       setMlflowRuns(mlf.runs || []);
       setArchMap(arch || {});
+      setReflection(ref || null);
       setError(null);
     } catch (e) {
       setError(e.message);
@@ -2021,6 +2183,11 @@ function App() {
             <div className={`tab ${tab==="lineage"?"active":""}`} onClick={()=>setTab("lineage")}>
               Lineage DAG
             </div>
+            <div className={`tab ${tab==="reflection"?"active":""}`} onClick={()=>setTab("reflection")}
+              style={{color: tab==="reflection" ? "var(--pink)" : undefined,
+                      borderBottomColor: tab==="reflection" ? "var(--pink)" : undefined}}>
+              Reflection
+            </div>
           </div>
 
           {/* Active experiment strip — one row per running experiment */}
@@ -2112,6 +2279,7 @@ function App() {
               />
             )}
             {tab==="lineage" && <LineageDAG lineage={lineage} onSelect={handleSelect}/>}
+            {tab==="reflection" && <ReflectionTab reflection={reflection} experiments={experiments} sota={sota}/>}
           </div>
         </div>
 

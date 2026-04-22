@@ -77,3 +77,37 @@ class PINO1d(nn.Module):
         x_in = mx.concatenate([u0_expanded, grid], axis=-1)
         
         return self.net(x_in)[:, :, 0]
+
+
+class ModalPINN(nn.Module):
+    """PINN with modal decomposition (e.g. POD, Fourier) prior.
+    u(x, t) = sum_i c_i(u0) * phi_i(x, t)
+    
+    phi_i are pre-computed or fixed basis functions (modes).
+    The network predicts coefficients c_i from sensor data u0.
+    
+    Based on EPFL ML4Science "ModalPINN" for airflow reconstruction (2024).
+    """
+    def __init__(self, n_modes: int, sensor_dim: int, grid_size: int = 64, 
+                 hidden_dim: int = 128, n_layers: int = 4):
+        super().__init__()
+        self.n_modes = n_modes
+        self.grid_size = grid_size
+        # MLP maps sensor data to coefficients [B, sensor_dim] -> [B, n_modes]
+        self.coeff_net = PINN(sensor_dim, hidden_dim, n_layers, out_dim=n_modes)
+        # Learnable modes [grid_size, n_modes] - in practice, initialize with POD modes
+        self.modes = mx.random.normal([grid_size, n_modes]) * (grid_size * n_modes)**-0.5
+
+    def __call__(self, u0: mx.array) -> mx.array:
+        """
+        Args:
+            u0: [B, N] sensor values of initial condition or boundary
+        Returns:
+            [B, N] reconstructed field on full grid
+        """
+        # 1. Predict coefficients from sensors
+        coeffs = self.coeff_net(u0) # [B, n_modes]
+        
+        # 2. Linear combination of basis modes
+        # [B, n_modes] @ [n_modes, N] -> [B, N]
+        return mx.matmul(coeffs, self.modes.T)

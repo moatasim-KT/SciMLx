@@ -1,0 +1,47 @@
+title: "Finite Basis Physics-Informed Neural Networks (FBPINNs): a scalable domain decomposition approach for solving differential equations"
+short_id: fbpinn_2023
+authors: "Ben Moseley, Andrew Markham, Tarje Nissen-Meyer"
+year: 2023
+venue: "Advances in Computational Mathematics (2023); highlighted in PINNacle NeurIPS 2024"
+arxiv: "https://arxiv.org/abs/2107.07871"
+source: "Identified as top PINN method in MLiS-cited PINNacle benchmark"
+
+key_idea: |
+  Decomposes the PDE domain into overlapping subdomains, each solved by a small local
+  PINN with a compact support basis function (window function). The global solution
+  is the sum of windowed local solutions. Key advantages:
+  - Each sub-PINN sees a simpler sub-problem → faster convergence
+  - Overlapping decomposition handles boundary matching automatically
+  - Parallelizable across subdomains
+  - Naturally handles multi-scale and high-frequency problems where vanilla PINNs fail
+
+reported_results:
+  navier_stokes_2d:   0.0245   # 4× better than vanilla PINN (PINNacle 2024)
+  helmholtz_2d:       0.0050   # excels at high-frequency wave problems
+  burgers_1d:         0.0132   # similar to vanilla PINN (smooth regime)
+  allen_cahn_1d:      ~0.30    # improvement over vanilla but still hard
+
+advantages:
+  - "Scales to complex geometries via domain tiling"
+  - "Avoids spectral bias: each subdomain has limited bandwidth to represent"
+  - "Window functions enforce partition-of-unity → smooth global reconstruction"
+  - "Best PINN variant for NS (PINNacle 2024 benchmark)"
+
+suggested_experiments:
+  - name: "fbpinn_burgers_8dom_h32_overlap02"
+    benchmark: "burgers_1d"
+    model: "FBPINN"
+    n_subdomains: 8
+    hidden_dim: 32
+    overlap_fraction: 0.2
+    rationale: "Baseline FBPINN — does domain decomp help on smooth Burgers?"
+
+  - name: "fbpinn_allen_cahn_16dom_h64"
+    benchmark: "allen_cahn_1d"
+    model: "FBPINN"
+    n_subdomains: 16
+    hidden_dim: 64
+    rationale: "Allen-Cahn is pathological for PINNs; FBPINN is the best candidate"
+
+status: pending
+verdict: ""

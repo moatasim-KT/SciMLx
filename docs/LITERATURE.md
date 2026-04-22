@@ -46,6 +46,10 @@
 
 ## Physics-Informed Approaches
 
+- **SplinePINN** — Jaggi et al. (2024) "3D Steady-State SplinePINNs for solving 
+  Navier-Stokes" EPFL ML4Science.
+  Integrates splines into PINNs for better local gradient control.
+
 - **PINO** — Li et al. (2021) "Physics-Informed Neural Operator for Learning
   Partial Differential Equations" arXiv:2111.03794.  Adds PDE residual loss to
   FNO; consistently improves data efficiency.
@@ -53,17 +57,29 @@
 - **PI-DeepONet** — Wang et al. (2022) "Improved architectures and training
   algorithms for deep operator networks" Journal of Scientific Computing.
 
+- **FBPINN** — Moseley et al. (2023) "Finite Basis Physics-Informed Neural
+  Networks (FBPINNs): a scalable domain decomposition approach for solving
+  differential equations" Advances in Computational Mathematics.  Overlapping
+  subdomain decomposition; best PINN variant for NS in PINNacle 2024 (0.0245).
+  _Source: MLiS-cited PINNacle benchmark._
+
 - **Self-Supervised PINN** — Basir et al. (2022) "Physics and Equality
   Constrained Artificial Neural Networks: application to partial differential
   equations" SIAM Journal.
 
 ## Benchmarks & Evaluation
 
-- **PDEBench** — Takamoto et al. (2022) "PDEBench: An Extensive Benchmark for
-  Scientific Machine Learning" NeurIPS 2022.  Standardised multi-PDE suite.
+- **PDEBench (2024 update)** — Takamoto et al. (2022/2024) "PDEBench: An
+  Extensive Benchmark for Scientific Machine Learning" NeurIPS 2022; 2024
+  update adds new FNO/U-Net/PINN baselines, fRMSE metric, foundation model
+  comparisons. FNO: Burgers 0.001, KdV 0.040, Wave 0.042, NS-INS 0.010.
+  _Source: MLiS 2024 benchmark reference._
 
-- **PINNacle** — Huang et al. (2023) "PINNacle: A Comprehensive Benchmark for
-  Physics-Informed Neural Networks with Hard Constraints" arXiv:2306.08827.
+- **PINNacle** — Hao et al. (2024) "PINNacle: A Comprehensive Benchmark of
+  Physics-Informed Neural Networks for Solving PDEs" NeurIPS 2024 Datasets
+  & Benchmarks. Evaluates 10 PINN variants on 20+ PDEs. Key result: FBPINN
+  best on NS (0.0245); all methods fail Allen-Cahn (~0.50); Burgers ~0.013.
+  arXiv:2306.08827.  _Source: MLiS conference series._
 
 - **MCNP Operator Benchmark** — Kovachki et al. (2021) "Neural Operator:
   Learning Maps Between Function Spaces" arXiv:2108.08481.
@@ -87,6 +103,24 @@
 - **Bayesian DeepONet** — Lin et al. (2021) "Operator learning for predicting
   multiscale bubble growth dynamics" Journal of Chemical Physics.
 
+## MLiS Conference (Machine Learning in Science)
+
+Annual interdisciplinary conference hosted in Tübingen.  Key results pipeline:
+
+- **MLiS 2024** (Aug 21–22, Glasgow) — Themes: deep learning for brain health,
+  AI for computational science, ML for animal behaviour, multi-objective
+  optimisation for sustainability (GALLANT project), invertible networks for
+  inverse problems.
+
+- **MLiS 2025** (Sep 30 – Oct 1, Tübingen) — Invited talks:
+  - Mario Krenn: "Towards an Artificial Muse for New Ideas in Science"
+  - Harry Scells: "Automating Systematic Reviews"
+  - Philine Widmer: "AI in Economics: Research Tool and Research Subject"
+  _Proceedings will include AI4Science and NeurOp submissions._
+
+- **NeurIPS ML4PS workshop** (ongoing) — "Machine Learning and the Physical
+  Sciences"; primary venue for neural operator + PINN results.
+
 ## Learned Preconditioners
 
 - **L-BFGS Preconditioner** — Lötzsch et al. (2022) "Learning to solve PDEs
@@ -94,3 +128,4 @@
 
 - **NeuralIF** — Tagasovska et al. (2023) "NeuralIF: Neural Incomplete
   Factorization Preconditioners" arXiv:2309.12361.
+9.12361.

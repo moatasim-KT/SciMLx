@@ -584,7 +584,11 @@ def get_model_registry_benchmark(benchmark: str):
 
 @app.get("/api/mlflow/runs")
 def get_mlflow_runs(benchmark: Optional[str] = None, limit: int = 200):
-    """Return MLflow run summaries, optionally filtered by benchmark."""
+    """Return MLflow run summaries, optionally filtered by benchmark.
+
+    Falls back to results.json when mlflow is not installed, using the same
+    response schema so the dashboard MLflow tab is never empty.
+    """
     try:
         import mlflow
         from core.mlflow_integration import _TRACKING_URI
@@ -613,11 +617,120 @@ def get_mlflow_runs(benchmark: Optional[str] = None, limit: int = 200):
                     "diag_low_freq":    r.data.metrics.get("diag_low_freq_error"),
                     "start_time":       r.info.start_time,
                     "params":           dict(r.data.params),
+                    "source":           "mlflow",
                 })
         runs.sort(key=lambda x: (x["benchmark"], x.get("val_l2_rel") or 999))
-        return sanitize({"runs": runs, "total": len(runs)})
-    except Exception as e:
-        return {"runs": [], "total": 0, "error": str(e)}
+        return sanitize({"runs": runs, "total": len(runs), "source": "mlflow"})
+    except Exception:
+        pass
+
+    # ── Fallback: build run rows from results.json ────────────────────────────
+    try:
+        from core.utils import load_results
+        all_results = load_results()
+        runs = []
+        for e in all_results:
+            val = e.get("val_l2_rel")
+            if not val or val <= 0 or val >= 10.0:
+                continue
+            bm = e.get("benchmark", "")
+            if benchmark and bm != benchmark:
+                continue
+            cfg  = e.get("config") or {}
+            diag = e.get("diag") or {}
+            exp_name = cfg.get("name") or e.get("description", "").split()[0] if e.get("description") else e.get("id", "")
+            runs.append({
+                "run_id":           e["id"],
+                "benchmark":        bm,
+                "exp_name":         exp_name,
+                "model":            e.get("model", ""),
+                "val_l2_rel":       val,
+                "training_seconds": diag.get("training_seconds"),
+                "peak_vram_mb":     (e.get("memory_gb") or 0) * 1024 or None,
+                "num_steps":        diag.get("num_steps"),
+                "diag_high_freq":   diag.get("diag_high_freq_error"),
+                "diag_low_freq":    diag.get("diag_low_freq_error"),
+                "start_time":       (e.get("timestamp") or 0) * 1000,
+                "params":           cfg,
+                "status":           e.get("status", ""),
+                "source":           "results",
+            })
+        runs.sort(key=lambda x: (x["benchmark"], x.get("val_l2_rel") or 999))
+        runs = runs[:limit]
+        return sanitize({"runs": runs, "total": len(runs), "source": "results"})
+    except Exception as e2:
+        return {"runs": [], "total": 0, "error": str(e2)}
+
+
+@app.get("/api/reflection")
+def get_reflection():
+    """Return the autonomous brain state: strategy, lessons, architecture evolution,
+    and the 50 most recent trajectory entries."""
+    result: dict = {
+        "strategy": "",
+        "lessons": [],
+        "arch_evolution": "",
+        "trajectories": [],
+        "score": None,
+    }
+
+    # ── Parse RESEARCH_BRAIN.md markers ──────────────────────────────────────
+    try:
+        content = BRAIN_PATH.read_text()
+
+        def _extract(start: str, end: str) -> str:
+            s = content.find(start)
+            e = content.find(end)
+            if s == -1 or e == -1:
+                return ""
+            return content[s + len(start):e].strip()
+
+        result["strategy"]       = _extract("<!-- STRATEGY_START -->", "<!-- STRATEGY_END -->")
+        result["arch_evolution"] = _extract("<!-- ARCH_EVO_START -->", "<!-- ARCH_EVO_END -->")
+
+        # Parse lessons table rows → list of dicts
+        lessons_raw = _extract("<!-- LESSONS_START -->", "<!-- LESSONS_END -->")
+        for line in lessons_raw.splitlines():
+            line = line.strip()
+            if not line.startswith("|") or "---" in line or "Date" in line:
+                continue
+            parts = [p.strip() for p in line.strip("|").split("|")]
+            if len(parts) >= 4:
+                result["lessons"].append({
+                    "date":    parts[0],
+                    "insight": parts[1],
+                    "action":  parts[2],
+                    "outcome": parts[3],
+                })
+    except Exception:
+        pass
+
+    # ── Last 50 trajectory entries ────────────────────────────────────────────
+    try:
+        traj_file = LOGS_DIR / "trajectories.jsonl"
+        if traj_file.exists():
+            lines = traj_file.read_text().splitlines()
+            for line in lines[-50:]:
+                try:
+                    result["trajectories"].append(json.loads(line))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # ── Live score from DB ────────────────────────────────────────────────────
+    try:
+        from core.results_store import store
+        bests = store.best_per_benchmark()
+        beaten = sum(1 for bm, v in bests.items() if SOTA.get(bm) and v < SOTA[bm])
+        result["score"] = {"beaten": beaten, "total": len(SOTA)}
+    except Exception:
+        pass
+
+    return sanitize(result)
+
+
+BRAIN_PATH = REPO_ROOT / "RESEARCH_BRAIN.md"
 
 
 if __name__ == "__main__":

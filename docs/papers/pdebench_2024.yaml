@@ -1,0 +1,58 @@
+title: "PDEBench: An Extensive Benchmark for Scientific Machine Learning (2024 update)"
+short_id: pdebench_2024
+authors: "Makoto Takamoto, Timothy Praditia, Raphael Leiteritz, Dan MacKinlay, Francesco Alesiani, Dirk Pflüger, Mathias Niepert"
+year: 2024
+venue: "NeurIPS 2022 (original); 2024 update with new baselines — cited in MLiS 2024"
+arxiv: "https://arxiv.org/abs/2210.07182"
+github: "https://github.com/pdebench/PDEBench"
+source: "MLiS 2024 conference benchmark reference; updated baselines released 2024"
+
+key_idea: |
+  Standardised multi-PDE benchmark suite covering 1D/2D/3D equations.
+  2024 update adds: new FNO/U-Net/PINN baselines on harder PDEs, fractional RMSE
+  (fRMSE) as primary metric, and foundation model baselines.
+  Key design: fixed train/val/test splits with seed=0, multiple ν values for Burgers,
+  full resolution range (64 to 512), inverse problem setups.
+
+reported_results:
+  burgers_1d:
+    fno:    0.001   # ν=0.1, N=1024
+    pinn:   0.015
+  kdv_1d:
+    fno:    0.040
+    pinn:   0.013
+  wave_1d:
+    fno:    0.042
+    pinn:   0.100
+  navier_stokes_2d_incomp:
+    fno:    0.010
+    pinn:   0.200
+  navier_stokes_2d_comp:
+    fno:    0.050
+    pinn:   ">0.500"
+
+key_findings:
+  - "FNO dominates data-driven forward problems across all PDEs"
+  - "PINNs outperform FNO only in low-data inverse problems"
+  - "fRMSE is now preferred: normalises per-sample, reduces outlier sensitivity"
+  - "Foundation model baselines (UPS, PROSE) are competitive but not yet SOTA on all"
+  - "KdV is a relative PINN strength: soliton structure amenable to PDE constraint"
+
+suggested_experiments:
+  - name: "fno_burgers_pdebench_nu01_h64_m16"
+    benchmark: "burgers_1d"
+    model: "FNO"
+    nu: 0.1
+    hidden_dim: 64
+    n_modes: 16
+    rationale: "Match PDEBench 2024 FNO baseline at ν=0.1 for direct comparison"
+
+  - name: "fno_kdv_pdebench_h128_m24"
+    benchmark: "kdv_1d"
+    model: "FNO"
+    hidden_dim: 128
+    n_modes: 24
+    rationale: "PDEBench reports FNO KdV ~0.04; our RFNO beats at 0.0057 — verify"
+
+status: pending
+verdict: ""

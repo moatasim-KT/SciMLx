@@ -1,0 +1,33 @@
+id: cosmic-reionization-pinn-2023
+title: "PINNs for Cosmic Reionization Simulations"
+venue: "EPFL ML4Science (LASTRO Lab)"
+authors: ["EPFL Students", "Pascale Jablonka (Supervisor)"]
+year: 2023
+
+key_idea: >
+  Applies Physics-Informed Neural Networks to the radiative transfer 
+  equations that describe cosmic reionization. Traditional simulations 
+  are extremely expensive; PINNs offer a mesh-free approach to solve 
+  the ionization front propagation and temperature evolution in the early universe.
+
+architecture: MultiPhysPINN
+model_class: PINN
+status: pending
+
+benchmarks:
+  reionization_1d:
+    reported_val_l2_rel: 0.08
+    notes: >
+      Propagating ionization front from a point source.
+      Couples radiative transfer with hydrogen chemistry.
+
+key_hyperparams:
+  hidden_dim: 128
+  n_layers: 4
+  collocation_points: 5000
+
+suggested_experiments:
+  - name: pinn_reionization_1d_h128
+    benchmark: "reionization_1d"
+    model: "PINN"
+    rationale: "Verify PINN stability on sharp ionization fronts (shocks)."

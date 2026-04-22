@@ -1,0 +1,35 @@
+id: modal-pinn-2024
+title: "Reconstructing Airflow Around Cylinders Using ModalPINN"
+venue: "EPFL ML4Science (MLO Lab)"
+authors: ["EPFL Students", "Martin Jaggi (Supervisor)"]
+year: 2024
+
+key_idea: >
+  A Physics-Informed Neural Network (PINN) that uses a modal decomposition 
+  (e.g., POD modes or Fourier modes) as a prior or basis in the architecture.
+  This allows the PINN to reconstruct high-fidelity flows (like Kármán vortex 
+  streets) from very sparse sensor data by leveraging both physical laws 
+  (Navier-Stokes) and expected flow modes.
+
+architecture: ModalPINN
+model_class: PINN
+status: pending
+
+benchmarks:
+  cylinder_flow_sparse:
+    reported_val_l2_rel: 0.015
+    notes: >
+      Flow past a circular cylinder (Re=100-200). 
+      Sparse sensors (e.g., 5-10 pressure probes) used as data constraints.
+
+key_hyperparams:
+  n_modes: 5
+  hidden_dim: 64
+  n_layers: 6
+  activation: tanh
+
+suggested_experiments:
+  - name: modal_pinn_cylinder_re100
+    benchmark: "cylinder_flow_sparse"
+    model: "ModalPINN"
+    rationale: "Compare ModalPINN vs standard PINN on sparse data reconstruction."

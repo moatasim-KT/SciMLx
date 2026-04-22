@@ -1,3 +1,51 @@
+- name: sar_ellipse2d_base
+  benchmark: ellipse_2d
+  model: SARModel2d
+  hidden_dim: 128
+  n_layers: 4
+  n_modes: 16
+  lr: 0.001
+  batch_size: 64
+  budget_s: 600
+  priority: 1
+  rationale: Baseline SAR implementation on the Ellipse task (2D laminar flow surface
+    pressure).
+  paper_ref: sar_2026
+- name: iterative_fno_poisson_h32_l4_it10
+  benchmark: poisson_2d
+  model: IterativeFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  n_iterations: 10
+  lr: 0.001
+  batch_size: 16
+  budget_s: 600
+  priority: 1
+  rationale: 'EPFL ML4Science: Learning Neural PDE Solvers with Convergence Guarantees.
+    Iterative FNO for Poisson.'
+- name: modal_pinn_ns2d_sparse
+  benchmark: ns_2d
+  model: ModalPINN
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 5
+  lr: 0.001
+  batch_size: 32
+  budget_s: 300
+  priority: 1
+  rationale: 'EPFL ML4Science: ModalPINN for flow reconstruction from sparse sensors
+    (proxy: NS 2D).'
+- name: pinn_reionization_1d_h128
+  benchmark: reionization_1d
+  model: PINO
+  hidden_dim: 128
+  n_layers: 6
+  lr: 0.001
+  batch_size: 64
+  budget_s: 300
+  priority: 1
+  rationale: 'EPFL ML4Science: PINNs for Cosmic Reionization simulations.'
 - name: fno_burgers_onecycle_aug_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -10,8 +58,9 @@
   lr_schedule: onecycle
   augment: true
   priority: 1
-  rationale: "Best FNO config (h128 l8 m24) with onecycle LR + aug — onecycle never tried on Burgers; aug gave 5% boost previously. Session-9 fix: LR schedule now selectable."
-
+  rationale: "Best FNO config (h128 l8 m24) with onecycle LR + aug \u2014 onecycle\
+    \ never tried on Burgers; aug gave 5% boost previously. Session-9 fix: LR schedule\
+    \ now selectable."
 - name: gnot_axial_darcy_pino
   benchmark: darcy_2d
   model: GNOT_Axial2d
@@ -6779,7 +6828,8 @@
   h1_alpha: 0.1
   budget_s: 600
   priority: 1
-  rationale: "Transolver2D on Darcy with H1 loss — physics attention over spatial slices suited for heterogeneous a(x). Fixed h=64->32 per 2D constraint."
+  rationale: "Transolver2D on Darcy with H1 loss \u2014 physics attention over spatial\
+    \ slices suited for heterogeneous a(x). Fixed h=64->32 per 2D constraint."
 - name: fno2d_darcy_h48_l6_m12_aug
   benchmark: darcy_2d
   model: FNO2D
@@ -6801,7 +6851,8 @@
   batch_size: 16
   budget_s: 600
   priority: 1
-  rationale: "FEDONet2D on Darcy — achieved best results on elasticity/pdebench; h=32 per 2D constraint. Fixed from h=64 which crashes ModelRegistry safety check."
+  rationale: "FEDONet2D on Darcy \u2014 achieved best results on elasticity/pdebench;\
+    \ h=32 per 2D constraint. Fixed from h=64 which crashes ModelRegistry safety check."
 - name: rfno2d_ns2d_h32_l6_m8_h1
   benchmark: ns_2d
   model: RFNO2D
@@ -7037,10 +7088,6 @@
   budget_s: 300
   priority: 3
   rationale: Auto-generated baseline for MambaNO1d on burgers_1d
-
-# ── New experiments from improvement plan ────────────────────────────────────
-
-# QW-3: Transolver2D with fixed slice_num=16 for darcy_2d (all slice_num=32 runs diverged)
 - name: transolver2d_darcy_s16_h24_l3
   benchmark: darcy_2d
   model: Transolver2D
@@ -7050,9 +7097,9 @@
   slice_num: 16
   budget_s: 480
   priority: 1
-  rationale: 'Fix: all prior Transolver2D darcy runs diverged (val>1.4) due to slice_num=32 being too large for 2D grid. slice_num=16 reduces physics slices to match 64x64 resolution.'
-
-# QW-4: H1 Sobolev loss for darcy_2d — targets steep permeability gradients
+  rationale: 'Fix: all prior Transolver2D darcy runs diverged (val>1.4) due to slice_num=32
+    being too large for 2D grid. slice_num=16 reduces physics slices to match 64x64
+    resolution.'
 - name: fno2d_darcy_h32_l4_m8_h1
   benchmark: darcy_2d
   model: FNO2D
@@ -7063,8 +7110,9 @@
   h1_alpha: 0.5
   budget_s: 480
   priority: 1
-  rationale: 'H1 Sobolev loss on darcy_2d. Darcy permeability field has steep spatial gradients. H1 loss penalises gradient errors directly. 2D H1 via rfft2 already validated in losses.py.'
-
+  rationale: H1 Sobolev loss on darcy_2d. Darcy permeability field has steep spatial
+    gradients. H1 loss penalises gradient errors directly. 2D H1 via rfft2 already
+    validated in losses.py.
 - name: fno2d_darcy_h32_l4_m12_h1_aug
   benchmark: darcy_2d
   model: FNO2D
@@ -7076,9 +7124,8 @@
   augment: true
   budget_s: 600
   priority: 1
-  rationale: 'H1 loss + augmentation on darcy_2d. Slightly wider (m=12) with longer budget for convergence.'
-
-# QW-4b: Adaptive H1 loss for darcy_2d
+  rationale: H1 loss + augmentation on darcy_2d. Slightly wider (m=12) with longer
+    budget for convergence.
 - name: fno2d_darcy_h32_l4_m8_h1adaptive
   benchmark: darcy_2d
   model: FNO2D
@@ -7089,9 +7136,8 @@
   h1_alpha: 0.1
   budget_s: 480
   priority: 1
-  rationale: 'Adaptive H1 loss auto-scales alpha so gradient term contributes ~30% of total loss. Avoids over-regularising late training.'
-
-# QW-4c: FEDONet2D (won elasticity_2d and pdebench_2d) on darcy_2d with H1
+  rationale: Adaptive H1 loss auto-scales alpha so gradient term contributes ~30%
+    of total loss. Avoids over-regularising late training.
 - name: fedonet2d_darcy_h32_l2_m8_h1
   benchmark: darcy_2d
   model: FEDONet2D
@@ -7102,9 +7148,8 @@
   h1_alpha: 0.3
   budget_s: 480
   priority: 1
-  rationale: 'FEDONet2D already best on elasticity_2d (0.007734) and pdebench_2d (0.002602). Apply to darcy_2d with H1 loss targeting gradient errors.'
-
-# QW-5: GNOT_FFNO on burgers_1d with H1 loss + longer budget
+  rationale: FEDONet2D already best on elasticity_2d (0.007734) and pdebench_2d (0.002602).
+    Apply to darcy_2d with H1 loss targeting gradient errors.
 - name: gnot_ffno_burgers_h128_l6_m24_h1_b600
   benchmark: burgers_1d
   model: GNOT_FFNO
@@ -7116,9 +7161,9 @@
   budget_s: 600
   lr: 0.0005
   priority: 2
-  rationale: 'GNOT_FFNO got 0.204 on burgers — best non-FNO architecture. Gated spectral-attention + H1 loss targeting shock gradient. Lower LR (5e-4) for stability. Longer budget (600s).'
-
-# QW-5: EnergyConservingFNO1d — Hamiltonian inductive bias for pre-shock burgers phase
+  rationale: "GNOT_FFNO got 0.204 on burgers \u2014 best non-FNO architecture. Gated\
+    \ spectral-attention + H1 loss targeting shock gradient. Lower LR (5e-4) for stability.\
+    \ Longer budget (600s)."
 - name: hnn_burgers_h64_l4_m16
   benchmark: burgers_1d
   model: EnergyFNO
@@ -7127,9 +7172,8 @@
   n_modes: 16
   budget_s: 480
   priority: 2
-  rationale: 'EnergyConservingFNO1d never tried on burgers_1d. Hamiltonian structure should capture pre-shock Hamiltonian dynamics. Similar model won on wave_1d (0.005192).'
-
-# QW-5: SSNO1d with careful low-LR initialisation to prevent divergence
+  rationale: EnergyConservingFNO1d never tried on burgers_1d. Hamiltonian structure
+    should capture pre-shock Hamiltonian dynamics. Similar model won on wave_1d (0.005192).
 - name: ssno_burgers_h128_l4_m16_lr1e4
   benchmark: burgers_1d
   model: SSNO
@@ -7140,9 +7184,9 @@
   grad_clip: 3.0
   budget_s: 480
   priority: 2
-  rationale: 'SSNO1d prior runs: 80.52 (catastrophic) and 0.190 (ok). Low LR (1e-4) + tighter grad_clip (3.0) to stabilise S4D-spectral dual-branch. Dual-branch architecture is theoretically sound for shock capture.'
-
-# QW-5: AttentionEnhancedFNO2D on multiphysics_2d (only 1 run on this benchmark)
+  rationale: 'SSNO1d prior runs: 80.52 (catastrophic) and 0.190 (ok). Low LR (1e-4)
+    + tighter grad_clip (3.0) to stabilise S4D-spectral dual-branch. Dual-branch architecture
+    is theoretically sound for shock capture.'
 - name: attentionfno2d_multiphysics_h32_l4_m8
   benchmark: multiphysics_2d
   model: AttentionEnhancedFNO2D
@@ -7151,9 +7195,9 @@
   n_modes: 8
   budget_s: 480
   priority: 2
-  rationale: 'multiphysics_2d has only 1 kept result (0.692273). AttentionEnhancedFNO2D already works on wavebench_2d. Multi-physics coupling may benefit from attention between field components.'
-
-# Extra: TFNO2D Tucker on darcy_2d (paper reports 0.0094, better parameter efficiency)
+  rationale: multiphysics_2d has only 1 kept result (0.692273). AttentionEnhancedFNO2D
+    already works on wavebench_2d. Multi-physics coupling may benefit from attention
+    between field components.
 - name: tfno2d_darcy_h32_l4_m8_tucker
   benchmark: darcy_2d
   model: TFNO2D
@@ -7162,9 +7206,9 @@
   n_modes: 8
   budget_s: 480
   priority: 1
-  rationale: 'TFNO2D Tucker decomposition reduces parameter count 30-40%, fitting more capacity within M1 memory constraints. Paper reports TFNO2D beating FNO2D on Darcy (0.0094 vs 0.013).'
-
-# Extra: FEDONet2D on multiphysics_2d (won 2 other 2D benchmarks)
+  rationale: TFNO2D Tucker decomposition reduces parameter count 30-40%, fitting more
+    capacity within M1 memory constraints. Paper reports TFNO2D beating FNO2D on Darcy
+    (0.0094 vs 0.013).
 - name: fedonet2d_multiphysics_h32_l2_m8
   benchmark: multiphysics_2d
   model: FEDONet2D
@@ -7173,9 +7217,8 @@
   n_modes: 8
   budget_s: 480
   priority: 2
-  rationale: 'FEDONet2D best on elasticity_2d and pdebench_2d. Apply to multiphysics_2d to test if finite-element hybrid decoder handles multi-physics coupling.'
-
-# Extra: EMA + H1 combined on darcy_2d (tests EMA benefit for 2D)
+  rationale: FEDONet2D best on elasticity_2d and pdebench_2d. Apply to multiphysics_2d
+    to test if finite-element hybrid decoder handles multi-physics coupling.
 - name: fno2d_darcy_h32_l4_m8_ema_h1
   benchmark: darcy_2d
   model: FNO2D
@@ -7187,9 +7230,8 @@
   ema_decay: 0.999
   budget_s: 480
   priority: 2
-  rationale: 'Test EMA (0.999 decay) combined with H1 loss on darcy_2d. EMA should stabilise oscillations near the permeability boundary.'
-
-# Phase 2: Burgers 1D Optimization Ablation Study (TASK-003)
+  rationale: Test EMA (0.999 decay) combined with H1 loss on darcy_2d. EMA should
+    stabilise oscillations near the permeability boundary.
 - name: fno_burgers_baseline_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7200,8 +7242,7 @@
   ema_decay: 0.0
   budget_s: 1800
   priority: 1
-  rationale: "Ablation Baseline: FNO h128 l8 m24 without enhancements."
-
+  rationale: 'Ablation Baseline: FNO h128 l8 m24 without enhancements.'
 - name: fno_burgers_curriculum_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7212,8 +7253,7 @@
   ema_decay: 0.0
   budget_s: 1800
   priority: 1
-  rationale: "Ablation: Baseline + Spectral Curriculum."
-
+  rationale: 'Ablation: Baseline + Spectral Curriculum.'
 - name: fno_burgers_ema_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7224,8 +7264,7 @@
   ema_decay: 0.999
   budget_s: 1800
   priority: 1
-  rationale: "Ablation: Baseline + EMA (0.999)."
-
+  rationale: 'Ablation: Baseline + EMA (0.999).'
 - name: fno_burgers_curriculum_ema_h128_l8_m24
   benchmark: burgers_1d
   model: FNO
@@ -7236,9 +7275,7 @@
   ema_decay: 0.999
   budget_s: 1800
   priority: 1
-  rationale: "Ablation: Baseline + Curriculum + EMA."
-
-# TASK-001: SOTA Closure - Burgers
+  rationale: 'Ablation: Baseline + Curriculum + EMA.'
 - name: fno_burgers_sota_h128_l8_m24_h1adaptive_ensemble5
   benchmark: burgers_1d
   model: FNO
@@ -7251,4 +7288,234 @@
   snapshot_ensemble: 5
   budget_s: 3600
   priority: 1
-  rationale: "Combining all enhancements to target SOTA gap on burgers_1d."
+  rationale: Combining all enhancements to target SOTA gap on burgers_1d.
+- name: bnu001_rfno_h128_l8_m32
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  batch_size: 64
+  budget_s: 1800
+  priority: 1
+  rationale: 'RL-sweep: RFNO with high modes for near-inviscid shock resolution. More
+    spectral modes capture steep gradients.'
+- name: bnu001_wno_h128_l10_lvl6
+  benchmark: burgers_nu_001
+  model: WNO
+  hidden_dim: 128
+  n_layers: 10
+  n_levels: 6
+  lr: 0.0005
+  batch_size: 64
+  budget_s: 1800
+  priority: 1
+  rationale: "RL-sweep: Deeper WNO with 6 wavelet levels \u2014 Haar wavelets excel\
+    \ at discontinuity localization for shocks."
+- name: bnu001_pino_fno_h128_l6_m24
+  benchmark: burgers_nu_001
+  model: PINO
+  hidden_dim: 128
+  n_layers: 6
+  n_modes: 24
+  lr: 0.001
+  batch_size: 32
+  pino_lambda: 0.05
+  budget_s: 1800
+  priority: 1
+  rationale: "RL-sweep: PINO adds Burgers PDE residual loss \u2014 physics constraint\
+    \ forces shock to satisfy conservation law."
+- name: bnu001_uno_h128_l6
+  benchmark: burgers_nu_001
+  model: UNO
+  hidden_dim: 128
+  n_layers: 6
+  n_modes: 24
+  lr: 0.001
+  batch_size: 32
+  budget_s: 1800
+  priority: 1
+  rationale: 'RL-sweep: UNO multi-scale U-Net FNO for hierarchical shock feature extraction.'
+- name: bnu001_ffno_h96_l8_m32
+  benchmark: burgers_nu_001
+  model: FFNO
+  hidden_dim: 96
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  batch_size: 64
+  budget_s: 1800
+  priority: 1
+  rationale: "RL-sweep: Factored FNO decouples space-time modes \u2014 better shock\
+    \ front tracking in time-evolving Burgers."
+- name: bnu001_mambano_h64_l6
+  benchmark: burgers_nu_001
+  model: MambaNO
+  hidden_dim: 64
+  n_layers: 6
+  n_modes: 24
+  lr: 0.001
+  batch_size: 32
+  budget_s: 1800
+  priority: 1
+  rationale: "RL-sweep: MambaNO SSM for sequential shock propagation \u2014 state-space\
+    \ selectivity for discontinuous fronts."
+- name: bnu001_transolver_h64_l4
+  benchmark: burgers_nu_001
+  model: Transolver
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  lr: 0.0005
+  batch_size: 32
+  budget_s: 1800
+  priority: 1
+  rationale: 'RL-sweep: Transolver physics-sliced attention for shock-region specialization.'
+- name: bnu001_rfno_h256_l6_m32_lowlr
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 256
+  n_layers: 6
+  n_modes: 32
+  lr: 0.0003
+  batch_size: 32
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-sweep: Wide RFNO with low LR + long budget \u2014 capacity overcomes\
+    \ shock mode aliasing."
+- name: bnu001_wno_h64_l8_lvl8_cosine
+  benchmark: burgers_nu_001
+  model: WNO
+  hidden_dim: 64
+  n_layers: 8
+  n_levels: 8
+  lr: 0.001
+  batch_size: 64
+  lr_schedule: cosine
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-sweep: Max-depth WNO (8 wavelet levels) + cosine annealing \u2014\
+    \ finest wavelet coefficients capture nu=0.001 shock width."
+- name: bnu001_pino_h192_l8_m24_hi_lambda
+  benchmark: burgers_nu_001
+  model: PINO
+  hidden_dim: 192
+  n_layers: 8
+  n_modes: 24
+  lr: 0.0005
+  batch_size: 32
+  pino_lambda: 0.1
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-sweep: Large PINO with strong physics weight \u2014 inviscid Burgers\
+    \ satisfies conservation strongly, high lambda enforces it."
+- name: bnu001_gnot_h64_l4_n4
+  benchmark: burgers_nu_001
+  model: GNOT
+  hidden_dim: 64
+  n_layers: 4
+  n_head: 4
+  lr: 0.001
+  batch_size: 32
+  budget_s: 1800
+  priority: 1
+  rationale: 'RL-sweep: GNOT heterogeneous attention learns shock query patterns from
+    training trajectories.'
+- name: bnu001_tfno_h128_l6_m24
+  benchmark: burgers_nu_001
+  model: TFNO
+  hidden_dim: 128
+  n_layers: 6
+  n_modes: 24
+  lr: 0.001
+  batch_size: 64
+  budget_s: 1800
+  priority: 1
+  rationale: 'RL-sweep: Tucker-factored FNO reduces parameter count while retaining
+    spectral resolution for shocks.'
+- name: bnu001_rfno_h192_l10_m32_cosine
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 192
+  n_layers: 10
+  n_modes: 32
+  lr: 0.0005
+  batch_size: 32
+  lr_schedule: cosine
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-R3: Wider deeper RFNO + cosine LR \u2014 RFNO at 0.0779 shows spectral\
+    \ modes are key; scale up hidden/depth + anneal."
+- name: bnu001_rfno_h128_l8_m48_aug
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 48
+  lr: 0.001
+  batch_size: 32
+  augment: true
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-R3: RFNO with 48 modes + augmentation \u2014 more spectral resolution\
+    \ for shock + augment for generalization."
+- name: bnu001_rfno_h128_l8_m32_seed99
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  batch_size: 64
+  budget_s: 2400
+  seed: 99
+  priority: 1
+  rationale: 'RL-R3: Same best config (RFNO h128 l8 m32) with different seed + 33%
+    longer budget for convergence.'
+- name: bnu001_uno_h192_l8_m32
+  benchmark: burgers_nu_001
+  model: UNO
+  hidden_dim: 192
+  n_layers: 8
+  n_modes: 32
+  lr: 0.0005
+  batch_size: 32
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-R3: Scaled UNO (best was 0.1328 at h128) \u2014 larger capacity multi-scale\
+    \ for shock hierarchy."
+- name: bnu001_rfno_h128_l6_m32_ema
+  benchmark: burgers_nu_001
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 6
+  n_modes: 32
+  lr: 0.001
+  batch_size: 32
+  ema_decay: 0.999
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-R3: RFNO + EMA weights averaging \u2014 EMA smooths late-training\
+    \ oscillations on shock, typically -5..15% relative gain."
+- name: bnu001_ffno_h128_l8_m32
+  benchmark: burgers_nu_001
+  model: FFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 32
+  lr: 0.001
+  batch_size: 32
+  budget_s: 2400
+  priority: 1
+  rationale: "RL-R3: Factored FNO with same capacity as best RFNO \u2014 factored\
+    \ modes reduce shock aliasing differently."
+- name: sarmodel2d_ellip_baseline
+  benchmark: ellipse_2d
+  model: SARModel2d
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 480
+  priority: 3
+  rationale: Auto-generated baseline for SARModel2d on ellipse_2d

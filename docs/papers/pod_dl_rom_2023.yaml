@@ -1,0 +1,34 @@
+id: pod-dl-rom-2023
+title: "Data-driven surrogate modeling of hemodynamics by prediction of POD coefficients"
+venue: "EPFL ML4Science (CMCS Lab)"
+authors: ["EPFL Students", "Simone Deparis (Supervisor)"]
+year: 2023
+
+key_idea: >
+  Combines Proper Orthogonal Decomposition (POD) with Deep Learning (DL) for 
+  Reduced Order Modeling (ROM) of 3D Navier-Stokes equations in blood vessels.
+  The model identifies a low-dimensional latent space (POD modes) and trains 
+  a neural network to predict the time-dependent coefficients for these modes.
+
+architecture: POD-DL-ROM
+model_class: DeepONet  # Conceptual similarity to Branch/Trunk
+status: pending
+
+benchmarks:
+  hemodynamics_3d:
+    reported_val_l2_rel: 0.05
+    notes: >
+      Predicts 3D velocity and pressure fields in patient-specific geometries.
+      Significant speedup over traditional CFD (seconds vs hours).
+      Follow-up (2024) extends this to space-time unsteady flow.
+
+key_hyperparams:
+  n_modes: 20
+  hidden_dim: 128
+  n_layers: 4
+  latent_dim: 50
+
+remaining_levers:
+  - "Autoencoder-based ROM (AE-ROM) vs linear POD"
+  - "Physics-regularized coefficient prediction"
+  - "Geometric deep learning (GNNs) for mesh-invariant encoding"

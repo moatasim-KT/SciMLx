@@ -97,11 +97,28 @@ def distill():
     # Note: Keep the header row for lessons
     new_lessons = "\n".join(lessons)
     
-    new_strategy = "- **Current Focus**: Closing gaps in Darcy 2D and Burgers 1D.\n"
+    # Build strategy from live DB state
+    try:
+        from core.results_store import store
+        from core.utils import SOTA
+        bests = store.best_per_benchmark()
+        beaten = sorted([(bm, v) for bm, v in bests.items() if SOTA.get(bm) and v < SOTA[bm]])
+        gaps = sorted(
+            [(bm, v / SOTA[bm]) for bm, v in bests.items() if SOTA.get(bm) and v >= SOTA[bm]],
+            key=lambda x: x[1], reverse=True
+        )
+        beaten_str = ", ".join(f"`{bm}`" for bm, _ in beaten[:5])
+        focus_bm, focus_gap = gaps[0] if gaps else ("burgers_1d", 58)
+        new_strategy = (
+            f"- **Current Score**: {len(beaten)}/14 SOTA benchmarks beaten: {beaten_str}\n"
+            f"- **Current Focus**: Close `{focus_bm}` ({focus_gap:.1f}× gap).\n"
+        )
+    except Exception:
+        new_strategy = "- **Current Focus**: Closing gaps in remaining benchmarks.\n"
     if mashups:
         new_strategy += "\n".join(mashups)
     else:
-        new_strategy += "- **Priority Hypotheses**: Stable depth ≥10 for spectral models; adaptive Sobolev weighting."
+        new_strategy += "- **Priority Hypotheses**: High spectral modes for shocks; EMA for convergence stability."
 
     new_arch_evo = "\n".join(evolutions) if evolutions else "- No recent major architectural shifts."
 

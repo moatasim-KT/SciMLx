@@ -16,8 +16,10 @@ from .pacmann import PACMANN
 from .vsmno import VSMNO2d
 
 from .mamba_no  import MambaNO1d
+from .sar import SARModel2d
 __all__ = [
 	"PACMANN",
+	"SARModel2d",
 	"VSMNO2d",
 	"PINN",
 	# AFNO/FFNO family
@@ -44,6 +46,8 @@ __all__ = [
 	"HamiltonianNO1d",
 	"HamiltonianNet1d",
 	"LatentODE1d",
+    "IterativeFNO2d",
+    "ModalPINN",
 	# Neural ODEs & Universal Differential Equations — from Chen et al. / Rackauckas et al.
 	"NeuralODE1d",
 	# PINN family

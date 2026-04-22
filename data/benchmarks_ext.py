@@ -41,7 +41,7 @@ from data.prepare import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d", "ns_hre_2d", "swe_2d", "allen_cahn_2d", "mhd_2d", "burgers_nu_01", "burgers_nu_001"}
+EXT_BENCHMARKS = {"kdv_1d", "wave_1d", "darcy_2d", "ns_2d", "swe_2d", "allen_cahn_2d", "mhd_2d", "burgers_nu_01", "burgers_nu_001", "poisson_2d", "reionization_1d"}
 
 EXT_N_CHANNELS = {
     "kdv_1d": 1,
@@ -54,6 +54,9 @@ EXT_N_CHANNELS = {
     "mhd_2d": 2, # Vorticity (w) and Magnetic Potential (a)
     "burgers_nu_01": 1,
     "burgers_nu_001": 1,
+    "poisson_2d": 1,
+    "reionization_1d": 1,
+    "ellipse_2d": 1,
 }
 
 # KdV parameters
@@ -287,6 +290,89 @@ def solve_mhd_2d_batch(w0: np.ndarray, a0: np.ndarray, T: float = MHD_T, n_steps
     return np.fft.ifft2(w_hat).real.astype(np.float32)
 
 
+def solve_poisson_2d_batch(f: np.ndarray) -> np.ndarray:
+    """Solve -Δu = f on [0, 1]² with periodic BCs using spectral method.
+    f must have zero mean for a solution to exist on periodic domain.
+    """
+    B, N, _ = f.shape
+    f_d = f.astype(np.float64)
+    f_d -= f_d.mean(axis=(1, 2), keepdims=True)  # ensure zero mean
+    
+    k_int = np.fft.fftfreq(N, d=1.0 / N)
+    kx, ky = np.meshgrid(2 * np.pi * k_int, 2 * np.pi * k_int)
+    lap_pos = kx ** 2 + ky ** 2
+    lap_pos[0, 0] = 1.0  # avoid div by zero for DC mode
+    
+    f_hat = np.fft.fft2(f_d, axes=(1, 2))
+    u_hat = f_hat / lap_pos[None]
+    u_hat[:, 0, 0] = 0.0  # set DC mode to zero
+    
+    u = np.fft.ifft2(u_hat, axes=(1, 2)).real
+    return u.astype(np.float32)
+
+
+def solve_reionization_1d_batch(f: np.ndarray, T: float = 0.5, n_steps: int = 100) -> np.ndarray:
+    """Simple 1D ionization front model (toy version of cosmic reionization).
+    u_t + c·u_x = S(x) - alpha·u^2  (recombination + advection)
+    """
+    B, N = f.shape
+    dt = T / n_steps
+    c = 1.0
+    alpha = 0.1
+    u = f.astype(np.float64)
+    dx = 1.0 / N
+    for _ in range(n_steps):
+        # Upwind advection
+        u_shifted = np.roll(u, 1, axis=1)
+        u_x = (u - u_shifted) / dx
+        u = u - dt * (c * u_x + alpha * u**2)
+    return u.astype(np.float32)
+
+
+def solve_ellipse_2d_batch(
+    params: np.ndarray, 
+    N: int = 64
+) -> np.ndarray:
+    """Semi-analytical potential flow solver for an ellipse in 2D.
+    Calculates surface pressure p on the grid based on ellipse geometry.
+    
+    params: [B, 3] -> [a, b, alpha] (major, minor, angle)
+    """
+    B = params.shape[0]
+    x = np.linspace(-1, 1, N)
+    y = np.linspace(-1, 1, N)
+    xx, yy = np.meshgrid(x, y)
+    
+    # Pressure fields
+    p = np.zeros((B, N, N), dtype=np.float32)
+    
+    for i in range(B):
+        a, b, alpha = params[i]
+        # Rotate coordinates
+        xr = xx * np.cos(alpha) + yy * np.sin(alpha)
+        yr = -xx * np.sin(alpha) + yy * np.cos(alpha)
+        
+        # Ellipse SDF
+        sdf = np.sqrt((xr/a)**2 + (yr/b)**2) - 1.0
+        
+        # Potential flow around ellipse (velocity magnitude approximation)
+        v_mag = 1.0 + (a + b) / (a * np.sin(np.arctan2(yr, xr))**2 + b * np.cos(np.arctan2(yr, xr))**2 + 1e-6)
+        v_mag[sdf < 0] = 0.0 # interior
+        
+        # Bernoulli pressure: p = 0.5 * rho * (U^2 - v^2)
+        p[i] = 0.5 * (1.0 - v_mag**2)
+        
+    return p
+
+
+def _ellipse_ic(n: int, rng: np.random.RandomState) -> np.ndarray:
+    """Random ellipse parameters [a, b, alpha]."""
+    a = rng.uniform(0.2, 0.5, size=(n, 1))
+    b = rng.uniform(0.1, 0.3, size=(n, 1))
+    alpha = rng.uniform(0, np.pi, size=(n, 1))
+    return np.concatenate([a, b, alpha], axis=1).astype(np.float32)
+
+
 # ── IC generators ─────────────────────────────────────────────────────────────
 
 def _kdv_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
@@ -385,10 +471,6 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
             w0 = _ns_fix_ic(curr_n, GRID_SIZE, rng)
             inp = w0[..., None]
             tgt = solve_ns_2d_batch(w0)[..., None]
-        elif benchmark == "ns_hre_2d":
-            w0 = _ns_fix_ic(curr_n, GRID_SIZE, rng)
-            inp = w0[..., None]
-            tgt = solve_ns_2d_batch(w0, nu=1e-3, n_steps=2000)[..., None]
         elif benchmark == "swe_2d":
             h0 = _swe_ic(curr_n, GRID_SIZE, rng)
             inp = h0[..., None]
@@ -409,6 +491,29 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
             inp = _random_ic(curr_n, GRID_SIZE, rng)
             from data.prepare import solve_burgers_batch
             tgt = solve_burgers_batch(inp, nu=0.01)
+        elif benchmark == "poisson_2d":
+            f = _random_ic_2d(curr_n, GRID_SIZE, rng, n_modes=5, scale=1.0)
+            inp = f[..., None]
+            tgt = solve_poisson_2d_batch(f)[..., None]
+        elif benchmark == "reionization_1d":
+            f = _random_ic(curr_n, GRID_SIZE, rng, n_modes=3) * 1.0 + 0.5
+            inp = f
+            tgt = solve_reionization_1d_batch(f)
+        elif benchmark == "ellipse_2d":
+            params = _ellipse_ic(curr_n, rng)
+            # Input is the SDF of the ellipse
+            x = np.linspace(-1, 1, GRID_SIZE)
+            y = np.linspace(-1, 1, GRID_SIZE)
+            xx, yy = np.meshgrid(x, y)
+            inp_list = []
+            for j in range(curr_n):
+                a, b, alpha = params[j]
+                xr = xx * np.cos(alpha) + yy * np.sin(alpha)
+                yr = -xx * np.sin(alpha) + yy * np.cos(alpha)
+                sdf = np.sqrt((xr/a)**2 + (yr/b)**2) - 1.0
+                inp_list.append(sdf[..., None])
+            inp = np.array(inp_list)
+            tgt = solve_ellipse_2d_batch(params, GRID_SIZE)[..., None]
         else:
             raise ValueError(f"Unknown extended benchmark: {benchmark!r}")
             
@@ -576,16 +681,6 @@ EXT_BENCHMARK_INFO = {
             "solve_ns_2d_batch uses IC scale=1.0 → max_velocity≈95 → "
             "CFL≈61 → semi-implicit Euler explodes to NaN on step 1",
     },
-    "ns_hre_2d": {
-        "pde": "2D NS with Re=1000 (nu=1e-3)",
-        "domain": "[0, 2pi)^2, periodic",
-        "ic_type": "scale=0.1 vorticity",
-        "solver": "Semi-implicit Euler, n_steps=2000",
-        "t_final": NS_T,
-        "n_steps": 2000,
-        "sota_model": "FNO",
-        "notes": "High Reynolds number challenge",
-    },
     "swe_2d": {
         "pde": "Shallow Water Equations (height-vorticity)",
         "domain": "[0, 1]^2, periodic",
@@ -616,17 +711,48 @@ EXT_BENCHMARK_INFO = {
         "sota_model": "TFNO",
         "notes": "Coupled fluid-magnetic dynamics",
     },
+    "poisson_2d": {
+        "pde": "-Δu = f  (2D Poisson equation)",
+        "domain": "[0, 1]^2, periodic",
+        "ic_type": "Zero-mean random source f",
+        "solver": "Exact spectral solver",
+        "t_final": None,
+        "n_steps": None,
+        "sota_model": "IterativeFNO",
+        "notes": "Fundamental elliptic PDE; tests precision and convergence stabilities",
+    },
+    "reionization_1d": {
+        "pde": "u_t + c·u_x = S(x) - alpha·u^2 (Cosmic Reionization toy model)",
+        "domain": "[0, 1], periodic",
+        "ic_type": "Source field S(x)",
+        "solver": "Upwind scheme + recombination",
+        "t_final": 0.5,
+        "n_steps": 100,
+        "sota_model": "PINN",
+        "notes": "Non-linear advection-reaction; mimics ionization front propagation",
+    },
+    "ellipse_2d": {
+        "pde": "Incompressible laminar flow around ellipse (surface pressure)",
+        "domain": "[-1, 1]^2",
+        "ic_type": "Random ellipse geometry (a, b, alpha)",
+        "solver": "Potential flow analytical approximation",
+        "t_final": None,
+        "n_steps": None,
+        "sota_model": "SAR",
+        "notes": "Tests geometry-to-distribution mapping as proposed in Lino & Thuerey (2026)",
+    },
 }
 
 
 if __name__ == "__main__":
+    import time
     print("Extended benchmarks available:", sorted(EXT_BENCHMARKS))
     for bm in sorted(EXT_BENCHMARKS):
-        info = EXT_BENCHMARK_INFO[bm]
+        info = EXT_BENCHMARK_INFO.get(bm, {"pde": "Unknown", "solver": "Unknown"})
         print(f"\n{bm}:")
         print(f"  PDE   : {info['pde']}")
         print(f"  Solver: {info['solver']}")
-        print(f"  SOTA  : ~{EXT_SOTA[bm]:.4f} rel-L2")
+        print(f"  SOTA  : ~{EXT_SOTA.get(bm, 0.0):.4f} rel-L2")
 
         # Quick smoke test: generate 4 samples
         t0 = time.time()

@@ -1,0 +1,37 @@
+id: packed-ensemble-2023
+title: "Packed-Ensemble Surrogate Models for Fluid Flow Estimation Around Airfoil Geometries"
+arxiv: "2312.13403"
+venue: "EPFL ML4Science / arXiv"
+authors: ["Anthony Kalaydjian", "Anton Balykov", "Alexi Semiz", "Adrien Chan-Hon-Tong"]
+year: 2023
+
+key_idea: >
+  Uses "Packed Ensembles" to achieve the accuracy and uncertainty quantification
+  of deep ensembles without the linear scaling in computational cost.
+  Packing utilizes grouped convolutions to simulate multiple sub-networks
+  within a single architecture. Applied as a surrogate for CFD solvers
+  predicting pressure and velocity fields around airfoils.
+
+architecture: PackedEnsembleFNO
+model_class: FNO
+status: pending
+
+benchmarks:
+  airfoil_2d_flow:
+    reported_val_l2_rel: 0.025  # Estimated from similar surrogate tasks
+    paper_epochs: 200
+    notes: >
+      Focuses on predicting u, v velocity components and pressure p.
+      Evaluated on varying airfoil shapes (NACA profiles).
+      Key contribution is the UQ (Uncertainty Quantification) via packing.
+
+key_hyperparams:
+  n_ensembles: 4
+  hidden_dim: 64
+  n_layers: 4
+  lr: 1e-3
+
+remaining_levers:
+  - "Varying packing factor (M) to balance speed vs. UQ quality"
+  - "Comparison with standard Deep Ensembles"
+  - "Physics-informed loss integration for zero-shot generalization"

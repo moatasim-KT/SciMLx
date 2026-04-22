@@ -956,6 +956,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m22_l6.log
 │   │   │       └── fno_h128_m22_l6_best.npz
+│   │   ├── 026836e717a945b5bd8058a9ea7f311b/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_lr5e4.log
+│   │   │       └── fno_burgers_h128_l8_m24_lr5e4_best.npz
+│   │   ├── 02d0a68c1f914ca9b493664708ce5dd6/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_curriculum_v2.log
+│   │   │       └── fno_burgers_h128_l8_m24_curriculum_v2_best.npz
+│   │   ├── 03670b7b706e43ab9101c020d1bee4cb/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── fno_burgers_h128_l8_m24_h1_sobolev_best.npz
 │   │   ├── 036f9e9cfc1d436b8392457236ab9f89/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m22_l8.log
@@ -975,6 +987,10 @@ autoresearch-mlx/
 │   │   ├── 084f1fb5b959456b8baf30f508c2c76f/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ssno_burgers_best.npz
+│   │   ├── 093f5e23fdd147f7b4de8eda73497724/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_m24.log
+│   │   │       └── ssno_burgers_h128_l8_m24_best.npz
 │   │   ├── 0a3b80a52e564c02891e941a7a808b25/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m28_l6.log
@@ -995,6 +1011,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_baseline_h128_l8_m24.log
 │   │   │       └── fno_burgers_baseline_h128_l8_m24_best.npz
+│   │   ├── 14b624469c3640d79722dba27c3b3bfc/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_burgers_h128_l10_m24.log
+│   │   │       └── rfno_burgers_h128_l10_m24_best.npz
 │   │   ├── 1595ab363eea4787a35699408245e097/
 │   │   │   └── artifacts/
 │   │   │       ├── gnot_burgers_h128_l8.log
@@ -1022,6 +1042,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
 │   │   │       └── wno_burgers_h128_l8_best.npz
+│   │   ├── 20ea046d60c94ae7a6904c430838009e/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_m24.log
+│   │   │       └── ssno_burgers_h128_l8_m24_best.npz
 │   │   ├── 221601c6125443bd8afbb342e1c65296/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
@@ -1037,6 +1061,10 @@ autoresearch-mlx/
 │   │   ├── 28a02f8a1dd146c6ae80f5ebf0f65ab4/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v3_best.npz
+│   │   ├── 28c38bc2631c4dfe9865146d026291c2/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── rfno_burgers_h128_l8_m24_h1_sobolev_best.npz
 │   │   ├── 2a133368cbbb4025802d02d1f79c1e61/
 │   │   │   └── artifacts/
 │   │   │       └── validation_curriculum_smooth_best.npz
@@ -1060,6 +1088,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8.log
 │   │   │       └── wno_burgers_h128_l8_best.npz
+│   │   ├── 3aae7753dd024835be114f913809b3e0/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_adapt_best.npz
 │   │   ├── 3bc9ecb103cf4d7d894af3a9dd09b478/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_burgers_onecycle_aug_h128_l8_m24.log
@@ -1067,10 +1099,18 @@ autoresearch-mlx/
 │   │   ├── 3ff8598ac74844fb8ef5c10b0d0517e8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_pino_fix_best.npz
+│   │   ├── 41e9711570a04d1794b68ab459c72efa/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── rfno_burgers_h128_l8_m24_h1_sobolev_best.npz
 │   │   ├── 42daa0645e8a4ed1b857578a11a74c92/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
 │   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
+│   │   ├── 4521fa0c74de4197a9f8a3a080efb948/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_best.npz
 │   │   ├── 4644174c59f24c9c860d933d656e9a08/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m26_l6.log
@@ -1115,6 +1155,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── tfno_burgers_h128_l8_m24_r05.log
 │   │   │       └── tfno_burgers_h128_l8_m24_r05_best.npz
+│   │   ├── 5755b6e21cc7471a897ea905fd8e10df/
+│   │   │   └── artifacts/
+│   │   │       ├── s4d_burgers_h64_l6_p1.log
+│   │   │       └── s4d_burgers_h64_l6_p1_best.npz
 │   │   ├── 57c605adb9064feebe9216e4233635db/
 │   │   │   └── artifacts/
 │   │   │       ├── transolver_burgers_h128_l6_s32_adapt.log
@@ -1122,6 +1166,10 @@ autoresearch-mlx/
 │   │   ├── 5b0c5120f3164fb69e286941440c18c8/
 │   │   │   └── artifacts/
 │   │   │       └── validation_ensemble_uq_best.npz
+│   │   ├── 5b901e3f6b4d4bbfa83bd1bdf6b1b482/
+│   │   │   └── artifacts/
+│   │   │       ├── ude_burgers_fixed_h128_l4_adapt.log
+│   │   │       └── ude_burgers_fixed_h128_l4_adapt_best.npz
 │   │   ├── 5cd42e5777d548909041c2da816c4df6/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m16_l4.log
@@ -1134,6 +1182,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m16_l6.log
 │   │   │       └── fno_h256_m16_l6_best.npz
+│   │   ├── 62a9641d709c4538a8ae6d168684162b/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── fno_burgers_h128_l8_m24_h1_sobolev_best.npz
 │   │   ├── 652a8361bc16407b9c9152c8cd55251b/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8_adapt.log
@@ -1158,14 +1210,26 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── wno_burgers_h128_l8_adapt.log
 │   │   │       └── wno_burgers_h128_l8_adapt_best.npz
+│   │   ├── 6e08263f27ff457ab6cda5d4bc869063/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h64_l4_m16_wave_transfer.log
+│   │   │       └── fno_burgers_h64_l4_m16_wave_transfer_best.npz
 │   │   ├── 714b02e5c5344c30ba3f85da295a3d79/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l8_bs16.log
 │   │   │       └── fno_h128_m24_l8_bs16_best.npz
+│   │   ├── 784b76f238694f9c9a4846d1c0da634d/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_lr3e4.log
+│   │   │       └── ssno_burgers_h128_l8_lr3e4_best.npz
 │   │   ├── 795692bf22524f1ca68cefc5331b185c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum_adapt.log
 │   │   │       └── mambano_burgers_curriculum_adapt_best.npz
+│   │   ├── 79c247b650d44a9cb6fd2d3a106aeaad/
+│   │   │   └── artifacts/
+│   │   │       ├── s4d_burgers_h64_l6_p1.log
+│   │   │       └── s4d_burgers_h64_l6_p1_best.npz
 │   │   ├── 7a4afee8db27401cb6d44d35137ce91b/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
@@ -1193,6 +1257,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── rfno_h128_m24_l10.log
 │   │   │       └── rfno_h128_m24_l10_best.npz
+│   │   ├── 86266aefd2004e7c944932206e86bc8e/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_burgers_h128_l10_m24.log
+│   │   │       └── rfno_burgers_h128_l10_m24_best.npz
 │   │   ├── 86b8791007f64f67813e9b709d059adb/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l8_h1.log
@@ -1221,6 +1289,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── 98f6a5c1374241d3a931ddd6b2a30981/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_lr3e4.log
+│   │   │       └── ssno_burgers_h128_l8_lr3e4_best.npz
 │   │   ├── 991723e02a734ae5bd462831d8a34dae/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h256_m24_l6_adapt.log
@@ -1237,10 +1309,18 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── ffno_h256_m24_l8.log
 │   │   │       └── ffno_h256_m24_l8_best.npz
+│   │   ├── a76dd2c810224187ad7b3a2cac16c4b7/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_m24.log
+│   │   │       └── ssno_burgers_h128_l8_m24_best.npz
 │   │   ├── aa40ae6963d044eba253aa8b083ba1bb/
 │   │   │   └── artifacts/
 │   │   │       ├── afno_h128_m24_l10.log
 │   │   │       └── afno_h128_m24_l10_best.npz
+│   │   ├── acd27ea5cb4c428c94ac2781f29ea0e5/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h64_l4_m16_wave_transfer.log
+│   │   │       └── fno_burgers_h64_l4_m16_wave_transfer_best.npz
 │   │   ├── adb4db5fd26141379bd5ef8186fc5ef9/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l8.log
@@ -1257,6 +1337,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── ffno_h128_m32_l8.log
 │   │   │       └── ffno_h128_m32_l8_best.npz
+│   │   ├── b1d9030719ff485ab63ebea45e236dee/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_curriculum_v2.log
+│   │   │       └── fno_burgers_h128_l8_m24_curriculum_v2_best.npz
 │   │   ├── b2d3c64c24cc4903be3b8d57b218e23c/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8.log
@@ -1268,6 +1352,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_h64_l1.log
 │   │   │       └── uno_h64_l1_best.npz
+│   │   ├── b931bb425543403e81fa5fe161347222/
+│   │   │   └── artifacts/
+│   │   │       ├── ude_burgers_fixed_h128_l4_adapt.log
+│   │   │       └── ude_burgers_fixed_h128_l4_adapt_best.npz
 │   │   ├── ba23979f4408492f97ee446c2b7e2cf4/
 │   │   │   └── artifacts/
 │   │   │       ├── memno_burgers_h128_l8.log
@@ -1276,6 +1364,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24_adapt.log
 │   │   │       └── uno_burgers_h128_l8_m24_adapt_best.npz
+│   │   ├── baf218de51cb40e385ea5b1198ff9229/
+│   │   │   └── artifacts/
+│   │   │       ├── ude_burgers_fixed_h128_l4_r1.log
+│   │   │       └── ude_burgers_fixed_h128_l4_r1_best.npz
 │   │   ├── bedf4839a9f949028f1201abe5a0e398/
 │   │   │   └── artifacts/
 │   │   │       ├── memno_burgers_h128_l8.log
@@ -1315,14 +1407,42 @@ autoresearch-mlx/
 │   │   ├── ca1b039eecd6409b839b073ab3eb404f/
 │   │   │   └── artifacts/
 │   │   │       └── afno_fix_v4_best.npz
+│   │   ├── caad0ccdf0904d41999def6aaf4dc008/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── fno_burgers_h128_l8_m24_h1_sobolev_best.npz
+│   │   ├── cb1fe1bea2384b5ea9a9018f153e22e8/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_curriculum_v2.log
+│   │   │       └── fno_burgers_h128_l8_m24_curriculum_v2_best.npz
 │   │   ├── cb983bf1ac8745aba584d041471fea91/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m20_l6.log
 │   │   │       └── fno_h128_m20_l6_best.npz
+│   │   ├── cfeec8b4f94e45a1966d42f6577125c8/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h128_l8_m24_lr5e4.log
+│   │   │       └── fno_burgers_h128_l8_m24_lr5e4_best.npz
+│   │   ├── d57088c766304db293efeabc5162a3bb/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_best.npz
+│   │   ├── d635e018eb444e9780da2554ecad9f14/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_adapt_best.npz
+│   │   ├── d6e3a7e9f74740aaaec10cdaa13344bd/
+│   │   │   └── artifacts/
+│   │   │       ├── s4d_burgers_h64_l6_p1.log
+│   │   │       └── s4d_burgers_h64_l6_p1_best.npz
 │   │   ├── d82956e1080c471e9b8cb359e85fff32/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_h64_l2.log
 │   │   │       └── uno_h64_l2_best.npz
+│   │   ├── da080898dd224897bab38f471dec360e/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_best.npz
 │   │   ├── ddbcbb5c342f4046947b2a1ceef88dbd/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l6_v2.log
@@ -1331,6 +1451,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_h128_l8_adapt.log
 │   │   │       └── mambano_burgers_h128_l8_adapt_best.npz
+│   │   ├── e34c128cc4c84d36b87f6e1936a07c70/
+│   │   │   └── artifacts/
+│   │   │       ├── fno_burgers_h64_l4_m16_wave_transfer.log
+│   │   │       └── fno_burgers_h64_l4_m16_wave_transfer_best.npz
 │   │   ├── e358f6af2af8473fab5e6482338859c7/
 │   │   │   └── artifacts/
 │   │   │       ├── uno_burgers_h128_l8_m24.log
@@ -1350,6 +1474,10 @@ autoresearch-mlx/
 │   │   ├── e583018f152f4544bb845bdd9e553d9d/
 │   │   │   └── artifacts/
 │   │   │       └── repro_afno_bias_best.npz
+│   │   ├── e87f030e0c114114b8a3a9663b22b1d7/
+│   │   │   └── artifacts/
+│   │   │       ├── rfno_burgers_h128_l8_m24_h1_sobolev.log
+│   │   │       └── rfno_burgers_h128_l8_m24_h1_sobolev_best.npz
 │   │   ├── e9eac498a39e469c83328d7e18835fbc/
 │   │   │   └── artifacts/
 │   │   │       ├── latent_ode_burgers_h64_l4.log
@@ -1370,6 +1498,10 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── mambano_burgers_curriculum.log
 │   │   │       └── mambano_burgers_curriculum_best.npz
+│   │   ├── f3ca8cb3c6bf4cada50251634923f642/
+│   │   │   └── artifacts/
+│   │   │       ├── ude_burgers_fixed_h128_l4_r1.log
+│   │   │       └── ude_burgers_fixed_h128_l4_r1_best.npz
 │   │   ├── f631c6eaf2764f9ca7b408bef8fa4791/
 │   │   │   └── artifacts/
 │   │   │       ├── afno_h128_m24_l8.log
@@ -1386,9 +1518,17 @@ autoresearch-mlx/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m16_l8.log
 │   │   │       └── fno_h128_m16_l8_best.npz
+│   │   ├── fc639152f91a43e290b62961705a8ab4/
+│   │   │   └── artifacts/
+│   │   │       ├── transolver_burgers_h128_l6_s32_h4_adapt.log
+│   │   │       └── transolver_burgers_h128_l6_s32_h4_adapt_best.npz
 │   │   ├── ff0b719f90d149d49d96bc8b9b27e78d/
 │   │   │   └── artifacts/
 │   │   │       └── afno_heavy_test_best.npz
+│   │   ├── ff5c9583a95e4635944cd132b4f7f0eb/
+│   │   │   └── artifacts/
+│   │   │       ├── ssno_burgers_h128_l8_m24.log
+│   │   │       └── ssno_burgers_h128_l8_m24_best.npz
 │   │   ├── ffa2c1205a884005b33ca0e642885329/
 │   │   │   └── artifacts/
 │   │   │       ├── fno_h128_m24_l12.log

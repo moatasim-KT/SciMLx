@@ -1,5 +1,6 @@
 import mlx.core as mx
 import mlx.nn as nn
+from typing import Optional
 
 
 # ── 1D Spectral Components ────────────────────────────────────────────────────
@@ -211,13 +212,15 @@ class FNOBlock2d(nn.Module):
 
 class FNO2d(nn.Module):
     """Fourier Neural Operator for 2-D operator learning."""
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, 
+                 in_channels: int = 1, out_channels: Optional[int] = None):
         super().__init__()
+        self.out_channels = out_channels or in_channels
         # Internal lifting dimension: data channels + 2 spatial grids
         self.lift   = nn.Linear(in_channels + 2, hidden_dim)
         self.blocks = [FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
         self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
+        self.proj2  = nn.Linear(hidden_dim // 2, self.out_channels)
 
     def __call__(self, x: mx.array) -> mx.array:
         # x : [B, N1, N2] or [B, N1, N2, C]
@@ -237,9 +240,52 @@ class FNO2d(nn.Module):
         x     = nn.gelu(self.proj1(x))
         out   = self.proj2(x)
         
-        if out.shape[-1] == 1:
+        if self.out_channels == 1:
             return out[:, :, :, 0]
         return out
+
+
+class IterativeFNO2d(nn.Module):
+    """Iterative FNO for steady-state problems (e.g. Poisson).
+    Learns a residual update Δu that is applied iteratively:
+    u_{k+1} = u_k + eta * FNO(u_k, f)
+
+    Based on Brandstetter et al. (2022) "Learning Neural PDE Solvers with 
+    Convergence Guarantees" as featured in EPFL ML4Science.
+    """
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, 
+                 n_iterations: int = 10, in_channels: int = 1):
+        super().__init__()
+        self.in_channels = in_channels
+        # Internal FNO takes [u, f] as input (2*in_channels)
+        # and outputs the update for u (in_channels)
+        self.fno = FNO2d(n_modes1, n_modes2, hidden_dim, n_layers, 
+                         in_channels=in_channels + 1, out_channels=in_channels)
+        self.n_iterations = n_iterations
+        self.eta = mx.array(0.1) # step size (can be made learnable)
+
+    def __call__(self, f: mx.array) -> mx.array:
+        """
+        Args:
+            f: [B, N1, N2, C] source term or boundary data
+        Returns:
+            [B, N1, N2, C] steady-state solution
+        """
+        if f.ndim == 3:
+            f = f[..., None]
+        B, N1, N2, C = f.shape
+        u = mx.zeros_like(f) # initial guess: u_0 = 0
+        
+        for _ in range(self.n_iterations):
+            # Concatenate current guess and source: [B, N1, N2, C+1]
+            inp = mx.concatenate([u, f], axis=-1)
+            # Update: u = u + eta * Δu
+            res = self.fno(inp)
+            if res.ndim == 3:
+                res = res[..., None]
+            u = u + self.eta * res
+            
+        return u
 
 
 class FNOBlockResidual2d(nn.Module):

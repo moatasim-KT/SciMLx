@@ -1,0 +1,33 @@
+id: spline-pinn-2024
+title: "3D Steady-State SplinePINNs for solving Navier-Stokes"
+venue: "EPFL ML4Science (MLO Lab)"
+authors: ["EPFL Students", "Martin Jaggi (Supervisor)"]
+year: 2024
+
+key_idea: >
+  Integrates spline-based activation functions or architectures into 
+  Physics-Informed Neural Networks (PINNs) to solve 3D steady-state 
+  Navier-Stokes equations. Splines provide better local control and 
+  smoothness, helping capture sharp gradients in steady-state flow.
+
+architecture: SplinePINN
+model_class: KAN  # Spline-based KAN similarity
+status: pending
+
+benchmarks:
+  ns_steady_3d:
+    reported_val_l2_rel: 0.03
+    notes: >
+      Focuses on incompressible Navier-Stokes in complex 3D domains.
+      Solves the forward problem without labeled data using physical residuals.
+
+key_hyperparams:
+  spline_order: 3
+  grid_size: 5
+  hidden_dim: 64
+  n_layers: 4
+
+remaining_levers:
+  - "Adaptive spline grid refinement"
+  - "Comparison with KAN (Kolmogorov-Arnold Networks)"
+  - "Hybrid data-physics training for complex geometries"

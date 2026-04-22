@@ -1,0 +1,36 @@
+id: neural-pde-solver-2023
+title: "Learning Neural PDE Solvers with Convergence Guarantees"
+venue: "ICLR (Reproducibility Challenge / EPFL ML4Science)"
+authors: ["Johannes Brandstetter", "et al."]
+year: 2023
+
+key_idea: >
+  Neural solvers for PDEs often lack the stability and convergence 
+  guarantees of classical numerical methods. This work introduces 
+  architectures (like Neural-Operator-based Iterative Solvers) that 
+  incorporate constraints or structured updates (e.g., mimicking Jacobi 
+  or SOR iterations) to ensure the mapping converges to the true solution 
+  as the iteration count increases or the resolution is refined.
+
+architecture: IterativeNeuralSolver
+model_class: FNO  # Can be based on FNO or GNN
+status: pending
+
+benchmarks:
+  poisson_2d_conv:
+    reported_val_l2_rel: 0.0001
+    notes: >
+      Focuses on solving steady-state equations with iterative refinement.
+      Guaranteed convergence (spectral radius < 1) by architectural design.
+
+key_hyperparams:
+  n_iterations: 10
+  alpha_init: 0.1
+  hidden_dim: 128
+  n_layers: 4
+
+suggested_experiments:
+  - name: iterative_fno_poisson_h128_l4
+    benchmark: "poisson_2d_conv"
+    model: "IterativeFNO"
+    rationale: "Test spectral radius of the learned update operator."
