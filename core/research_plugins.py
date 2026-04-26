@@ -131,7 +131,10 @@ def _register_defaults():
     # ── 1-D models (Lazy registration) ────────────────────────────────────────
     MODEL_REGISTRY.register_lazy("FNO", "fno", "FNO1d")
     MODEL_REGISTRY.register_lazy("RFNO", "fno", "RFNO1d")
-    # ... other models remain lazy-registered
+    MODEL_REGISTRY.register_lazy("PINO", "pinn", "PINO1d")
+    MODEL_REGISTRY.register_lazy("PINN", "pinn", "PINN")
+    MODEL_REGISTRY.register_lazy("DeepONet", "deeponet", "DeepONet")
+    MODEL_REGISTRY.register_lazy("PODDeepONet", "deeponet", "PODDeepONet")
 
     @MODEL_REGISTRY.register("FNO")
     def _make_fno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
@@ -142,6 +145,16 @@ def _register_defaults():
     def _make_rfno(n_modes=16, hidden_dim=64, n_layers=4, **kw):
         from models.fno import RFNO1d
         return RFNO1d(n_modes=n_modes, hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("PINO")
+    def _make_pino(hidden_dim=128, n_layers=6, **kw):
+        from models.pinn import PINO1d
+        return PINO1d(sensor_dim=64, hidden_dim=hidden_dim, n_layers=n_layers)
+
+    @MODEL_REGISTRY.register("DeepONet")
+    def _make_deeponet(hidden_dim=128, n_layers=4, **kw):
+        from models.deeponet import DeepONet
+        return DeepONet(branch_dim=64, trunk_dim=1, hidden_dim=hidden_dim, n_layers=n_layers)
 
     # ── Benchmarks (standard + ext) ───────────────────────────────────────────
     _std = {"burgers_1d"}
