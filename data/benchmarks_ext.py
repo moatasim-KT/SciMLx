@@ -30,7 +30,7 @@ import math
 import os
 import time
 
-import mlx.core as mx
+import torch
 import numpy as np
 
 from data.prepare import (
@@ -583,7 +583,7 @@ def make_ext_dataloader(benchmark: str, split: str, batch_size: int,
         n, i = len(inp), 0
         while True:
             end = min(i + batch_size, n)
-            yield mx.array(inp[i:end]), mx.array(tgt[i:end])
+            yield torch.from_numpy(inp[i:end]), torch.from_numpy(tgt[i:end])
             i = end
             if i >= n:
                 i = 0
@@ -595,7 +595,7 @@ def make_ext_dataloader(benchmark: str, split: str, batch_size: int,
             perm = rng.permutation(n)
             for i in range(0, n - batch_size + 1, batch_size):
                 idx = perm[i: i + batch_size]
-                yield mx.array(inp[idx]), mx.array(tgt[idx])
+                yield torch.from_numpy(inp[idx]), torch.from_numpy(tgt[idx])
 
 
 def evaluate_l2_rel_ext(benchmark: str, model, batch_size: int = 64) -> float:
@@ -604,17 +604,17 @@ def evaluate_l2_rel_ext(benchmark: str, model, batch_size: int = 64) -> float:
     n_batches  = math.ceil(N_VAL / batch_size)
     total_err  = 0.0
     total_norm = 0.0
-    for _ in range(n_batches):
-        x, y   = next(val_loader)
-        y_pred = model(x)
-        diff   = (y_pred - y).astype(mx.float32)
-        y_f    = y.astype(mx.float32)
-        axes   = tuple(range(1, y.ndim))
-        err    = mx.sqrt(mx.mean(diff ** 2, axis=axes))
-        nrm    = mx.sqrt(mx.mean(y_f  ** 2, axis=axes))
-        mx.eval(err, nrm)
-        total_err  += mx.sum(err).item()
-        total_norm += mx.sum(nrm).item()
+    with torch.no_grad():
+        for _ in range(n_batches):
+            x, y   = next(val_loader)
+            y_pred = model(x)
+            diff   = (y_pred - y).float()
+            y_f    = y.float()
+            axes   = tuple(range(1, y.ndim))
+            err    = torch.sqrt(torch.mean(diff ** 2, dim=axes))
+            nrm    = torch.sqrt(torch.mean(y_f  ** 2, dim=axes))
+            total_err  += torch.sum(err).item()
+            total_norm += torch.sum(nrm).item()
     return total_err / max(total_norm, 1e-8)
 
 

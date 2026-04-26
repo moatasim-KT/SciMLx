@@ -1,7 +1,9 @@
-import mlx.core as mx
-import mlx.nn as nn
-from typing import Optional
+"""Fourier Neural Operator (FNO) implementations (PyTorch/CUDA)."""
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from typing import Optional
 
 # ── 1D Spectral Components ────────────────────────────────────────────────────
 
@@ -10,32 +12,25 @@ class SpectralConv1d(nn.Module):
 
     def __init__(self, in_ch: int, out_ch: int, n_modes: int):
         super().__init__()
-        self.in_ch   = in_ch
-        self.out_ch  = out_ch
+        self.in_ch = in_ch
+        self.out_ch = out_ch
         self.n_modes = n_modes
         scale = (in_ch * out_ch) ** -0.5
-        self.wr = mx.random.normal([n_modes, in_ch, out_ch]) * scale
-        self.wi = mx.random.normal([n_modes, in_ch, out_ch]) * scale
+        # PyTorch uses complex64 for complex weights
+        self.weights = nn.Parameter(
+            scale * torch.randn(n_modes, in_ch, out_ch, dtype=torch.complex64)
+        )
 
-    def __call__(self, x: mx.array) -> mx.array:
-        B, N, _ = x.shape
-        x_ft = mx.fft.rfft(x, axis=1)
-        xr   = x_ft[:, :self.n_modes, :].real
-        xi   = x_ft[:, :self.n_modes, :].imag
-
-        out_r = (mx.einsum("bmi,mio->bmo", xr, self.wr)
-               - mx.einsum("bmi,mio->bmo", xi, self.wi))
-        out_i = (mx.einsum("bmi,mio->bmo", xr, self.wi)
-               + mx.einsum("bmi,mio->bmo", xi, self.wr))
-
-        out_modes = out_r + 1j * out_i
-        n_rfft = N // 2 + 1
-        if n_rfft > self.n_modes:
-            pad    = mx.zeros([B, n_rfft - self.n_modes, self.out_ch], dtype=mx.complex64)
-            out_ft = mx.concatenate([out_modes, pad], axis=1)
-        else:
-            out_ft = out_modes
-        return mx.fft.irfft(out_ft, n=N, axis=1)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, N, C = x.shape
+        # x: [B, N, C]
+        x_ft = torch.fft.rfft(x, dim=1)
+        
+        # Multiply relevant Fourier modes
+        out_ft = torch.zeros(B, N // 2 + 1, self.out_ch, device=x.device, dtype=torch.complex64)
+        out_ft[:, :self.n_modes, :] = torch.einsum("bmi,mio->bmo", x_ft[:, :self.n_modes, :], self.weights)
+        
+        return torch.fft.irfft(out_ft, n=N, dim=1)
 
 
 class FNOBlock1d(nn.Module):
@@ -43,439 +38,66 @@ class FNOBlock1d(nn.Module):
     def __init__(self, channels: int, n_modes: int):
         super().__init__()
         self.spec = SpectralConv1d(channels, channels, n_modes)
-        self.w    = nn.Linear(channels, channels)
+        self.w = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
-        return nn.gelu(self.spec(x) + self.w(x))
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.gelu(self.spec(x) + self.w(x))
 
 
 class FNO1d(nn.Module):
     """Fourier Neural Operator for 1-D operator learning."""
     def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2):
         super().__init__()
-        self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
-        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+        self.lift = nn.Linear(in_ch, hidden_dim)
+        self.blocks = nn.ModuleList([FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)])
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
-        B, N  = u0.shape
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u0, grid], axis=-1)
-        x     = self.lift(x)
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if u0.ndim == 1:
+            u0 = u0.unsqueeze(0)
+        B, N = u0.shape
+        grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+        x = torch.stack([u0, grid], dim=-1)
+        x = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x     = nn.gelu(self.proj1(x))
-        return self.proj2(x)[:, :, 0]
+        x = F.gelu(self.proj1(x))
+        return self.proj2(x).squeeze(-1)
 
 
 # ── Residual FNO (Pre-LN) ─────────────────────────────────────────────────────
 
 class FNOBlockResidual1d(nn.Module):
-    """Pre-LN residual FNO block: x = x + GELU(spec(LN(x)) + w(LN(x))).
-
-    The residual connection + pre-norm pattern (from Pre-LN Transformers) gives
-    better gradient flow through deep stacks — same param count as FNOBlock1d.
-    """
-
     def __init__(self, channels: int, n_modes: int):
         super().__init__()
         self.norm = nn.LayerNorm(channels)
         self.spec = SpectralConv1d(channels, channels, n_modes)
-        self.w    = nn.Linear(channels, channels)
+        self.w = nn.Linear(channels, channels)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
+        return x + F.gelu(self.spec(h) + self.w(h))
 
 
 class RFNO1d(nn.Module):
-    """Residual Fourier Neural Operator for 1-D operator learning.
-
-    Drop-in replacement for FNO1d that uses Pre-LN residual blocks.
-    Intended to unlock deeper stacks (l ≥ 10) without gradient degradation.
-
-    Hyperparameter guide: same as FNO1d.  Start with n_modes=24, hidden=128,
-    n_layers=10 or 12 — the residual connections should handle the extra depth.
-    """
-
     def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2):
         super().__init__()
-        self.lift   = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [FNOBlockResidual1d(hidden_dim, n_modes) for _ in range(n_layers)]
-        self.norm   = nn.LayerNorm(hidden_dim)
-        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, 1)
+        self.lift = nn.Linear(in_ch, hidden_dim)
+        self.blocks = nn.ModuleList([FNOBlockResidual1d(hidden_dim, n_modes) for _ in range(n_layers)])
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
-        if u0.ndim == 3:
-            B, N, _ = u0.shape
-            u_scalar = u0[:, :, 0]  # use first channel for grid stacking
-        else:
-            B, N  = u0.shape
-            u_scalar = u0
-        grid  = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x     = mx.stack([u_scalar, grid], axis=-1)
-        x     = self.lift(x)
-        for blk in self.blocks:
-            x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
-        return self.proj2(x)[:, :, 0]
-
-
-class FNO1dMC(nn.Module):
-    """Multi-channel Fourier Neural Operator for 1-D operator learning.
-
-    Handles inputs of shape [B, N, C_in] -> [B, N, C_out].
-    Extends FNO1d to multi-component PDEs (e.g., Euler: rho,u,p -> rho,u,p).
-    An appended spatial coordinate is used as an extra input channel.
-    """
-
-    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int,
-                 in_channels: int = 3, out_channels: int = 3):
-        super().__init__()
-        self.in_ch  = in_channels
-        self.out_ch = out_channels
-        self.lift   = nn.Linear(in_channels + 1, hidden_dim)   # +1 for grid
-        self.blocks = [FNOBlock1d(hidden_dim, n_modes) for _ in range(n_layers)]
-        self.norm   = nn.LayerNorm(hidden_dim)
-        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, out_channels)
-
-    def __call__(self, u0: mx.array) -> mx.array:
-        B, N, _ = u0.shape
-        grid    = mx.broadcast_to(
-            mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
-        x = mx.concatenate([u0, grid], axis=-1)  # [B, N, C+1]
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if u0.ndim == 1:
+            u0 = u0.unsqueeze(0)
+        B, N = u0.shape
+        grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+        x = torch.stack([u0, grid], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x = nn.gelu(self.proj1(self.norm(x)))
-        return self.proj2(x)                     # [B, N, C_out]
+        x = F.gelu(self.proj1(x))
+        return self.proj2(x).squeeze(-1)
 
-
-class SpectralConv2d(nn.Module):
-    """2-D Fourier spectral convolution."""
-
-    def __init__(self, in_ch: int, out_ch: int, n_modes1: int, n_modes2: int):
-        super().__init__()
-        self.in_ch    = in_ch
-        self.out_ch   = out_ch
-        self.n_modes1 = n_modes1
-        self.n_modes2 = n_modes2
-        scale = (in_ch * out_ch) ** -0.5
-        # We need two sets of weights because rfft2 is asymmetric
-        self.wr1 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wi1 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wr2 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-        self.wi2 = mx.random.normal([n_modes1, n_modes2, in_ch, out_ch]) * scale
-
-    def __call__(self, x: mx.array) -> mx.array:
-        # x : [B, N1, N2, C_in]
-        B, N1, N2, _ = x.shape
-        x_ft = mx.fft.rfft2(x, axes=(1, 2))  # [B, N1, N2//2+1, C] complex
-
-        # Handle the two symmetric modes in the first dimension
-        out_ft = mx.zeros([B, N1, N2 // 2 + 1, self.out_ch], dtype=mx.complex64)
-
-        # Mode 1: [0:n_modes1, 0:n_modes2]
-        xr1 = x_ft[:, :self.n_modes1, :self.n_modes2, :].real
-        xi1 = x_ft[:, :self.n_modes1, :self.n_modes2, :].imag
-        out_r1 = (mx.einsum("bmki,mkio->bmko", xr1, self.wr1)
-                - mx.einsum("bmki,mkio->bmko", xi1, self.wi1))
-        out_i1 = (mx.einsum("bmki,mkio->bmko", xr1, self.wi1)
-                + mx.einsum("bmki,mkio->bmko", xi1, self.wr1))
-        out_ft[:, :self.n_modes1, :self.n_modes2, :] = out_r1 + 1j * out_i1
-
-        # Mode 2: [-n_modes1:, 0:n_modes2]
-        xr2 = x_ft[:, -self.n_modes1:, :self.n_modes2, :].real
-        xi2 = x_ft[:, -self.n_modes1:, :self.n_modes2, :].imag
-        out_r2 = (mx.einsum("bmki,mkio->bmko", xr2, self.wr2)
-                - mx.einsum("bmki,mkio->bmko", xi2, self.wi2))
-        out_i2 = (mx.einsum("bmki,mkio->bmko", xr2, self.wi2)
-                + mx.einsum("bmki,mkio->bmko", xi2, self.wr2))
-        out_ft[:, -self.n_modes1:, :self.n_modes2, :] = out_r2 + 1j * out_i2
-
-        return mx.fft.irfft2(out_ft, s=(N1, N2), axes=(1, 2))
-
-
-class FNOBlock2d(nn.Module):
-    """2D FNO layer: spectral conv + pointwise linear + GELU."""
-    def __init__(self, channels: int, n_modes1: int, n_modes2: int):
-        super().__init__()
-        self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
-        self.w    = nn.Linear(channels, channels)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        return nn.gelu(self.spec(x) + self.w(x))
-
-
-class FNO2d(nn.Module):
-    """Fourier Neural Operator for 2-D operator learning."""
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, 
-                 in_channels: int = 1, out_channels: Optional[int] = None):
-        super().__init__()
-        self.out_channels = out_channels or in_channels
-        # Internal lifting dimension: data channels + 2 spatial grids
-        self.lift   = nn.Linear(in_channels + 2, hidden_dim)
-        self.blocks = [FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
-        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, self.out_channels)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        # x : [B, N1, N2] or [B, N1, N2, C]
-        if x.ndim == 3:
-            B, N1, N2 = x.shape
-            x = x[..., None]
-        else:
-            B, N1, N2, _ = x.shape
-            
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
-        
-        x     = self.lift(x)
-        for blk in self.blocks:
-            x = blk(x)
-        x     = nn.gelu(self.proj1(x))
-        out   = self.proj2(x)
-        
-        if self.out_channels == 1:
-            return out[:, :, :, 0]
-        return out
-
-
-class IterativeFNO2d(nn.Module):
-    """Iterative FNO for steady-state problems (e.g. Poisson).
-    Learns a residual update Δu that is applied iteratively:
-    u_{k+1} = u_k + eta * FNO(u_k, f)
-
-    Based on Brandstetter et al. (2022) "Learning Neural PDE Solvers with 
-    Convergence Guarantees" as featured in EPFL ML4Science.
-    """
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, 
-                 n_iterations: int = 10, in_channels: int = 1):
-        super().__init__()
-        self.in_channels = in_channels
-        # Internal FNO takes [u, f] as input (2*in_channels)
-        # and outputs the update for u (in_channels)
-        self.fno = FNO2d(n_modes1, n_modes2, hidden_dim, n_layers, 
-                         in_channels=in_channels + 1, out_channels=in_channels)
-        self.n_iterations = n_iterations
-        self.eta = mx.array(0.1) # step size (can be made learnable)
-
-    def __call__(self, f: mx.array) -> mx.array:
-        """
-        Args:
-            f: [B, N1, N2, C] source term or boundary data
-        Returns:
-            [B, N1, N2, C] steady-state solution
-        """
-        if f.ndim == 3:
-            f = f[..., None]
-        B, N1, N2, C = f.shape
-        u = mx.zeros_like(f) # initial guess: u_0 = 0
-        
-        for _ in range(self.n_iterations):
-            # Concatenate current guess and source: [B, N1, N2, C+1]
-            inp = mx.concatenate([u, f], axis=-1)
-            # Update: u = u + eta * Δu
-            res = self.fno(inp)
-            if res.ndim == 3:
-                res = res[..., None]
-            u = u + self.eta * res
-            
-        return u
-
-
-class FNOBlockResidual2d(nn.Module):
-    """Pre-LN residual FNO block for 2-D."""
-    def __init__(self, channels: int, n_modes1: int, n_modes2: int):
-        super().__init__()
-        self.norm = nn.LayerNorm(channels)
-        self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
-        self.w    = nn.Linear(channels, channels)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        h = self.norm(x)
-        return x + nn.gelu(self.spec(h) + self.w(h))
-
-
-class RFNO2d(nn.Module):
-    """Residual Fourier Neural Operator for 2-D operator learning."""
-    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_channels: int = 1):
-        super().__init__()
-        self.lift   = nn.Linear(in_channels + 2, hidden_dim)
-        self.blocks = [FNOBlockResidual2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)]
-        self.norm   = nn.LayerNorm(hidden_dim)
-        self.proj1  = nn.Linear(hidden_dim, hidden_dim // 2)
-        self.proj2  = nn.Linear(hidden_dim // 2, in_channels)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        # x : [B, N1, N2] or [B, N1, N2, C]
-        if x.ndim == 3:
-            B, N1, N2 = x.shape
-            x = x[..., None]
-        else:
-            B, N1, N2, _ = x.shape
-
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)  # [B, N1, N2, C+2]
-
-        x     = self.lift(x)
-        for blk in self.blocks:
-            x = blk(x)
-        x     = nn.gelu(self.proj1(self.norm(x)))
-        out   = self.proj2(x)
-
-        if out.shape[-1] == 1:
-            return out[:, :, :, 0]
-        return out
-
-
-# ── U-shaped Neural Operator (UNO) ────────────────────────────────────────────
-
-class UNO1d(nn.Module):
-    """U-shaped Neural Operator for 1-D problems.
-
-    Encoder-decoder with FNO layers at each scale, skip connections between
-    symmetric levels, and spectral subsampling (slice every other point) for
-    downsampling.  Captures both global (low-freq) and local (high-freq)
-    features simultaneously.
-
-    Reference: Rahman et al. (2022) "U-NO: U-shaped Neural Operators"
-    (arXiv:2204.11127)
-
-    Architecture (hidden_dim=h, N=64 default):
-        lift → enc0(N,h) → enc1(N/2,2h) → bottleneck(N/4,4h)
-             ↓ skip0          ↓ skip1
-        dec0(N,h) ← dec1(N/2,2h) ← upsample
-    """
-
-    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int = 2,
-                 in_ch: int = 2):
-        super().__init__()
-        h = hidden_dim
-        m = n_modes
-        # Encoder
-        self.lift  = nn.Linear(in_ch, h)
-        self.enc0  = nn.Sequential(*[FNOBlock1d(h, m) for _ in range(n_layers)])
-        self.down0 = nn.Linear(h, 2 * h)
-        self.enc1  = nn.Sequential(*[FNOBlock1d(2 * h, max(m // 2, 1))
-                                      for _ in range(n_layers)])
-        self.down1 = nn.Linear(2 * h, 4 * h)
-        # Bottleneck
-        self.bot   = nn.Sequential(*[FNOBlock1d(4 * h, max(m // 4, 1))
-                                      for _ in range(n_layers)])
-        # Decoder
-        self.up1   = nn.Linear(4 * h + 2 * h, 2 * h)
-        self.dec1  = nn.Sequential(*[FNOBlock1d(2 * h, max(m // 2, 1))
-                                      for _ in range(n_layers)])
-        self.up0   = nn.Linear(2 * h + h, h)
-        self.dec0  = nn.Sequential(*[FNOBlock1d(h, m) for _ in range(n_layers)])
-        # Output projection
-        self.proj1 = nn.Linear(h, h // 2)
-        self.proj2 = nn.Linear(h // 2, 1)
-
-    def __call__(self, u0: mx.array) -> mx.array:
-        B, N = u0.shape
-        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x    = mx.stack([u0, grid], axis=-1)
-        x    = self.lift(x)                         # [B, N,    h]
-
-        # Encode
-        s0   = self.enc0(x)                         # [B, N,    h]  skip0
-        x    = self.down0(s0)[:, ::2, :]            # [B, N//2, 2h]
-        s1   = self.enc1(x)                         # [B, N//2, 2h]  skip1
-        x    = self.down1(s1)[:, ::2, :]            # [B, N//4, 4h]
-
-        # Bottleneck
-        x    = self.bot(x)                          # [B, N//4, 4h]
-
-        # Decode
-        x    = mx.repeat(x, 2, axis=1)             # [B, N//2, 4h]
-        x    = mx.concatenate([x, s1], axis=-1)     # [B, N//2, 6h]
-        x    = self.up1(x)                          # [B, N//2, 2h]
-        x    = self.dec1(x)                         # [B, N//2, 2h]
-        x    = mx.repeat(x, 2, axis=1)             # [B, N,    2h]
-        x    = mx.concatenate([x, s0], axis=-1)     # [B, N,    3h]
-        x    = self.up0(x)                          # [B, N,    h]
-        x    = self.dec0(x)                         # [B, N,    h]
-
-        x    = nn.gelu(self.proj1(x))
-        return self.proj2(x)[:, :, 0]
-
-class UNO2d(nn.Module):
-    """U-shaped Neural Operator for 2D problems.
-    
-    Architecture (hidden_dim=h, N=64 default):
-        lift → enc0(64,h) → enc1(32,2h) → bottleneck(16,4h)
-             ↓ skip0          ↓ skip1
-        dec0(64,h) ← dec1(32,2h) ← upsample
-    """
-    def __init__(self, n_modes: int, hidden_dim: int, n_layers: int = 2, in_channels: int = 1):
-        super().__init__()
-        h = hidden_dim
-        m = n_modes
-        # Encoder
-        self.lift  = nn.Linear(in_channels + 2, h)
-        self.enc0  = nn.Sequential(*[FNOBlock2d(h, m, m) for _ in range(n_layers)])
-        self.down0 = nn.Linear(h, 2 * h)
-        # For lower levels, we halve modes to keep spectral compression
-        self.enc1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4)) 
-                                      for _ in range(n_layers)])
-        self.down1 = nn.Linear(2 * h, 4 * h)
-        
-        # Bottleneck
-        self.bot   = nn.Sequential(*[FNOBlock2d(4 * h, max(m // 4, 2), max(m // 4, 2)) 
-                                      for _ in range(n_layers)])
-        
-        # Decoder
-        self.up1   = nn.Linear(4 * h + 2 * h, 2 * h)
-        self.dec1  = nn.Sequential(*[FNOBlock2d(2 * h, max(m // 2, 4), max(m // 2, 4)) 
-                                      for _ in range(n_layers)])
-        self.up0   = nn.Linear(2 * h + h, h)
-        self.dec0  = nn.Sequential(*[FNOBlock2d(h, m, m) for _ in range(n_layers)])
-        
-        self.proj1 = nn.Linear(h, h // 2)
-        self.proj2 = nn.Linear(h // 2, in_channels)
-
-    def __call__(self, x: mx.array) -> mx.array:
-        if x.ndim == 3:
-            B, N1, N2 = x.shape
-            x = x[..., None]
-        else:
-            B, N1, N2, _ = x.shape
-            
-        grid1 = mx.broadcast_to(mx.linspace(0.0, 1.0, N1).reshape(1, N1, 1, 1), (B, N1, N2, 1))
-        grid2 = mx.broadcast_to(mx.linspace(0.0, 1.0, N2).reshape(1, 1, N2, 1), (B, N1, N2, 1))
-        x     = mx.concatenate([x, grid1, grid2], axis=-1)
-        
-        x = self.lift(x)                            # [B, N, N, h]
-        
-        # Encode
-        s0 = self.enc0(x)                           # [B, N, N, h]
-        x  = self.down0(s0)[:, ::2, ::2, :]         # [B, N/2, N/2, 2h]
-        s1 = self.enc1(x)                           # [B, N/2, N/2, 2h]
-        x  = self.down1(s1)[:, ::2, ::2, :]         # [B, N/4, N/4, 4h]
-        
-        # Bottleneck
-        x  = self.bot(x)                            # [B, N/4, N/4, 4h]
-        
-        # Decode
-        x  = mx.repeat(mx.repeat(x, 2, axis=1), 2, axis=2) # [B, N/2, N/2, 4h]
-        x  = mx.concatenate([x, s1], axis=-1)       # [B, N/2, N/2, 6h]
-        x  = self.up1(x)                            # [B, N/2, N/2, 2h]
-        x  = self.dec1(x)                           # [B, N/2, N/2, 2h]
-        
-        x  = mx.repeat(mx.repeat(x, 2, axis=1), 2, axis=2) # [B, N, N, 2h]
-        x  = mx.concatenate([x, s0], axis=-1)       # [B, N, N, 3h]
-        x  = self.up0(x)                            # [B, N, N, h]
-        x  = self.dec0(x)                           # [B, N, N, h]
-        
-        x = nn.gelu(self.proj1(x))
-        out = self.proj2(x)
-        if out.shape[-1] == 1:
-            return out[:, :, :, 0]
-        return out
+# TODO: Add 2D FNO implementations
