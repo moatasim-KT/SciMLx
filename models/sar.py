@@ -8,17 +8,12 @@ Reference:
     Mario Lino, Nils Thuerey — ArXiv 2026
     URL: https://arxiv.org/pdf/2604.11403
     Code: https://github.com/tum-pbs/SAR
-
-Architecture (Simplified for MLX):
-  1. Condition Encoder: Embeds geometry/physics context.
-  2. Autoregressive Module: Multi-scale hidden states.
-  3. Flow-Matching Sampler: Iterative refinement per scale.
 """
 
-import mlx.core as mx
-import mlx.nn as nn
-from einops import rearrange
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from core.device import DEVICE
 
 class SARBlock(nn.Module):
     """Basic building block for SAR (Scale-Autoregressive).
@@ -35,8 +30,9 @@ class SARBlock(nn.Module):
             nn.GELU(),
             nn.Linear(2 * dim, dim),
         )
+        self.to(DEVICE)
 
-    def __call__(self, x: mx.array, cond: mx.array | None = None) -> mx.array:
+    def forward(self, x: torch.Tensor, cond: torch.Tensor = None) -> torch.Tensor:
         # x: [B, N, D], cond: [B, N, D] (from coarser scale)
         if cond is not None:
             x = x + cond
@@ -63,14 +59,15 @@ class SARModel2d(nn.Module):
         self.encoder = nn.Linear(in_ch, hidden_dim)
         
         # Scale-specific processors
-        self.blocks = [
-            [SARBlock(hidden_dim, n_head, slice_num) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([
+            nn.ModuleList([SARBlock(hidden_dim, n_head, slice_num) for _ in range(n_layers)])
             for _ in range(n_scales)
-        ]
+        ])
         
         self.proj_out = nn.Linear(hidden_dim, 1)
+        self.to(DEVICE)
 
-    def __call__(self, cond_field: mx.array) -> mx.array:
+    def forward(self, cond_field: torch.Tensor) -> torch.Tensor:
         """
         Inference path (deterministic mode for benchmark comparison).
         Full paper uses Flow-Matching sampling; this version approximates 

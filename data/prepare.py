@@ -34,9 +34,11 @@ VAL_CACHE_1D = os.path.join(
     CACHE_DIR, f"burgers_val_N{GRID_SIZE}_nu{NU:.6f}_T{T_FINAL}.npz"
 )
 
+from core.device import DEVICE
+
 # ── 1D Solvers ────────────────────────────────────────────────────────────────
 
-def _random_ic(
+def _random_ic_np(
     n: int,
     N: int,
     rng: np.random.RandomState,
@@ -57,36 +59,46 @@ def _random_ic(
     u0     = cos_c @ np.cos(angles) + sin_c @ np.sin(angles)     # [n, N]
     return u0.astype(np.float32)
 
+def _random_ic(
+    n: int,
+    N: int,
+    rng: np.random.RandomState,
+    n_modes: int = 10,
+) -> torch.Tensor:
+    u0 = _random_ic_np(n, N, rng, n_modes)
+    return torch.from_numpy(u0).to(DEVICE)
+
 
 def solve_burgers_batch(
-    u0: np.ndarray,
+    u0: torch.Tensor,
     nu: float    = NU,
     T: float     = T_FINAL,
     n_steps: int = SOLVER_STEPS,
-) -> np.ndarray:
+) -> torch.Tensor:
     """
     Batch pseudo-spectral IMEX solver for 1D viscous Burgers equation.
     """
     _, N   = u0.shape
-    k      = np.fft.rfftfreq(N, d=1.0 / N)             # wavenumbers [N//2+1]
+    # k      = np.fft.rfftfreq(N, d=1.0 / N)             # wavenumbers [N//2+1]
+    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
     dt     = T / n_steps
     impl   = 1.0 / (1.0 + nu * k ** 2 * dt)            # implicit diffusion factor
     ik     = 1j * k                                      # spectral derivative operator
     cutoff = N // 3                                      # 2/3-rule dealias cutoff
 
-    u_hat = np.fft.rfft(u0.astype(np.float64), axis=1)
+    u_hat = torch.fft.rfft(u0.to(torch.float64), dim=1)
 
     for _ in range(n_steps):
-        uh_d          = u_hat.copy()
+        uh_d          = u_hat.clone()
         uh_d[:, cutoff:] = 0.0
 
-        u_phys  = np.fft.irfft(uh_d,                n=N, axis=1)
-        ux_phys = np.fft.irfft(ik * uh_d,           n=N, axis=1).real
-        nonlin  = np.fft.rfft(-u_phys * ux_phys,    axis=1)
+        u_phys  = torch.fft.irfft(uh_d,                n=N, dim=1)
+        ux_phys = torch.fft.irfft(ik * uh_d,           n=N, dim=1).real
+        nonlin  = torch.fft.rfft(-u_phys * ux_phys,    dim=1)
 
         u_hat = impl * (u_hat + dt * nonlin)
 
-    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
+    return torch.fft.irfft(u_hat, n=N, dim=1).to(torch.float32)
 
 
 # ── 2D Solvers ────────────────────────────────────────────────────────────────
@@ -99,12 +111,12 @@ def solve_burgers_batch(
 # ── Additional PDE solvers (optional, available for experiments) ─────────────
 
 def solve_wave_batch(
-    u0: np.ndarray,
-    ut0: np.ndarray,
+    u0: torch.Tensor,
+    ut0: torch.Tensor,
     c: float     = 1.0,
     T: float     = 1.0,
     n_steps: int = 400,
-) -> np.ndarray:
+) -> torch.Tensor:
     """
     Spectral Störmer-Verlet solver for 1D wave equation: u_tt = c² u_xx.
 
@@ -117,26 +129,26 @@ def solve_wave_batch(
         [B, N] float32  displacement at time T
     """
     _, N    = u0.shape
-    k       = np.fft.rfftfreq(N, d=1.0 / N)
+    k       = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
     omega2  = (c * k) ** 2
     dt      = T / n_steps
 
-    u_hat   = np.fft.rfft(u0.astype(np.float64),  axis=1)
-    ut_hat  = np.fft.rfft(ut0.astype(np.float64), axis=1)
+    u_hat   = torch.fft.rfft(u0.to(torch.float64),  dim=1)
+    ut_hat  = torch.fft.rfft(ut0.to(torch.float64), dim=1)
 
     for _ in range(n_steps):                              # Störmer-Verlet
         ut_hat -= 0.5 * dt * omega2 * u_hat
         u_hat  += dt * ut_hat
         ut_hat -= 0.5 * dt * omega2 * u_hat
 
-    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
+    return torch.fft.irfft(u_hat, n=N, dim=1).to(torch.float32)
 
 
 def solve_kdv_batch(
-    u0: np.ndarray,
+    u0: torch.Tensor,
     T: float     = 1.0,
     n_steps: int = 1000,
-) -> np.ndarray:
+) -> torch.Tensor:
     """
     Spectral ETDRK4 solver for 1D Korteweg-de Vries equation.
 
@@ -148,7 +160,7 @@ def solve_kdv_batch(
         [B, N] float32  solutions at time T
     """
     _, N   = u0.shape
-    k      = np.fft.rfftfreq(N, d=1.0 / N)
+    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
     ik     = 1j * k
     ik3    = (1j * k) ** 3                               # dispersion operator
     cutoff = N // 3
@@ -156,17 +168,17 @@ def solve_kdv_batch(
 
     # Linear operator (dispersion); implicit via integrating factor
     L  = -ik3                                            # linear part of PDE
-    E  = np.exp(L * dt)
-    E2 = np.exp(L * dt / 2.0)
+    E  = torch.exp(L * dt)
+    E2 = torch.exp(L * dt / 2.0)
 
-    u_hat = np.fft.rfft(u0.astype(np.float64), axis=1)
+    u_hat = torch.fft.rfft(u0.to(torch.float64), dim=1)
 
     def nonlin(uh):
-        uhd        = uh.copy()
+        uhd        = uh.clone()
         uhd[:, cutoff:] = 0.0
-        u_phys     = np.fft.irfft(uhd, n=N, axis=1)
-        ux_phys    = np.fft.irfft(ik * uhd, n=N, axis=1).real
-        return np.fft.rfft(-u_phys * ux_phys, axis=1)
+        u_phys     = torch.fft.irfft(uhd, n=N, dim=1)
+        ux_phys    = torch.fft.irfft(ik * uhd, n=N, dim=1).real
+        return torch.fft.rfft(-u_phys * ux_phys, dim=1)
 
     for _ in range(n_steps):                             # ETDRK4 (Cox-Matthews)
         N0 = nonlin(u_hat)
@@ -180,7 +192,7 @@ def solve_kdv_batch(
             E * N0 + 2.0 * E2 * (Na + Nb) + Nc
         )
 
-    return np.fft.irfft(u_hat, n=N, axis=1).astype(np.float32)
+    return torch.fft.irfft(u_hat, n=N, dim=1).to(torch.float32)
 
 
 # ── Dataset helpers ───────────────────────────────────────────────────────────
@@ -202,8 +214,10 @@ def _random_ic_2d(n: int, N: int, rng: np.random.RandomState, n_modes: int = 5, 
 def _generate_dataset(benchmark: str, n: int, seed: int) -> tuple:
     rng = np.random.RandomState(seed)
     if benchmark == "burgers_1d":
-        inputs = _random_ic(n, GRID_SIZE, rng)
-        targets = solve_burgers_batch(inputs)
+        inputs_t = _random_ic(n, GRID_SIZE, rng)
+        targets_t = solve_burgers_batch(inputs_t)
+        inputs = inputs_t.cpu().numpy()
+        targets = targets_t.cpu().numpy()
     else:
         raise ValueError(f"Unknown benchmark: {benchmark}")
     return inputs, targets
@@ -242,31 +256,49 @@ def _get_train_data(benchmark: str) -> tuple:
 
 # ── Dataloader ────────────────────────────────────────────────────────────────
 
+class PDEDataset(torch.utils.data.Dataset):
+    def __init__(self, inputs, targets):
+        self.inputs = inputs
+        self.targets = targets
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+        return self.inputs[idx], self.targets[idx]
+
 def make_dataloader(benchmark: str, split: str, batch_size: int, seed: int | None = None):
     """
-    Infinite generator yielding ``(inputs, targets)`` as MLX arrays.
+    Yielding ``(inputs, targets)`` as PyTorch tensors.
     """
     assert split in ("train", "val"), f"split must be 'train' or 'val', got {split!r}"
 
     if split == "val":
         inp, tgt = _load_or_gen_val(benchmark)
-        n = len(inp)
-        i = 0
-        while True:
-            end  = min(i + batch_size, n)
-            yield torch.from_numpy(inp[i:end]), torch.from_numpy(tgt[i:end])
-            i = end
-            if i >= n:
-                i = 0
+        dataset = PDEDataset(torch.from_numpy(inp), torch.from_numpy(tgt))
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=4,
+            pin_memory=True
+        )
     else:
         inp, tgt = _get_train_data(benchmark)
-        n   = len(inp)
-        rng = np.random.RandomState(seed if seed is not None else 99999)
-        while True:
-            perm = rng.permutation(n)
-            for i in range(0, n - batch_size + 1, batch_size):
-                idx = perm[i : i + batch_size]
-                yield torch.from_numpy(inp[idx]), torch.from_numpy(tgt[idx])
+        dataset = PDEDataset(torch.from_numpy(inp), torch.from_numpy(tgt))
+        loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=4,
+            pin_memory=True,
+            generator=torch.Generator().manual_seed(seed if seed is not None else 99999)
+        )
+        def infinite_loader():
+            while True:
+                for batch in loader:
+                    yield batch
+        return infinite_loader()
 
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
@@ -276,13 +308,12 @@ def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> floa
     Mean relative L2 error on the fixed validation set for a given benchmark.
     """
     val_loader = make_dataloader(benchmark, "val", batch_size)
-    n_batches  = math.ceil(N_VAL / batch_size)
     total_err  = 0.0
     total_norm = 0.0
 
     with torch.no_grad():
-        for _ in range(n_batches):
-            x, y     = next(val_loader)
+        for x, y in val_loader:
+            x, y     = x.to(DEVICE), y.to(DEVICE)
             y_pred   = model(x)
             diff     = (y_pred - y).float()
             y_f      = y.float()

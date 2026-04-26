@@ -23,7 +23,9 @@ References:
 """
 
 import math
+import torch
 import numpy as np
+from core.device import DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -49,49 +51,44 @@ METADATA = {
 
 # ── IC generator ───────────────────────────────────────────────────────────────
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
-    """Random smooth surface height anomaly (zero mean).
-
-    Returns float32 [n, N, N], values ~ [-0.3, 0.3] (amplitude ≪ H₀=1).
-    """
-    return _random_ic_2d(n, N, rng, n_modes=4, scale=0.15, offset=0.0)
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
+    """Random smooth surface height anomaly (zero mean)."""
+    h0 = _random_ic_2d(n, N, rng, n_modes=4, scale=0.15, offset=0.0)
+    return torch.from_numpy(h0).to(DEVICE)
 
 
 # ── Analytic solver ────────────────────────────────────────────────────────────
 
-def solve_batch(h0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
-    """Propagate surface height h₀ to time T using exact Fourier solution.
+def solve_batch(h0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
+    """Propagate surface height h₀ to time T using exact Fourier solution."""
+    if isinstance(h0, np.ndarray):
+        h0 = torch.from_numpy(h0).to(DEVICE)
+    else:
+        h0 = h0.to(DEVICE)
 
-    Args:
-        h0: [B, N, N] float32 — initial surface height anomaly
-        T:  final time
-
-    Returns:
-        [B, N, N] float32 — surface height at time T
-    """
     B, N, _ = h0.shape
 
     # Integer wavenumbers on [0, 2π)²
-    k_int = np.fft.fftfreq(N, d=1.0 / N)         # [0,1,...,N/2,-N/2+1,...,-1]
-    kx, ky = np.meshgrid(k_int, k_int, indexing="ij")  # [N, N]
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)         
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")  
 
     # Dispersion relation: ω_k = c * |k|  (gravity waves)
-    omega = C_WAVE * np.sqrt(kx**2 + ky**2)       # [N, N]
+    omega = C_WAVE * torch.sqrt(kx**2 + ky**2)       
 
     # Exact propagation: ĥ(T) = ĥ₀ · cos(ωT)
-    propagator = np.cos(omega * T)[None, :, :]    # [1, N, N]
+    propagator = torch.cos(omega * T)[None, :, :]    
 
-    h0_d  = h0.astype(np.float64)
-    h_hat = np.fft.fft2(h0_d, axes=(1, 2))       # [B, N, N] complex
+    h0_d  = h0.to(torch.float64)
+    h_hat = torch.fft.fft2(h0_d, dim=(1, 2))       
     hT_hat = h_hat * propagator
-    hT = np.fft.ifft2(hT_hat, axes=(1, 2)).real
+    hT = torch.fft.ifft2(hT_hat, dim=(1, 2)).real
 
-    return hT.astype(np.float32)
+    return hT.to(torch.float32)
 
 
 # ── Dataset helper ────────────────────────────────────────────────────────────
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng     = np.random.RandomState(seed)
     inputs  = make_ic(n, N, rng)
     targets = solve_batch(inputs)

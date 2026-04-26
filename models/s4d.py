@@ -10,8 +10,9 @@ Reference:
 """
 
 import math
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+from core.device import DEVICE
 
 class S4DLayer(nn.Module):
     """Diagonal S4 layer for 1D sequences."""
@@ -22,56 +23,44 @@ class S4DLayer(nn.Module):
         self.d_state = d_state
         
         # 1. Learned log-discretisation step (dt)
-        self.log_dt = mx.random.uniform(math.log(dt_min), math.log(dt_max), [d_model])
+        self.log_dt = nn.Parameter(torch.empty(d_model).uniform_(math.log(dt_min), math.log(dt_max)))
         
         # 2. Diagonal A matrix (complex)
         # S4D-Lin initialization: real part is -0.5, imag part is 0...N/2
-        # This creates a set of oscillators at different frequencies.
-        re_a = mx.full([d_model, d_state], -0.5)
-        im_a = mx.broadcast_to(mx.arange(d_state, dtype=mx.float32), (d_model, d_state))
-        self.a_real = re_a
-        self.a_imag = im_a
+        self.a_real = nn.Parameter(torch.full((d_model, d_state), -0.5))
+        self.a_imag = nn.Parameter(torch.arange(d_state, dtype=torch.float32).repeat(d_model, 1))
         
         # 3. Learned B and C (complex)
-        self.b_real = mx.random.normal([d_model, d_state]) * (d_state ** -0.5)
-        self.b_imag = mx.random.normal([d_model, d_state]) * (d_state ** -0.5)
-        self.c_real = mx.random.normal([d_model, d_state]) * (d_state ** -0.5)
-        self.c_imag = mx.random.normal([d_model, d_state]) * (d_state ** -0.5)
+        self.b_real = nn.Parameter(torch.randn(d_model, d_state) * (d_state ** -0.5))
+        self.b_imag = nn.Parameter(torch.randn(d_model, d_state) * (d_state ** -0.5))
+        self.c_real = nn.Parameter(torch.randn(d_model, d_state) * (d_state ** -0.5))
+        self.c_imag = nn.Parameter(torch.randn(d_model, d_state) * (d_state ** -0.5))
         
         # 4. Learned D (skip connection)
-        self.d = mx.ones([d_model])
+        self.d = nn.Parameter(torch.ones(d_model))
+        
+        self.to(DEVICE)
 
-    def _get_kernel(self, L: int) -> mx.array:
+    def _get_kernel(self, L: int) -> torch.Tensor:
         """Compute the convolution kernel K of length L."""
-        # dt: [H]
-        dt = mx.exp(self.log_dt)
+        dt = torch.exp(self.log_dt)
         
         # a, b, c: [H, N] complex
-        a = self.a_real + 1j * self.a_imag
-        b = self.b_real + 1j * self.b_imag
-        c = self.c_real + 1j * self.c_imag
+        a = torch.complex(self.a_real, self.a_imag)
+        b = torch.complex(self.b_real, self.b_imag)
+        c = torch.complex(self.c_real, self.c_imag)
         
-        # Discretize: A_bar = exp(A * dt), B_bar = (A_bar - I) * A^-1 * B
-        # For diagonal A, this is elementwise.
-        # Kernel K_k = C_bar * A_bar^k * B_bar
-        # Or more simply via the generating function in frequency domain.
-        
-        # We use the FFT-convolution approach:
-        # K = C * exp(A * dt * [0...L-1]) * B
-        # [H, N] * [H, L, N] * [H, N] -> [H, L]
-        
-        t = mx.arange(L, dtype=mx.float32) # [L]
+        t = torch.arange(L, dtype=torch.float32, device=DEVICE)
         
         # exponent: [H, L, N]
-        at = a[:, None, :] * dt[:, None, None] * t[None, :, None]
-        exp_at = mx.exp(at) # [H, L, N]
+        at = a.unsqueeze(1) * dt.unsqueeze(1).unsqueeze(2) * t.unsqueeze(0).unsqueeze(2)
+        exp_at = torch.exp(at) # [H, L, N]
         
         # kernel: [H, L]
-        # sum over state dimension N
-        k = mx.sum(c[:, None, :] * exp_at * b[:, None, :], axis=-1)
+        k = torch.sum(c.unsqueeze(1) * exp_at * b.unsqueeze(1), dim=-1)
         return k.real
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: [B, L, H] input sequence
@@ -84,15 +73,15 @@ class S4DLayer(nn.Module):
         k = self._get_kernel(L) # [H, L]
         
         # 2. FFT Convolution
-        # x_ft: [B, H, L_ft]
-        x_ft = mx.fft.rfft(x.transpose(0, 2, 1), axis=-1)
-        k_ft = mx.fft.rfft(k, n=L, axis=-1) # [H, L_ft]
+        x_transpose = x.transpose(1, 2) # [B, H, L]
+        x_ft = torch.fft.rfft(x_transpose, n=L, dim=-1)
+        k_ft = torch.fft.rfft(k, n=L, dim=-1) # [H, L_ft]
         
-        y_ft = x_ft * k_ft[None, :, :]
-        y = mx.fft.irfft(y_ft, n=L, axis=-1).transpose(0, 2, 1) # [B, L, H]
+        y_ft = x_ft * k_ft.unsqueeze(0)
+        y = torch.fft.irfft(y_ft, n=L, dim=-1).transpose(1, 2) # [B, L, H]
         
         # 3. Skip connection
-        return y + x * self.d[None, None, :]
+        return y + x * self.d.view(1, 1, -1)
 
 class S4NO1d(nn.Module):
     """State Space Neural Operator (S4NO) for 1-D operator learning."""
@@ -101,7 +90,7 @@ class S4NO1d(nn.Module):
         super().__init__()
         self.lift = nn.Linear(in_ch, hidden_dim)
         
-        self.layers = []
+        self.layers = nn.ModuleList()
         for _ in range(n_layers):
             self.layers.append(S4DLayer(hidden_dim, d_state))
             self.layers.append(nn.Linear(hidden_dim, hidden_dim))
@@ -110,15 +99,17 @@ class S4NO1d(nn.Module):
             
         self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
+        
+        self.to(DEVICE)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         B, N = u0.shape
-        grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-        x = mx.stack([u0, grid], axis=-1)
+        grid = torch.linspace(0.0, 1.0, N, device=DEVICE).unsqueeze(0).repeat(B, 1)
+        x = torch.stack([u0, grid], dim=-1)
         
         x = self.lift(x)
         for layer in self.layers:
             x = layer(x)
             
-        x = nn.gelu(self.proj1(x))
+        x = nn.functional.gelu(self.proj1(x))
         return self.proj2(x)[:, :, 0]

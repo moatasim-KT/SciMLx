@@ -16,17 +16,14 @@ class SpectralConv1d(nn.Module):
         self.out_ch = out_ch
         self.n_modes = n_modes
         scale = (in_ch * out_ch) ** -0.5
-        # PyTorch uses complex64 for complex weights
         self.weights = nn.Parameter(
             scale * torch.randn(n_modes, in_ch, out_ch, dtype=torch.complex64)
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, N, C = x.shape
-        # x: [B, N, C]
         x_ft = torch.fft.rfft(x, dim=1)
         
-        # Multiply relevant Fourier modes
         out_ft = torch.zeros(B, N // 2 + 1, self.out_ch, device=x.device, dtype=torch.complex64)
         out_ft[:, :self.n_modes, :] = torch.einsum("bmi,mio->bmo", x_ft[:, :self.n_modes, :], self.weights)
         
@@ -59,6 +56,67 @@ class FNO1d(nn.Module):
         B, N = u0.shape
         grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
         x = torch.stack([u0, grid], dim=-1)
+        x = self.lift(x)
+        for blk in self.blocks:
+            x = blk(x)
+        x = F.gelu(self.proj1(x))
+        return self.proj2(x).squeeze(-1)
+
+
+# ── 2D Spectral Components ────────────────────────────────────────────────────
+
+class SpectralConv2d(nn.Module):
+    """2-D Fourier spectral convolution."""
+
+    def __init__(self, in_ch: int, out_ch: int, n_modes1: int, n_modes2: int):
+        super().__init__()
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.n_modes1 = n_modes1
+        self.n_modes2 = n_modes2
+        scale = (in_ch * out_ch) ** -0.5
+        self.weights1 = nn.Parameter(scale * torch.randn(n_modes1, n_modes2, in_ch, out_ch, dtype=torch.complex64))
+        self.weights2 = nn.Parameter(scale * torch.randn(n_modes1, n_modes2, in_ch, out_ch, dtype=torch.complex64))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        B, N1, N2, C = x.shape
+        x_ft = torch.fft.rfft2(x, dim=(1, 2))
+        out_ft = torch.zeros(B, N1, N2 // 2 + 1, self.out_ch, device=x.device, dtype=torch.complex64)
+        
+        # Multiply relevant Fourier modes
+        out_ft[:, :self.n_modes1, :self.n_modes2, :] = \
+            torch.einsum("bnmi,nmio->bnmo", x_ft[:, :self.n_modes1, :self.n_modes2, :], self.weights1)
+        out_ft[:, -self.n_modes1:, :self.n_modes2, :] = \
+            torch.einsum("bnmi,nmio->bnmo", x_ft[:, -self.n_modes1:, :self.n_modes2, :], self.weights2)
+        
+        return torch.fft.irfft2(out_ft, s=(N1, N2), dim=(1, 2))
+
+
+class FNOBlock2d(nn.Module):
+    """2D FNO layer: spectral conv + pointwise linear + GELU."""
+    def __init__(self, channels: int, n_modes1: int, n_modes2: int):
+        super().__init__()
+        self.spec = SpectralConv2d(channels, channels, n_modes1, n_modes2)
+        self.w = nn.Linear(channels, channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.gelu(self.spec(x) + self.w(x))
+
+
+class FNO2d(nn.Module):
+    """Fourier Neural Operator for 2-D operator learning."""
+    def __init__(self, n_modes1: int, n_modes2: int, hidden_dim: int, n_layers: int, in_ch: int = 3):
+        super().__init__()
+        self.lift = nn.Linear(in_ch, hidden_dim)
+        self.blocks = nn.ModuleList([FNOBlock2d(hidden_dim, n_modes1, n_modes2) for _ in range(n_layers)])
+        self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
+        self.proj2 = nn.Linear(hidden_dim // 2, 1)
+
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        B, N1, N2 = u0.shape
+        grid1 = torch.linspace(0.0, 1.0, N1, device=u0.device).view(1, N1, 1).expand(B, N1, N2)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=u0.device).view(1, 1, N2).expand(B, N1, N2)
+        x = torch.stack([u0, grid1, grid2], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
@@ -99,5 +157,3 @@ class RFNO1d(nn.Module):
             x = blk(x)
         x = F.gelu(self.proj1(x))
         return self.proj2(x).squeeze(-1)
-
-# TODO: Add 2D FNO implementations

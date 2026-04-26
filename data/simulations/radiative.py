@@ -9,7 +9,9 @@ Output: [B, N, N]
 """
 
 import math
+import torch
 import numpy as np
+from core.device import DEVICE
 from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
@@ -25,31 +27,37 @@ METADATA = {
     "notes":    "Promotes hybrids that embed angular attention.",
 }
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
-    return _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
+    u0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
+    return torch.from_numpy(u0).to(DEVICE)
 
-def solve_batch(u0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
+def solve_batch(u0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
+    if isinstance(u0, np.ndarray):
+        u0 = torch.from_numpy(u0).to(DEVICE)
+    else:
+        u0 = u0.to(DEVICE)
+
     B, N, _ = u0.shape
-    u = u0.astype(np.float64)
+    u = u0.to(torch.float64)
     # mock logic: 1D advection in x, scattering/blurring in θ
-    k_int = np.fft.fftfreq(N, d=1.0 / N)
-    kx, ktheta = np.meshgrid(k_int, k_int, indexing="ij")
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    kx, ktheta = torch.meshgrid(k_int, k_int, indexing="ij")
     
     # dt advection
     steps = 10
     dt = T / steps
     for _ in range(steps):
-        u_hat = np.fft.fft2(u, axes=(1, 2))
+        u_hat = torch.fft.fft2(u, dim=(1, 2))
         
         # c * u_x + scattering in theta
         # u_theta_theta acts as blurring
         op = -0.5 * 1j * kx - 0.1 * (ktheta**2)
         u_hat = u_hat + dt * op * u_hat
-        u = np.fft.ifft2(u_hat, axes=(1, 2)).real
+        u = torch.fft.ifft2(u_hat, dim=(1, 2)).real
 
-    return u.astype(np.float32)
+    return u.to(torch.float32)
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)

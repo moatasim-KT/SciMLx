@@ -16,7 +16,9 @@ References:
 """
 
 import math
+import torch
 import numpy as np
+from core.device import DEVICE
 
 # ── Physical constants ─────────────────────────────────────────────────────────
 
@@ -40,139 +42,133 @@ METADATA = {
 
 # ── IC generator ───────────────────────────────────────────────────────────────
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
-    """Generate random smooth ICs for compressible Euler on [0, 2π).
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
+    """Generate random smooth ICs for compressible Euler on [0, 2π)."""
+    x = 2.0 * math.pi * torch.arange(N, dtype=torch.float64, device=DEVICE) / N
 
-    Returns float32 array of shape [n, N, 3] with channels (ρ, u, p).
-    Amplitudes chosen for smooth subsonic flow (no shocks at T=1).
-    """
-    x = 2.0 * math.pi * np.arange(N, dtype=np.float64) / N
-
-    def _fourier(n_modes: int, amp: float) -> np.ndarray:
-        k       = np.arange(1, n_modes + 1, dtype=np.float64)
+    def _fourier(n_modes: int, amp: float) -> torch.Tensor:
+        k       = torch.arange(1, n_modes + 1, dtype=torch.float64, device=DEVICE)
         decay   = k ** -1.5
-        cos_c   = rng.randn(n, n_modes) * decay * amp
-        sin_c   = rng.randn(n, n_modes) * decay * amp
+        cos_c   = torch.from_numpy(rng.randn(n, n_modes)).to(DEVICE) * decay * amp
+        sin_c   = torch.from_numpy(rng.randn(n, n_modes)).to(DEVICE) * decay * amp
         angles  = k[:, None] * x[None, :]      # [n_modes, N]
-        return (cos_c @ np.cos(angles) + sin_c @ np.sin(angles))  # [n, N]
+        return (cos_c @ torch.cos(angles) + sin_c @ torch.sin(angles))  # [n, N]
 
-    rho = np.clip(1.0 + _fourier(8, 0.15), 0.4, 3.0)
+    rho = torch.clamp(1.0 + _fourier(8, 0.15), 0.4, 3.0)
     u   = _fourier(8, 0.10)
-    p   = np.clip(1.0 + _fourier(8, 0.12), 0.2, 3.0)
+    p   = torch.clamp(1.0 + _fourier(8, 0.12), 0.2, 3.0)
 
-    return np.stack([rho, u, p], axis=-1).astype(np.float32)  # [n, N, 3]
+    return torch.stack([rho, u, p], dim=-1).to(torch.float32)  # [n, N, 3]
 
 
 # ── Conservative ↔ primitive conversions ──────────────────────────────────────
 
-def _prim2cons(prims: np.ndarray) -> np.ndarray:
+def _prim2cons(prims: torch.Tensor) -> torch.Tensor:
     """(ρ, u, p) → (ρ, ρu, E).  prims: [..., 3]"""
     rho, u, p = prims[..., 0], prims[..., 1], prims[..., 2]
-    return np.stack([rho,
+    return torch.stack([rho,
                      rho * u,
-                     p / (GAMMA - 1.0) + 0.5 * rho * u**2], axis=-1)
+                     p / (GAMMA - 1.0) + 0.5 * rho * u**2], dim=-1)
 
 
-def _cons2prim(cons: np.ndarray) -> np.ndarray:
+def _cons2prim(cons: torch.Tensor) -> torch.Tensor:
     """(ρ, ρu, E) → (ρ, u, p).  cons: [..., 3]"""
-    rho = np.maximum(cons[..., 0], 1e-8)
+    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
     u   = cons[..., 1] / rho
     E   = cons[..., 2]
-    p   = np.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), 1e-8)
-    return np.stack([rho, u, p], axis=-1)
+    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    return torch.stack([rho, u, p], dim=-1)
 
 
-def _flux(cons: np.ndarray) -> np.ndarray:
+def _flux(cons: torch.Tensor) -> torch.Tensor:
     """Physical Euler flux F(U).  cons: [..., 3] → [..., 3]"""
-    rho = np.maximum(cons[..., 0], 1e-8)
+    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
     u   = cons[..., 1] / rho
     E   = cons[..., 2]
-    p   = np.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), 1e-8)
-    return np.stack([rho * u,
+    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    return torch.stack([rho * u,
                      rho * u**2 + p,
-                     (E + p) * u], axis=-1)
+                     (E + p) * u], dim=-1)
 
 
 # ── HLL Riemann solver ─────────────────────────────────────────────────────────
 
-def _hll_flux(UL: np.ndarray, UR: np.ndarray) -> np.ndarray:
+def _hll_flux(UL: torch.Tensor, UR: torch.Tensor) -> torch.Tensor:
     """HLL numerical flux at cell interfaces.  UL, UR: [B, N, 3]"""
     primL = _cons2prim(UL)
     primR = _cons2prim(UR)
     rhoL, uL, pL = primL[..., 0], primL[..., 1], primL[..., 2]
     rhoR, uR, pR = primR[..., 0], primR[..., 1], primR[..., 2]
 
-    aL = np.sqrt(GAMMA * pL / rhoL)
-    aR = np.sqrt(GAMMA * pR / rhoR)
+    aL = torch.sqrt(GAMMA * pL / rhoL)
+    aR = torch.sqrt(GAMMA * pR / rhoR)
 
-    sL = np.minimum(uL - aL, uR - aR)             # left signal speed
-    sR = np.maximum(uL + aL, uR + aR)             # right signal speed
+    sL = torch.minimum(uL - aL, uR - aR)             # left signal speed
+    sR = torch.maximum(uL + aL, uR + aR)             # right signal speed
 
     FL, FR  = _flux(UL), _flux(UR)
-    denom   = np.maximum(sR - sL, 1e-10)[..., None]
+    denom   = torch.maximum(sR - sL, torch.tensor(1e-10, device=DEVICE, dtype=sR.dtype))[..., None]
     F_hll   = (sR[..., None] * FL - sL[..., None] * FR
                + sL[..., None] * sR[..., None] * (UR - UL)) / denom
 
-    return np.where(sL[..., None] >= 0, FL,
-           np.where(sR[..., None] <= 0, FR, F_hll))
+    mask_L = (sL >= 0)[..., None]
+    mask_R = (sR <= 0)[..., None]
+    
+    return torch.where(mask_L, FL, torch.where(mask_R, FR, F_hll))
 
 
 # ── MUSCL reconstruction + RHS ────────────────────────────────────────────────
 
-def _minmod2(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    return np.where(a * b <= 0, 0.0, np.where(np.abs(a) < np.abs(b), a, b))
+def _minmod2(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    return torch.where(a * b <= 0, torch.zeros_like(a), torch.where(torch.abs(a) < torch.abs(b), a, b))
 
 
-def _rhs(U: np.ndarray, dx: float) -> np.ndarray:
+def _rhs(U: torch.Tensor, dx: float) -> torch.Tensor:
     """Conservative finite-volume RHS: −(F_{i+1/2} − F_{i−1/2}) / dx."""
-    Um1   = np.roll(U, 1, axis=1)
-    Up1   = np.roll(U, -1, axis=1)
+    Um1   = torch.roll(U, 1, dims=1)
+    Up1   = torch.roll(U, -1, dims=1)
     slope = _minmod2(U - Um1, Up1 - U)
 
     UL    = U + 0.5 * slope                       # left  state at face i+1/2
-    UR    = np.roll(U - 0.5 * slope, -1, axis=1)  # right state at face i+1/2
+    UR    = torch.roll(U - 0.5 * slope, -1, dims=1)  # right state at face i+1/2
 
     F     = _hll_flux(UL, UR)
-    return -(F - np.roll(F, 1, axis=1)) / dx
+    return -(F - torch.roll(F, 1, dims=1)) / dx
 
 
 # ── Batch solver ──────────────────────────────────────────────────────────────
 
-def solve_batch(prims0: np.ndarray,
+def solve_batch(prims0: torch.Tensor | np.ndarray,
                 T: float     = T_FINAL,
-                n_steps: int = N_STEPS) -> np.ndarray:
-    """Evolve Euler 1D from t=0 to T.
+                n_steps: int = N_STEPS) -> torch.Tensor:
+    """Evolve Euler 1D from t=0 to T."""
+    if isinstance(prims0, np.ndarray):
+        prims0 = torch.from_numpy(prims0).to(DEVICE)
+    else:
+        prims0 = prims0.to(DEVICE)
 
-    Args:
-        prims0: [B, N, 3] float32 — initial (ρ, u, p)
-        T:      final time
-        n_steps: number of SSP-RK2 steps (fixed dt = T / n_steps)
-
-    Returns:
-        [B, N, 3] float32 — final (ρ, u, p)
-    """
     B, N, _ = prims0.shape
     dx = 2.0 * math.pi / N
     dt = T / n_steps
 
-    U = _prim2cons(prims0.astype(np.float64))
+    U = _prim2cons(prims0.to(torch.float64))
 
     for _ in range(n_steps):
         # SSP-RK2 (Shu-Osher)
         L0 = _rhs(U, dx)
         U1 = U + dt * L0
         # positivity guard
-        U1[..., 0] = np.maximum(U1[..., 0], 1e-8)
+        U1[..., 0] = torch.maximum(U1[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=U1.dtype))
         L1 = _rhs(U1, dx)
         U  = 0.5 * (U + U1 + dt * L1)
-        U[..., 0] = np.maximum(U[..., 0], 1e-8)   # density floor
+        U[..., 0] = torch.maximum(U[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=U.dtype))   # density floor
 
-    return _cons2prim(U).astype(np.float32)
+    return _cons2prim(U).to(torch.float32)
 
 
 # ── Dataset helper ────────────────────────────────────────────────────────────
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng    = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)
