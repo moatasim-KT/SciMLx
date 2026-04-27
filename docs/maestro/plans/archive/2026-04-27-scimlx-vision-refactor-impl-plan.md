@@ -211,7 +211,7 @@ Finalize the test hierarchy migration, perform cross-backend parity checks, and 
 | 2 | `core/units.py` | 2 | Refactored SciMLTensor. |
 | 3 | `core/lie_math.py` | 2 | Lie Algebra foundations. |
 | 4 | `core/scaffold.py` | 3 | Dual-backend stub templates. |
-| 5 | `core/spectral_governor.py` | 4 | Middleware for frequency-aware loss. |
+| 5 | `core/spectral_governor.py" | 4 | Middleware for frequency-aware loss. |
 | 6 | `core/oracle_constants.py` | 4 | Dimensional analysis agent. |
 | 7 | `models/gato.py` | 5 | Geometry-aware operator implementation. |
 

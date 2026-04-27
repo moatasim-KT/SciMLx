@@ -1,109 +1,32 @@
-"""Multi-Fidelity Fusion (MFF) for combining low-fi and high-fi data."""
+"""
+Multi-Fidelity Fusion (MFF) Dispatcher.
+Supports Torch and MLX backends.
+"""
 
-import numpy as np
+from typing import Any, Optional
 
-try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+def MultiFidelityFusion(low_fi_model: Any, hi_fi_net: Any, backend: str = 'torch', **kwargs):
+    """
+    Factory function for MultiFidelityFusion.
+    """
+    if backend == 'torch':
+        from .mff_torch import MultiFidelityFusion as MFFTorch
+        return MFFTorch(low_fi_model, hi_fi_net, **kwargs)
+    elif backend == 'mlx':
+        from .mff_mlx import MultiFidelityFusion as MFFMLX
+        return MFFMLX(low_fi_model, hi_fi_net, **kwargs)
+    else:
+        raise ValueError(f"Unsupported backend: {backend}")
 
-try:
-    import mlx.core as mx
-    import mlx.nn as mnn
-    HAS_MLX = True
-except ImportError:
-    HAS_MLX = False
-
-if HAS_TORCH:
-    class MultiFidelityFusionTorch(nn.Module):
-        """
-        Torch implementation of Multi-Fidelity Fusion.
-        Learns to enhance a low-fidelity prediction using a high-fidelity network.
-        """
-        def __init__(self, low_fi_model: nn.Module, hi_fi_net: nn.Module):
-            super().__init__()
-            self.low_fi_model = low_fi_model
-            # Typically low-fi model is frozen
-            for param in self.low_fi_model.parameters():
-                param.requires_grad = False
-            self.hi_fi_net = hi_fi_net
-            
-        def forward(self, x):
-            """
-            x: [B, N, C] input features
-            """
-            with torch.no_grad():
-                y_lo = self.low_fi_model(x)
-                
-            # Ensure y_lo has same number of dims as x to concatenate
-            if y_lo.ndim == x.ndim - 1:
-                y_lo = y_lo.unsqueeze(-1)
-                
-            # Concatenate original features and low-fidelity prediction
-            x_hi = torch.cat([x, y_lo], dim=-1)
-            return self.hi_fi_net(x_hi)
-
-    class ResidualMFFTorch(nn.Module):
-        """
-        Torch implementation of Residual Multi-Fidelity Fusion.
-        Learns a correction delta: y_hi = y_lo + delta(x, y_lo)
-        """
-        def __init__(self, low_fi_model: nn.Module, delta_net: nn.Module):
-            super().__init__()
-            self.low_fi_model = low_fi_model
-            for param in self.low_fi_model.parameters():
-                param.requires_grad = False
-            self.delta_net = delta_net
-            
-        def forward(self, x):
-            with torch.no_grad():
-                y_lo = self.low_fi_model(x)
-                
-            if y_lo.ndim == x.ndim - 1:
-                y_lo_input = y_lo.unsqueeze(-1)
-            else:
-                y_lo_input = y_lo
-                
-            feat = torch.cat([x, y_lo_input], dim=-1)
-            delta = self.delta_net(feat)
-            
-            if delta.shape == y_lo.shape:
-                return y_lo + delta
-            return y_lo + delta.squeeze(-1)
-else:
-    class MultiFidelityFusionTorch(object):
-        def __init__(self, *args, **kwargs):
-            raise ImportError("Torch is not installed.")
-    class ResidualMFFTorch(object):
-        def __init__(self, *args, **kwargs):
-            raise ImportError("Torch is not installed.")
-
-if HAS_MLX:
-    class MultiFidelityFusionMLX(mnn.Module):
-        """
-        MLX implementation of Multi-Fidelity Fusion.
-        """
-        def __init__(self, low_fi_model, hi_fi_net):
-            super().__init__()
-            self.low_fi_model = low_fi_model
-            self.hi_fi_net = hi_fi_net
-            
-        def __call__(self, x):
-            """
-            x: [B, N, C]
-            """
-            # MLX stop_gradient is equivalent to torch.no_grad() for specific variables
-            y_lo = mx.stop_gradient(self.low_fi_model(x))
-            
-            if y_lo.ndim == x.ndim - 1:
-                y_lo = mx.expand_dims(y_lo, -1)
-                
-            x_hi = mx.concatenate([x, y_lo], axis=-1)
-            return self.hi_fi_net(x_hi)
-else:
-    class MultiFidelityFusionMLX(object):
-        def __init__(self, *args, **kwargs):
-            raise ImportError("MLX is not installed.")
+def ResidualMFF(low_fi_model: Any, delta_net: Any, backend: str = 'torch', **kwargs):
+    """
+    Factory function for ResidualMFF.
+    """
+    if backend == 'torch':
+        from .mff_torch import ResidualMFF as RMFFTorch
+        return RMFFTorch(low_fi_model, delta_net, **kwargs)
+    elif backend == 'mlx':
+        from .mff_mlx import ResidualMFF as RMFFMLX
+        return RMFFMLX(low_fi_model, delta_net, **kwargs)
+    else:
+        raise ValueError(f"Unsupported backend: {backend}")

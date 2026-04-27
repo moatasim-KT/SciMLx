@@ -1,5 +1,9 @@
 import numpy as np
-import torch
+import pytest
+
+# Skip the entire module if torch is not installed
+torch = pytest.importorskip("torch")
+
 from core.dp_federated import FederatedAggregator, DPSGDTrainer
 
 def test_federated_avg_agnostic():

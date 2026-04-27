@@ -20,6 +20,8 @@ from .ssno import SSNO1d
 from .mem_no import MemNO1d
 from .kan import KAN_FNO
 from .chebyshev_kan import cPIKAN_FNO
+from .gato import GATO
+from .mff import MultiFidelityFusion, ResidualMFF
 
 __all__ = [
     "FNO1d", "FNO2d", "SpectralConv1d", "SpectralConv2d", "RFNO1d", "RFNO2d", "UNO1d", "UNO2d",
@@ -41,5 +43,8 @@ __all__ = [
     "SSNO1d",
     "MemNO1d",
     "KAN_FNO",
-    "cPIKAN_FNO"
+    "cPIKAN_FNO",
+    "GATO",
+    "MultiFidelityFusion",
+    "ResidualMFF"
 ]

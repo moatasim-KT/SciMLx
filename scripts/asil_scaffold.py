@@ -96,7 +96,7 @@ def main():
     proposal_path = Path(args.proposal)
     data = parse_proposal(proposal_path)
 
-    print(f"Scaffolding model '{data['registry_key']}' for proposal '{data['title']}' using {FRAMEWORK.upper()} backend...")
+    print(f"Scaffolding model '{data['registry_key']}' for proposal '{data['title']}' using Dual-Backend (Torch & MLX)...")
 
     # 1. Generate stubs
     is_2d = "_2d" in data['target_pde'].lower() or "2d" in data['target_pde'].lower()
@@ -108,7 +108,7 @@ def main():
         model_file = REPO_ROOT / "models" / f"{data['registry_key'].lower()}_{fw}.py"
         model_file.write_text(code)
         model_files[fw] = model_file
-        print(f"Generated {fw} stub at {model_file}")
+        print(f"  Generated {fw.upper()} stub at {model_file.name}")
 
     # 2. Validate both, register once
     if not HAS_TORCH:
@@ -117,13 +117,13 @@ def main():
     for fw, model_file in model_files.items():
         ok, report = gate.validate(data['registry_key'], str(model_file))
         status = "PASSED" if ok else "FAILED"
-        print(f"Validation {status} for {fw} backend: {report.get('warning', report.get('error', 'OK'))}")
+        print(f"  Validation {status} for {fw.upper()} backend: {report.get('warning', report.get('error', 'OK'))}")
 
     # Register using the one that matches current framework (dynamic backend support handles the rest)
     preferred_fw = FRAMEWORK if FRAMEWORK in model_files else "torch"
     preferred_file = model_files[preferred_fw]
     gate.register_and_queue(data['registry_key'], str(preferred_file), benchmarks=[data['target_pde']])
-    print(f"Registered {data['registry_key']} in registry and experiments.yaml (Dynamic Dual-Backend)")
+    print(f"Successfully registered {data['registry_key']} in registry and experiments.yaml (Preferred: {preferred_fw.upper()})")
 
     # 3. Update Brain
     update_research_brain(data)

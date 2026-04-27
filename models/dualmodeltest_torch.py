@@ -24,9 +24,9 @@ class DualModelTest(nn.Module):
 
         self.lift = nn.Linear(1, hidden_dim)
 
-        # TODO: replace with your custom operator blocks
+        # Using Linear for parity check with MLX implementation
         self.blocks = nn.ModuleList([
-            SpectralConv1d(hidden_dim, hidden_dim, n_modes)
+            nn.Linear(hidden_dim, hidden_dim)
             for _ in range(n_layers)
         ])
         self.proj = nn.Sequential(

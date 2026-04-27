@@ -18,20 +18,47 @@ except ImportError:
 # Create a shared unit registry
 ureg = pint.UnitRegistry()
 
-class SciMLTensor:
+class BackendGeneric:
+    """
+    A generic wrapper that delegates operations to the underlying 
+    framework-specific tensor (Torch or MLX).
+    """
+    def __init__(self, data: Any):
+        self.data = to_array(data)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.data})"
+
+    def __getattr__(self, name):
+        """Delegate missing attributes/methods to the underlying tensor."""
+        return getattr(self.data, name)
+
+    # Basic arithmetic delegation
+    def __add__(self, other):
+        other_data = other.data if isinstance(other, BackendGeneric) else other
+        return self.__class__(self.data + other_data)
+
+    def __sub__(self, other):
+        other_data = other.data if isinstance(other, BackendGeneric) else other
+        return self.__class__(self.data - other_data)
+
+    def __mul__(self, other):
+        other_data = other.data if isinstance(other, BackendGeneric) else other
+        return self.__class__(self.data * other_data)
+
+    def __truediv__(self, other):
+        other_data = other.data if isinstance(other, BackendGeneric) else other
+        return self.__class__(self.data / other_data)
+
+class SciMLTensor(BackendGeneric):
     """A wrapper for framework-native tensors that maintains physical units."""
     
     def __init__(self, data: Any, units: Union[str, pint.Unit]):
+        super().__init__(data)
         if isinstance(units, str):
             self.units = ureg(units).units
         else:
             self.units = units
-        
-        # Ensure data is a framework-native array/tensor
-        if not ( (torch and torch.is_tensor(data)) or (mx and isinstance(data, mx.array)) ):
-            self.data = to_array(data)
-        else:
-            self.data = data
 
     def __repr__(self):
         return f"SciMLTensor({self.data}, units={self.units})"
@@ -45,7 +72,6 @@ class SciMLTensor:
         if not isinstance(other, SciMLTensor):
             raise TypeError("Can only add SciMLTensor to SciMLTensor")
         if self.units != other.units:
-            # Try to convert other to self.units
             other = other.to(str(self.units))
         return SciMLTensor(self.data + other.data, self.units)
 
@@ -60,28 +86,25 @@ class SciMLTensor:
         if isinstance(other, (int, float)):
             return SciMLTensor(self.data * other, self.units)
         
-        # Check if other is a native tensor
-        is_native = (torch and torch.is_tensor(other)) or (mx and isinstance(other, mx.array))
-        if is_native:
-            return SciMLTensor(self.data * other, self.units)
-            
         if isinstance(other, SciMLTensor):
             new_units = self.units * other.units
             return SciMLTensor(self.data * other.data, new_units)
-        return NotImplemented
+            
+        # Fallback to BackendGeneric multiplication (e.g. with raw native tensors)
+        res = super().__mul__(other)
+        return SciMLTensor(res.data, self.units)
 
     def __truediv__(self, other):
         if isinstance(other, (int, float)):
             return SciMLTensor(self.data / other, self.units)
             
-        is_native = (torch and torch.is_tensor(other)) or (mx and isinstance(other, mx.array))
-        if is_native:
-            return SciMLTensor(self.data / other, self.units)
-            
         if isinstance(other, SciMLTensor):
             new_units = self.units / other.units
             return SciMLTensor(self.data / other.data, new_units)
-        return NotImplemented
+
+        # Fallback to BackendGeneric division
+        res = super().__truediv__(other)
+        return SciMLTensor(res.data, self.units)
 
 def check_consistency(a: SciMLTensor, b: SciMLTensor):
     """Check if two tensors have compatible units."""

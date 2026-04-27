@@ -109,16 +109,18 @@ tags: ["Architecture", "Hybridization"]
     # --- ASSERTIONS ---
     
     # 1. Model file creation (Dual backend files created)
-    from core.device import FRAMEWORK
-    model_file = tmp_path / "models" / f"hybridmambafno_{FRAMEWORK.lower()}.py"
-    assert model_file.exists(), f"Model file {model_file} should have been created"
-    assert "class HybridMambaFNO" in model_file.read_text()
+    torch_file = tmp_path / "models" / "hybridmambafno_torch.py"
+    mlx_file = tmp_path / "models" / "hybridmambafno_mlx.py"
+    assert torch_file.exists(), "Torch model stub should have been created"
+    assert mlx_file.exists(), "MLX model stub should have been created"
+    assert "class HybridMambaFNO" in torch_file.read_text()
     
     # 2. Registration in research_plugins.py
     plugins_content = (tmp_path / "core" / "research_plugins.py").read_text()
     # Refactored uses lazy registration with format string for FRAMEWORK
-    expected_reg = 'MODEL_REGISTRY.register_lazy("HybridMambaFNO", f"hybridmambafno_{FRAMEWORK.lower()}", "HybridMambaFNO")'
-    assert 'HybridMambaFNO' in plugins_content
+    # Note: we check for the presence of the registry key and the lazy registration pattern
+    assert 'MODEL_REGISTRY.register_lazy("HybridMambaFNO"' in plugins_content
+    assert '{FRAMEWORK.lower()}' in plugins_content
     
     # 3. Queue in experiments.yaml
     with open(tmp_path / "experiments.yaml", "r") as f:

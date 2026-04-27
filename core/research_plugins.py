@@ -97,6 +97,8 @@ def _register_defaults():
     from data.benchmarks_ext import EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
 
     # ── Model Registrations (Lazy) ───────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("TestNet", f"testnet_{FRAMEWORK.lower()}", "TestNet")
+
     MODEL_REGISTRY.register_lazy("DualModelTest", f"dualmodeltest_{FRAMEWORK.lower()}", "DualModelTest")
 
     MODEL_REGISTRY.register_lazy("MambaFNO", "mambafno", "MambaFNO")

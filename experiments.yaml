@@ -7543,3 +7543,11 @@
   n_modes: 16
   budget_s: 600
   priority: 3
+- name: testnet_burge_baseline
+  benchmark: burgers_1d
+  model: TestNet
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3

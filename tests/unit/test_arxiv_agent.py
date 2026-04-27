@@ -78,3 +78,40 @@ def test_arxiv_agent_generate_model_code(mock_model_class):
     code = agent.generate_model_code(paper_info, framework='torch')
     
     assert "class TestModel" in code
+
+def test_arxiv_agent_get_proposals(tmp_path):
+    from core import arxiv_agent
+    import yaml
+    
+    # Mock PAPERS_DIR
+    original_papers_dir = arxiv_agent.PAPERS_DIR
+    arxiv_agent.PAPERS_DIR = tmp_path
+    
+    try:
+        # Create a mock paper yaml
+        paper_data = {
+            'id': 'test-paper',
+            'suggested_experiments': [
+                {
+                    'name': 'exp1',
+                    'benchmark': 'burgers_1d',
+                    'model': 'FNO',
+                    'hidden_dim': 64,
+                    'n_layers': 4,
+                    'n_modes': 16,
+                    'rationale': 'test'
+                }
+            ]
+        }
+        with open(tmp_path / "test-paper.yaml", 'w') as f:
+            yaml.dump(paper_data, f)
+            
+        agent = ArXivAgent()
+        proposals = agent.get_proposals()
+        
+        assert len(proposals) == 1
+        assert proposals[0]['name'] == 'exp1'
+        assert proposals[0]['benchmark'] == 'burgers_1d'
+        assert proposals[0]['paper_ref'] == 'test-paper'
+    finally:
+        arxiv_agent.PAPERS_DIR = original_papers_dir

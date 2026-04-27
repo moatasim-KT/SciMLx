@@ -6,24 +6,29 @@ Deep technical reference for the SciMLx autonomous research loop components, opt
 
 ## 3-Tier Scientific Implementation (SI) Layer
 
-SciMLx utilizes a modular SI layer in `core/` to decouple scientific logic from underlying hardware and compute frameworks.
+SciMLx utilizes a modular SI layer in `core/` to decouple scientific logic from underlying hardware and compute frameworks. The layer is organized into three tiers:
 
-### Tier 1: Hardware Agnostic Tier (`device.py`)
-Provides a unified abstraction for tensor operations. It automatically detects the best available backend (CUDA, MLX, MPS, or CPU) and provides a single API for:
-- **`to_array()`**: Framework-agnostic tensor creation.
-- **`to_device()`**: Unified device placement.
-- **Backend Switching**: Controlled via the `SCIMLX_BACKEND` environment variable.
+### Tier 1: Foundations
+Core math and device abstractions that provide a stable, hardware-agnostic base.
+- **`device.py` (Hardware Agnostic Dispatch)**: Automatically detects the best available backend (CUDA, MLX, MPS, or CPU) and provides a single API for framework-agnostic tensor creation (`to_array()`) and device placement (`to_device()`).
+- **`units.py` (`SciMLTensor`)**: Ensures mathematical and physical groundedness by performing dimensional analysis on every operation using the `pint` unit registry.
+- **`lie_math.py` & `heat_kernels.py` (Geometric Math)**: Implements Lie Algebra foundations and mesh-based heat kernel signatures for geometry-aware operators.
+- **`oracle_constants.py` (Buckingham Pi Theorem)**: Identifies dimensionless groups (like Reynolds or Péclet numbers) to aid in feature discovery and similarity analysis.
 
-### Tier 2: Physical Tier (`units.py` & `oracle_constants.py`)
-Ensures that the "Sci" in SciML is mathematically and physically grounded.
-- **Unit Registry**: Uses `pint` to manage physical units (m, s, kg, etc.).
-- **`SciMLTensor`**: A wrapper that performs dimensional analysis on every operation, raising errors for physically impossible calculations (e.g., adding meters to seconds).
-- **Buckingham Pi Theorem**: The `OracleOfConstants` identifies dimensionless groups (like Reynolds or Péclet numbers) to aid in feature discovery and similarity analysis.
+### Tier 2: Models
+Production-grade neural operators and the infrastructure to build them.
+- **Dual-Backend Operators**: All new models are implemented with both PyTorch (`_torch.py`) and MLX (`_mlx.py`) backends, managed by a central dispatcher (e.g., `models/mff.py`).
+- **`scaffold.py` (Automated Scaffolding)**: Generates dual-backend model stubs from research proposals, ensuring feature parity across hardware.
+- **`losses.py` (Physics-Informed Operators)**: Framework-agnostic implementations of Sobolev ($H^1$, $H^2$) and Spectral losses that penalize unphysical oscillations.
+- **`spectral_governor.py` (Frequency Governance)**: Dynamically monitors the Fourier spectrum of residuals across backends and adjusts loss weighting to ensure high-frequency features are captured.
 
-### Tier 3: Mathematical Operator Tier (`losses.py` & `spectral_governor.py`)
-High-level scientific operators that guide the training process.
-- **Physics-Informed Losses**: Implementations of Sobolev ($H^1$, $H^2$) and Spectral losses that penalize unphysical oscillations.
-- **Spectral Bias Governor**: Dynamically monitors the Fourier spectrum of residuals across backends and adjusts loss weighting to ensure high-frequency features are captured.
+### Tier 3: Production
+Systems for scaling, deploying, and automating the research cycle.
+- **`deployment.py`**: Integration with Google Cloud Platform (Vertex AI, Compute Engine) for serverless GPU training.
+- **`model_versioning.py`**: A centralized model registry and lineage tracking system for managing champion models.
+- **`hpo.py` (Bayesian Optimization)**: Automated hyperparameter search that adapts to hardware-specific constraints.
+- **`dp_federated.py` (Differential Privacy)**: Logic for secure, privacy-preserving federated training of scientific models.
+- **`arxiv_agent.py` (ASIL Pipeline)**: Orchestrates the Agentic Scientist Ideation Loop, from literature review to automated model scaffolding.
 
 ---
 

@@ -99,9 +99,13 @@ class ArXivAgent:
         benchmarks:
           benchmark_name: {{ reported_val_l2_rel: float }}
         suggested_experiments:
-          - name: (experiment_name)
+          - name: (unique_experiment_name)
+            benchmark: (benchmark_key, e.g., burgers_1d, ns_2d)
+            model: (model_key, e.g., FNO, TFNO)
+            hidden_dim: (int)
+            n_layers: (int)
+            n_modes: (int)
             rationale: (short explanation of why to run this)
-            expected: (expected range of l2_rel)
         
         If the paper is not relevant to Neural Operators, PINNs, or SciML, return 'IRRELEVANT'.
         """
@@ -122,6 +126,41 @@ class ArXivAgent:
         except Exception as e:
             print(f"Error distilling paper {paper_info['id']}: {e}")
             return None
+
+    def get_proposals(self) -> List[Dict[str, Any]]:
+        """
+        Read distilled papers from registry and return a list of proposed experiments.
+        
+        Returns:
+            List of dictionaries compatible with ExperimentConfig.
+        """
+        proposals = []
+        if not PAPERS_DIR.exists():
+            return []
+            
+        for yaml_path in PAPERS_DIR.glob("*.yaml"):
+            try:
+                with open(yaml_path, 'r') as f:
+                    data = yaml.safe_load(f)
+                    paper_id = data.get('id', yaml_path.stem)
+                    
+                    for exp in data.get('suggested_experiments', []):
+                        # Ensure basic fields exist
+                        if all(k in exp for k in ('benchmark', 'model', 'hidden_dim', 'n_layers')):
+                            proposals.append({
+                                'name': exp.get('name'),
+                                'benchmark': exp.get('benchmark'),
+                                'model': exp.get('model'),
+                                'hidden_dim': int(exp.get('hidden_dim', 64)),
+                                'n_layers': int(exp.get('n_layers', 4)),
+                                'n_modes': int(exp.get('n_modes', 16)),
+                                'rationale': exp.get('rationale'),
+                                'paper_ref': paper_id,
+                                'source': 'arxiv'
+                            })
+            except Exception as e:
+                print(f"Error reading {yaml_path}: {e}")
+        return proposals
 
     def generate_model_code(self, paper_info: Dict[str, Any], framework: str = FRAMEWORK) -> Optional[str]:
         """

@@ -51,6 +51,19 @@ def test_mutual_information_score():
     assert mi_high > 0
     assert mi_low >= 0
 
+def test_mutual_information_score_class():
+    from core.oracle_constants import MutualInformationScore
+    mi_scorer = MutualInformationScore(bins=10)
+    
+    x = np.linspace(0, 10, 100)
+    y = 2 * x + np.random.normal(0, 0.1, 100)
+    
+    score1 = mi_scorer.score(x, y)
+    score2 = mi_scorer(x, y) # Test __call__
+    
+    assert score1 == score2
+    assert score1 > 0
+
 def test_oracle_init_error():
     with pytest.raises(ValueError):
         OracleOfConstants(['a', 'b'], np.array([[1, 0]]))

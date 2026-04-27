@@ -12,11 +12,12 @@ from core.device import DEVICE, FRAMEWORK
 
 # ── Stub templates ────────────────────────────────────────────────────────────
 
-_STUB_TEMPLATE = '''"""
+TORCH_TEMPLATE = '''"""
 {name} — SciML Neural Operator (PyTorch)
 
 Auto-generated stub by model_scaffold.py.
 Base architecture: {base}
+Notes: {notes}
 """
 
 import torch
@@ -26,7 +27,7 @@ from .fno import SpectralConv1d
 
 class {name}(nn.Module):
     """
-    {name}: extend description here.
+    {name}: {notes}
     """
 
     def __init__(self, n_modes: int = 16, hidden_dim: int = 64,
@@ -67,8 +68,9 @@ class {name}(nn.Module):
         return out
 '''
 
-_STUB_TEMPLATE_2D = '''"""
+TORCH_2D_TEMPLATE = '''"""
 {name}2d — 2D SciML Neural Operator (PyTorch auto-generated stub)
+Notes: {notes}
 """
 
 import torch
@@ -100,18 +102,19 @@ class {name}2d(nn.Module):
         return self.proj(h).squeeze(-1).view(B, N, N)
 '''
 
-_MLX_STUB_TEMPLATE = '''"""
-{{name}} — SciML Neural Operator (MLX)
+MLX_TEMPLATE = '''"""
+{name} — SciML Neural Operator (MLX)
 
 Auto-generated stub by model_scaffold.py.
-Base architecture: {{base}}
+Base architecture: {base}
+Notes: {notes}
 """
 
 import mlx.core as mx
 import mlx.nn as nn
 from .fno import SpectralConv1d
 
-class {{name}}(nn.Module):
+class {name}(nn.Module):
     def __init__(self, n_modes: int = 16, hidden_dim: int = 64,
                  n_layers: int = 4, **kwargs):
         super().__init__()
@@ -137,15 +140,16 @@ class {{name}}(nn.Module):
         return self.proj(h).squeeze(-1)      # [B, N]
 '''
 
-_MLX_STUB_TEMPLATE_2D = '''"""
-{{name}}2d — 2D SciML Neural Operator (MLX)
+MLX_2D_TEMPLATE = '''"""
+{name}2d — 2D SciML Neural Operator (MLX)
+Notes: {notes}
 """
 
 import mlx.core as mx
 import mlx.nn as nn
 from .fno import SpectralConv2d
 
-class {{name}}2d(nn.Module):
+class {name}2d(nn.Module):
     def __init__(self, n_modes1: int = 12, n_modes2: int = 12, 
                  hidden_dim: int = 32, n_layers: int = 4, **kwargs):
         super().__init__()
@@ -180,9 +184,9 @@ def generate_stub(name: str, base: str = "FNO",
 
     for fw in fws:
         if fw == "mlx":
-            template = _MLX_STUB_TEMPLATE_2D if two_d else _MLX_STUB_TEMPLATE
+            template = MLX_2D_TEMPLATE if two_d else MLX_TEMPLATE
         else:
-            template = _STUB_TEMPLATE_2D if two_d else _STUB_TEMPLATE
+            template = TORCH_2D_TEMPLATE if two_d else TORCH_TEMPLATE
 
         stubs[fw] = template.format(name=name, base=base,
                                    notes=notes or "fill in architecture details",

@@ -49,7 +49,7 @@ SciMLx is a high-performance, self-driving experiment harness for **neural opera
 
 ## Multi-Backend Support
 
-SciMLx is designed for cross-platform research, automatically optimizing for your hardware using a hardware-agnostic design:
+SciMLx is designed for cross-platform research, automatically optimizing for your hardware using a hardware-agnostic design. The system supports a dual-backend architecture where models are implemented for both PyTorch (CUDA) and MLX (Apple Silicon).
 
 - **NVIDIA CUDA (PyTorch)**: Leverages `torch.compile`, mixed precision (AMP), and high-throughput data loading. Optimized for high-performance training on A100/H100/L4 GPUs.
 - **Apple Silicon (MLX)**: Uses Apple's unified memory architecture and native MLX framework for efficient training on M-series chips.
@@ -60,26 +60,37 @@ The system automatically detects your environment. You can explicitly override t
 ```bash
 # Force PyTorch/CUDA
 export SCIMLX_BACKEND=torch
-uv run train.py ...
+uv run train.py --model FNO ...
 
 # Force MLX (on Apple Silicon)
 export SCIMLX_BACKEND=mlx
-uv run train.py ...
+uv run train.py --model FNO ...
 ```
+
+### Dual-Backend Model Dispatch
+New models in `models/` follow a dispatcher pattern. For example, `models/mff.py` automatically imports and returns the appropriate implementation from `mff_torch.py` or `mff_mlx.py` based on the active backend. This ensures code portability without sacrificing hardware-specific optimizations.
 
 ---
 
 ## Scientific Implementation (SI) Layer
 
-SciMLx introduces a 3-tier hardware-agnostic scientific layer in the `core/` module to ensure physical consistency and mathematical rigor across backends:
+SciMLx features a 3-tier production-grade Scientific Implementation layer that ensures physical consistency and mathematical rigor:
 
-1.  **Hardware Agnostic Tier (`device.py`)**: A unified interface for tensor management, device placement, and framework detection (PyTorch vs. MLX).
-2.  **Physical Tier (`units.py` & `oracle_constants.py`)**: 
-    - `units.py`: Provides `SciMLTensor`, a unit-aware wrapper that enforces dimensional consistency using the Pint unit registry.
-    - `oracle_constants.py`: Implements the Buckingham Pi Theorem for identifying dimensionless groups and checking physical constraints.
-3.  **Operator Tier (`losses.py` & `spectral_governor.py`)**: 
+1.  **Foundations**: Core math and device abstractions.
+    - `device.py`: Backend-agnostic tensor dispatch (CUDA, MLX, MPS).
+    - `units.py`: Unit-aware `SciMLTensor` with dimensional analysis.
+    - `lie_math.py` & `heat_kernels.py`: Lie Algebra and Geometric foundations.
+    - `oracle_constants.py`: Buckingham Pi Theorem analyzer.
+2.  **Models**: Production-grade neural operators.
+    - `models/`: Dual-backend operator implementations.
+    - `scaffold.py`: Automated multi-backend model generation.
     - `losses.py`: Physics-informed loss functions (H1, H2, Spectral).
-    - `spectral_governor.py`: A framework-agnostic monitor that prevents 'Spectral Bias' by dynamically adjusting loss weights based on residual frequencies.
+    - `spectral_governor.py`: Frequency-aware loss modulation.
+3.  **Production**: Deployment and autonomous scaling.
+    - `deployment.py`: Serverless training on Vertex AI / GCP.
+    - `model_versioning.py`: Registry and lineage tracking.
+    - `hpo.py` & `dp_federated.py`: Bayesian HPO and Secure Federated Learning.
+    - `arxiv_agent.py`: Agentic research automation (ASIL pipeline).
 
 ---
 

@@ -97,3 +97,19 @@ def mutual_information_score(x: np.ndarray, y: np.ndarray, bins: int = 20) -> fl
     # I(X;Y) = H(X) + H(Y) - H(X,Y)
     mi = h_x + h_y - h_xy
     return max(0.0, float(mi))
+
+class MutualInformationScore:
+    """
+    Mutual Information Score estimator.
+    I(X;Y) = H(X) + H(Y) - H(X,Y)
+    """
+    def __init__(self, bins: int = 20):
+        self.bins = bins
+        
+    def score(self, x: np.ndarray, y: np.ndarray) -> float:
+        """Calculate the MI score between x and y."""
+        return mutual_information_score(x, y, bins=self.bins)
+        
+    def __call__(self, x: np.ndarray, y: np.ndarray) -> float:
+        """Call method for easy usage as a scoring function."""
+        return self.score(x, y)

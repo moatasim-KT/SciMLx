@@ -1,5 +1,9 @@
-import torch
 import numpy as np
+import pytest
+
+# Skip the entire module if torch is not installed
+torch = pytest.importorskip("torch")
+
 from models.gato import GATO
 
 def test_gato_with_hks():

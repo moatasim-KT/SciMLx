@@ -18,38 +18,55 @@ except (ImportError, RuntimeError, AttributeError):
 
 def get_framework():
     """
-    Detect the compute framework.
+    Detect the high-level compute framework.
     Priority:
     1. SCIMLX_BACKEND environment variable ('torch' or 'mlx').
     2. 'mlx' if on Apple Silicon and mlx is installed.
     3. 'torch' as default.
     """
     env_backend = os.environ.get("SCIMLX_BACKEND", "").lower()
-    if env_backend == "mlx":
-        if _HAS_MLX:
-            return "mlx"
-        # If MLX requested but not available, we don't return "mlx" 
-        # because it would break later calls.
-        return "torch"
-    if env_backend == "torch":
+    if env_backend == "mlx" and _HAS_MLX:
+        return "mlx"
+    if env_backend == "torch" and _HAS_TORCH:
         return "torch"
 
-    # MLX is preferred on Apple Silicon if available
+    # Auto-detection: MLX is preferred on Apple Silicon if available
     if _HAS_MLX and platform.system() == "Darwin" and platform.machine() == "arm64":
         return "mlx"
-    return "torch"
+    
+    return "torch" if _HAS_TORCH else "numpy"
 
 FRAMEWORK = get_framework()
 
+def get_framework_backend():
+    """
+    Detect the specific hardware backend.
+    Returns: 'MLX', 'CUDA', 'MPS', or 'CPU'.
+    """
+    if FRAMEWORK == "mlx":
+        return "MLX"
+    
+    if FRAMEWORK == "torch":
+        if torch.cuda.is_available():
+            return "CUDA"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "MPS"
+        return "CPU"
+    
+    return "CPU"
+
+BACKEND = get_framework_backend()
+
 def get_device():
-    """Return the best available device string or torch.device."""
+    """Return the framework-specific device object or string."""
     if FRAMEWORK == "mlx":
         return "mlx"
     
-    if _HAS_TORCH:
-        if torch.cuda.is_available():
+    if FRAMEWORK == "torch":
+        backend = get_framework_backend()
+        if backend == "CUDA":
             return torch.device("cuda")
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        if backend == "MPS":
             return torch.device("mps")
         return torch.device("cpu")
     
@@ -62,7 +79,7 @@ def to_array(data, dtype=None):
     Convert data to framework-native array/tensor.
     Ensures data is on the correct device.
     """
-    if FRAMEWORK == "mlx" and _HAS_MLX:
+    if FRAMEWORK == "mlx":
         if isinstance(data, mx.array):
             return data if dtype is None else data.astype(dtype)
         # Handle torch tensors if passed to mlx to_array
@@ -70,7 +87,7 @@ def to_array(data, dtype=None):
             data = data.detach().cpu().numpy()
         return mx.array(data, dtype=dtype)
     
-    if _HAS_TORCH:
+    if FRAMEWORK == "torch":
         if torch.is_tensor(data):
             res = data.to(DEVICE)
         else:
@@ -101,7 +118,7 @@ def to_device(data):
     if FRAMEWORK == "mlx":
         return data
     
-    if _HAS_TORCH:
+    if FRAMEWORK == "torch":
         if isinstance(data, (torch.Tensor, torch.nn.Module)):
             return data.to(DEVICE)
         if isinstance(data, dict):

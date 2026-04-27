@@ -1,8 +1,9 @@
 """
-MambaFNO — SciML Neural Operator (PyTorch)
+TestNet — SciML Neural Operator (PyTorch)
 
 Auto-generated stub by model_scaffold.py.
 Base architecture: FNO
+Notes: `hidden_dim=64, n_layers=4`
 """
 
 import torch
@@ -10,9 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .fno import SpectralConv1d
 
-class MambaFNO(nn.Module):
+class TestNet(nn.Module):
     """
-    MambaFNO: extend description here.
+    TestNet: `hidden_dim=64, n_layers=4`
     """
 
     def __init__(self, n_modes: int = 16, hidden_dim: int = 64,
@@ -24,9 +25,8 @@ class MambaFNO(nn.Module):
 
         self.lift = nn.Linear(1, hidden_dim)
 
-        # Using Linear to match MLX stub for parity testing
         self.blocks = nn.ModuleList([
-            nn.Linear(hidden_dim, hidden_dim)
+            SpectralConv1d(hidden_dim, hidden_dim, n_modes)
             for _ in range(n_layers)
         ])
         self.proj = nn.Sequential(
