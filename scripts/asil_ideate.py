@@ -37,6 +37,11 @@ def read_brain_gaps() -> str:
     
     return f"### Current Strategy\n{strategy}\n\n### SOTA Gaps\n{roadmap}"
 
+def _init_gemini():
+    """Helper for tests and internal initialization."""
+    agent = ArXivAgent()
+    return agent._model
+
 def synthesize_proposal(keywords: List[str], novelty: str, limit: int) -> str:
     """Use Gemini to synthesize a novel research proposal."""
     agent = ArXivAgent()

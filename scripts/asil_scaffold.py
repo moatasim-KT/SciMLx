@@ -12,16 +12,13 @@ from pathlib import Path
 
 import yaml
 
-# Mock torch if missing to allow ModelGate to at least load
+# Attempt to import torch for ModelGate
 try:
     import torch
+    HAS_TORCH = True
 except ImportError:
-    from unittest.mock import MagicMock
-    m = MagicMock()
-    sys.modules["torch"] = m
-    sys.modules["torch.nn"] = m
-    sys.modules["torch.nn.functional"] = m
-    print("Note: torch missing, using mocks for validation/registration.")
+    HAS_TORCH = False
+    print("Note: torch missing. Some validation steps may be skipped.")
 
 from core.scaffold import ModelGate, generate_stub
 from core.utils import REPO_ROOT
@@ -114,16 +111,8 @@ def main():
         print(f"Generated {fw} stub at {model_file}")
 
     # 2. Validate both, register once
-    # Mock torch if missing to allow ModelGate to at least load
-    try:
-        import torch
-    except ImportError:
-        from unittest.mock import MagicMock
-        m = MagicMock()
-        sys.modules["torch"] = m
-        sys.modules["torch.nn"] = m
-        sys.modules["torch.nn.functional"] = m
-        print("Note: torch missing, using mocks for validation/registration.")
+    if not HAS_TORCH:
+        print("Note: torch missing, skipping intensive validation. registering stubs directly.")
 
     for fw, model_file in model_files.items():
         ok, report = gate.validate(data['registry_key'], str(model_file))
