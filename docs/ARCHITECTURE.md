@@ -1,6 +1,29 @@
-# System Architecture (CUDA Optimized)
+# System Architecture (Hardware Agnostic)
 
-Deep technical reference for the SciMLx autonomous research loop components, optimized for NVIDIA GPUs.
+Deep technical reference for the SciMLx autonomous research loop components, optimized for both NVIDIA GPUs (PyTorch) and Apple Silicon (MLX).
+
+---
+
+## 3-Tier Scientific Implementation (SI) Layer
+
+SciMLx utilizes a modular SI layer in `core/` to decouple scientific logic from underlying hardware and compute frameworks.
+
+### Tier 1: Hardware Agnostic Tier (`device.py`)
+Provides a unified abstraction for tensor operations. It automatically detects the best available backend (CUDA, MLX, MPS, or CPU) and provides a single API for:
+- **`to_array()`**: Framework-agnostic tensor creation.
+- **`to_device()`**: Unified device placement.
+- **Backend Switching**: Controlled via the `SCIMLX_BACKEND` environment variable.
+
+### Tier 2: Physical Tier (`units.py` & `oracle_constants.py`)
+Ensures that the "Sci" in SciML is mathematically and physically grounded.
+- **Unit Registry**: Uses `pint` to manage physical units (m, s, kg, etc.).
+- **`SciMLTensor`**: A wrapper that performs dimensional analysis on every operation, raising errors for physically impossible calculations (e.g., adding meters to seconds).
+- **Buckingham Pi Theorem**: The `OracleOfConstants` identifies dimensionless groups (like Reynolds or Péclet numbers) to aid in feature discovery and similarity analysis.
+
+### Tier 3: Mathematical Operator Tier (`losses.py` & `spectral_governor.py`)
+High-level scientific operators that guide the training process.
+- **Physics-Informed Losses**: Implementations of Sobolev ($H^1$, $H^2$) and Spectral losses that penalize unphysical oscillations.
+- **Spectral Bias Governor**: Dynamically monitors the Fourier spectrum of residuals across backends and adjusts loss weighting to ensure high-frequency features are captured.
 
 ---
 
@@ -23,12 +46,12 @@ A human (or AI agent) reads `RESEARCH_BRAIN.md`, interprets results, edits `expe
 
 ## Unified Trainer (`core/trainer.py`)
 
-The trainer is rewritten in PyTorch and optimized for NVIDIA hardware:
+The trainer is designed to be high-performance while remaining flexible across backends:
 
-### CUDA Optimizations
-- **`torch.compile()`**: Used by default to fuse kernels and optimize graph execution. Provides significant speedups for complex operators like Transolver and AFNO.
-- **Mixed Precision (AMP)**: Leverages `torch.amp.autocast` and `GradScaler` to utilize Tensor Cores (FP16/BF16) without losing numerical stability.
-- **Tensor Core Precision**: `torch.set_float32_matmul_precision('high')` is enabled globally.
+### Compute Optimizations
+- **NVIDIA/PyTorch**: Utilizes `torch.compile()` for kernel fusion and `torch.amp` for mixed precision training.
+- **Apple/MLX**: Leverages MLX's lazy evaluation and unified memory for efficient processing on M-series chips.
+- **Precision Management**: Configurable precision levels (float32, bfloat16) mapped to hardware-specific best practices.
 
 ### Training Logic
 - **EMA (Exponential Moving Average)**: Maintains a shadow copy of model weights for more stable evaluation.
@@ -37,12 +60,12 @@ The trainer is rewritten in PyTorch and optimized for NVIDIA hardware:
 
 ---
 
-## GPU-Accelerated PDE Solvers (`data/simulations/`)
+## Hardware-Accelerated PDE Solvers (`data/simulations/`)
 
-Unlike original CPU-bound implementations, all solvers are now PyTorch-based:
-- **Spectral Methods**: Use `torch.fft` for high-speed spectral derivatives and integration.
-- **Zero-Copy Data**: Solvers execute directly on the `DEVICE` (CUDA), producing tensors that never leave GPU memory during training.
-- **Batch Processing**: All simulations are vectorized to solve multiple initial conditions in parallel.
+All PDE solvers are implemented using framework-native spectral methods to ensure high-speed simulation on the active device:
+- **Spectral Methods**: Utilize fast Fourier transforms (`torch.fft` or `mlx.fft`) for high-speed spectral derivatives and integration.
+- **Zero-Copy Data**: Solvers execute directly on the `DEVICE`, producing tensors that never leave high-speed device memory during training.
+- **Batch Processing**: All simulations are vectorized to solve multiple initial conditions in parallel, maximizing device throughput.
 
 ---
 

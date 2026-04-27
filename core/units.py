@@ -1,21 +1,37 @@
 """Unit-aware tensors for SciMLx using Pint."""
 
-import torch
 import pint
 from typing import Any, Union
+from core.device import FRAMEWORK, to_array
+
+# Import frameworks conditionally for type checking and isinstance
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    import mlx.core as mx
+except ImportError:
+    mx = None
 
 # Create a shared unit registry
 ureg = pint.UnitRegistry()
 
 class SciMLTensor:
-    """A wrapper for torch.Tensor that maintains physical units."""
+    """A wrapper for framework-native tensors that maintains physical units."""
     
-    def __init__(self, data: torch.Tensor, units: Union[str, pint.Unit]):
+    def __init__(self, data: Any, units: Union[str, pint.Unit]):
         if isinstance(units, str):
             self.units = ureg(units).units
         else:
             self.units = units
-        self.data = data
+        
+        # Ensure data is a framework-native array/tensor
+        if not ( (torch and torch.is_tensor(data)) or (mx and isinstance(data, mx.array)) ):
+            self.data = to_array(data)
+        else:
+            self.data = data
 
     def __repr__(self):
         return f"SciMLTensor({self.data}, units={self.units})"
@@ -41,16 +57,27 @@ class SciMLTensor:
         return SciMLTensor(self.data - other.data, self.units)
 
     def __mul__(self, other):
-        if isinstance(other, (int, float, torch.Tensor)):
+        if isinstance(other, (int, float)):
             return SciMLTensor(self.data * other, self.units)
+        
+        # Check if other is a native tensor
+        is_native = (torch and torch.is_tensor(other)) or (mx and isinstance(other, mx.array))
+        if is_native:
+            return SciMLTensor(self.data * other, self.units)
+            
         if isinstance(other, SciMLTensor):
             new_units = self.units * other.units
             return SciMLTensor(self.data * other.data, new_units)
         return NotImplemented
 
     def __truediv__(self, other):
-        if isinstance(other, (int, float, torch.Tensor)):
+        if isinstance(other, (int, float)):
             return SciMLTensor(self.data / other, self.units)
+            
+        is_native = (torch and torch.is_tensor(other)) or (mx and isinstance(other, mx.array))
+        if is_native:
+            return SciMLTensor(self.data / other, self.units)
+            
         if isinstance(other, SciMLTensor):
             new_units = self.units / other.units
             return SciMLTensor(self.data / other.data, new_units)

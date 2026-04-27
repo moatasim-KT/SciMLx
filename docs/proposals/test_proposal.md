@@ -15,5 +15,5 @@ Hybridizing FNO with a Mamba-based temporal state-space model to capture long-ra
 
 ## Implementation Specs
 ### Model Constraints
-- **Registry Key**: `MambaFNO`
+- **Registry Key**: `DualModelTest`
 - **Hard Limits**: hidden_dim: 64, n_layers: 4

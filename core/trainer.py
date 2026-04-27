@@ -7,6 +7,7 @@ import copy
 from typing import Callable, Any, Dict, Optional, Tuple, List, Union
 from core.utils import TELEMETRY_DIR, REPO_ROOT
 from core.device import DEVICE, FRAMEWORK, to_device
+from core.spectral_governor import SpectralBiasGovernor
 
 # Optional imports for backends
 try:
@@ -53,37 +54,6 @@ class EMA:
             if name in self.backup:
                 param.data.copy_(self.backup[name])
         self.backup = {}
-
-class SpectralBiasGovernor:
-    """
-    Monitors the Fourier spectrum of residuals and suggests loss weight adjustments.
-    Prevents the 'Spectral Bias' where models fail to learn high-frequency details.
-    (Torch-centric implementation).
-    """
-    def __init__(self, n_modes: int, update_interval: int = 50):
-        self.n_modes = n_modes
-        self.update_interval = update_interval
-        self.current_weights = None
-        self._step_count = 0
-
-    def update(self, pred: Any, target: Any):
-        self._step_count += 1
-        if self._step_count % self.update_interval != 0:
-            return self.current_weights
-            
-        import torch
-        with torch.no_grad():
-            residual = pred - target
-            if residual.ndim == 2:
-                res_ft = torch.fft.rfft(residual, dim=1).abs().mean(dim=0)
-                norm_res = res_ft / (res_ft.mean() + 1e-8)
-                self.current_weights = 1.0 + torch.clamp(norm_res - 1.0, min=0.0)
-            elif residual.ndim == 3:
-                res_ft = torch.fft.rfft2(residual, dim=(1, 2)).abs().mean(dim=0)
-                norm_res = res_ft / (res_ft.mean() + 1e-8)
-                self.current_weights = 1.0 + torch.clamp(norm_res - 1.0, min=0.0)
-                
-        return self.current_weights
 
 class BaseTrainer:
     """Abstract base class with shared logic (budget tracking, logging)."""

@@ -171,19 +171,23 @@ class {name}2d(nn.Module):
 
 def generate_stub(name: str, base: str = "FNO",
                   notes: str = "", two_d: bool = False,
-                  framework: Optional[str] = None) -> str:
-    """Return Python source for a new model stub."""
-    fw = framework or FRAMEWORK
+                  framework: Optional[str] = None) -> dict[str, str]:
+    """Return Python source for model stubs. Returns a dict {fw: code}."""
     module = name.lower()
+    stubs = {}
 
-    if fw == "mlx":
-        template = _MLX_STUB_TEMPLATE_2D if two_d else _MLX_STUB_TEMPLATE
-    else:
-        template = _STUB_TEMPLATE_2D if two_d else _STUB_TEMPLATE
+    fws = [framework] if framework else ["torch", "mlx"]
 
-    return template.format(name=name, base=base,
-                           notes=notes or "fill in architecture details",
-                           module=module)
+    for fw in fws:
+        if fw == "mlx":
+            template = _MLX_STUB_TEMPLATE_2D if two_d else _MLX_STUB_TEMPLATE
+        else:
+            template = _STUB_TEMPLATE_2D if two_d else _STUB_TEMPLATE
+
+        stubs[fw] = template.format(name=name, base=base,
+                                   notes=notes or "fill in architecture details",
+                                   module=module)
+    return stubs
 
 # ── Validation gate ───────────────────────────────────────────────────────────
 
@@ -191,6 +195,14 @@ class ModelGate:
     def validate(self, name: str, path: str) -> tuple[bool, dict]:
         report: dict = {}
         model_path = Path(path)
+        
+        # Detect target framework
+        if "_mlx" in model_path.name:
+            target_fw = "mlx"
+        elif "_torch" in model_path.name:
+            target_fw = "torch"
+        else:
+            target_fw = FRAMEWORK
 
         # ── Gate 1: Syntax ────────────────────────────────────────────────────
         try:
@@ -200,6 +212,23 @@ class ModelGate:
         except SyntaxError as e:
             report.update(syntax_ok=False, import_ok=False, smoke_ok=False, error=f"SyntaxError: {e}")
             return False, report
+
+        # Check if we can proceed with import/smoke
+        can_import = True
+        if target_fw == "mlx":
+            try:
+                import mlx.core
+            except ImportError:
+                can_import = False
+        elif target_fw == "torch":
+            try:
+                import torch
+            except ImportError:
+                can_import = False
+
+        if not can_import:
+            report.update(import_ok="skipped", smoke_ok="skipped", warning=f"Backend {target_fw} not available for validation")
+            return True, report
 
         # ── Gate 2: Import ────────────────────────────────────────────────────
         try:
@@ -219,7 +248,7 @@ class ModelGate:
         # ── Gate 3: Smoke test ────────────────────────────────────────────────
         try:
             out_shape = None
-            if FRAMEWORK == "mlx":
+            if target_fw == "mlx":
                 import mlx.core as mx
                 model_inst = cls(n_modes=8, hidden_dim=16, n_layers=2)
                 x1d = mx.random.normal((2, 64))
@@ -267,12 +296,19 @@ class ModelGate:
         # Update research_plugins.py
         plugins_path = REPO_ROOT / "core" / "research_plugins.py"
         plugins_src  = plugins_path.read_text()
-        reg_line = f'    MODEL_REGISTRY.register_lazy("{name}", "{model_path.stem}", "{name}")\n'
+
+        # Ensure FRAMEWORK is imported for dynamic dispatch
+        if "from core.device import FRAMEWORK" not in plugins_src:
+            plugins_src = "from core.device import FRAMEWORK\n" + plugins_src
+
+        base_stem = model_path.stem.replace("_torch", "").replace("_mlx", "")
+        reg_line = f'    MODEL_REGISTRY.register_lazy("{name}", f"{base_stem}_{{FRAMEWORK.lower()}}", "{name}")\n'
+        
         if f'"{name}"' not in plugins_src:
             marker = "# ── Model Registrations (Lazy) ───────────────────────────────────────────"
             plugins_src = plugins_src.replace(marker, f"{marker}\n{reg_line}")
             plugins_path.write_text(plugins_src)
-            print(f"  Registered {name} in MODEL_REGISTRY")
+            print(f"  Registered {name} in MODEL_REGISTRY with dynamic backend support")
 
         # Append to experiments.yaml
         bms = benchmarks or ["burgers_1d"]
@@ -308,10 +344,11 @@ def main() -> None:
     args = p.parse_args()
 
     if args.stub:
-        code = generate_stub(args.stub, args.base, two_d=args.two_d)
-        out = REPO_ROOT / "models" / f"{args.stub.lower()}.py"
-        out.write_text(code)
-        print(f"Stub written to {out}")
+        stubs = generate_stub(args.stub, args.base, two_d=args.two_d)
+        for fw, code in stubs.items():
+            out = REPO_ROOT / "models" / f"{args.stub.lower()}_{fw}.py"
+            out.write_text(code)
+            print(f"Stub written to {out}")
     elif args.validate:
         name, path = args.validate
         ok, report = ModelGate().validate(name, path)

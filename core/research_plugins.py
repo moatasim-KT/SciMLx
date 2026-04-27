@@ -1,3 +1,4 @@
+from core.device import FRAMEWORK
 import torch.nn as nn
 import torch
 import inspect
@@ -96,6 +97,8 @@ def _register_defaults():
     from data.benchmarks_ext import EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
 
     # ── Model Registrations (Lazy) ───────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("DualModelTest", f"dualmodeltest_{FRAMEWORK.lower()}", "DualModelTest")
+
     MODEL_REGISTRY.register_lazy("MambaFNO", "mambafno", "MambaFNO")
 
     MODEL_REGISTRY.register_lazy("FNO", "fno", "FNO1d")

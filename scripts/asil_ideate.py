@@ -13,7 +13,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any
 
-from core.brain_distiller import update_paper_registry, fetch_arxiv, _init_gemini, BRAIN_PATH
+from core.arxiv_agent import ArXivAgent
+from core.brain_distiller import BRAIN_PATH
 from core.utils import REPO_ROOT, PAPERS_DIR, SOTA
 
 PROPOSALS_DIR = REPO_ROOT / "docs" / "proposals"
@@ -38,18 +39,18 @@ def read_brain_gaps() -> str:
 
 def synthesize_proposal(keywords: List[str], novelty: str, limit: int) -> str:
     """Use Gemini to synthesize a novel research proposal."""
-    model = _init_gemini()
-    if not model:
+    agent = ArXivAgent()
+    if not agent._model:
         raise RuntimeError("GOOGLE_API_KEY not found. LLM synthesis required.")
 
     # 1. Update paper registry (Sync ArXiv)
     query = " ".join(keywords)
     print(f"Syncing ArXiv registry for: {query}...")
-    update_paper_registry(query=query)
+    agent.update_registry(query=query)
 
     # 2. Fetch relevant paper summaries for context
-    # We use fetch_arxiv directly to get the summaries for the prompt
-    papers = fetch_arxiv(query, max_results=limit)
+    # We use agent.search directly to get the summaries for the prompt
+    papers = agent.search(query, max_results=limit)
     paper_context = "\n".join([f"- {p['title']} ({p['published'][:4]}): {p['summary'][:800]}..." for p in papers])
 
     # 3. Get project context from RESEARCH_BRAIN.md
@@ -93,7 +94,7 @@ def synthesize_proposal(keywords: List[str], novelty: str, limit: int) -> str:
     """
 
     print(f"Synthesizing {novelty}-novelty proposal using Gemini 1.5 Pro...")
-    response = model.generate_content(prompt)
+    response = agent._model.generate_content(prompt)
     proposal_content = response.text.strip()
     
     # Clean up markdown code blocks if the LLM wrapped it

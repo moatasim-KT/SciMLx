@@ -1,4 +1,4 @@
-# SciMLx (CUDA Optimized)
+# SciMLx (Hardware Agnostic)
 
 **Autonomous neural operator research loop for PDE solving on NVIDIA GPUs.**  
 Queue an experiment, go to sleep — the system trains, evaluates, diagnoses failures,
@@ -49,12 +49,37 @@ SciMLx is a high-performance, self-driving experiment harness for **neural opera
 
 ## Multi-Backend Support
 
-SciMLx is designed for cross-platform research, automatically optimizing for your hardware:
+SciMLx is designed for cross-platform research, automatically optimizing for your hardware using a hardware-agnostic design:
 
 - **NVIDIA CUDA (PyTorch)**: Leverages `torch.compile`, mixed precision (AMP), and high-throughput data loading. Optimized for high-performance training on A100/H100/L4 GPUs.
 - **Apple Silicon (MLX)**: Uses Apple's unified memory architecture and native MLX framework for efficient training on M-series chips.
 
-The system automatically detects your environment and selects the optimal backend via `core/device.py`. This ensures your research code remains portable while extracting maximum performance from available hardware.
+### Usage
+The system automatically detects your environment. You can explicitly override the backend using the `SCIMLX_BACKEND` environment variable:
+
+```bash
+# Force PyTorch/CUDA
+export SCIMLX_BACKEND=torch
+uv run train.py ...
+
+# Force MLX (on Apple Silicon)
+export SCIMLX_BACKEND=mlx
+uv run train.py ...
+```
+
+---
+
+## Scientific Implementation (SI) Layer
+
+SciMLx introduces a 3-tier hardware-agnostic scientific layer in the `core/` module to ensure physical consistency and mathematical rigor across backends:
+
+1.  **Hardware Agnostic Tier (`device.py`)**: A unified interface for tensor management, device placement, and framework detection (PyTorch vs. MLX).
+2.  **Physical Tier (`units.py` & `oracle_constants.py`)**: 
+    - `units.py`: Provides `SciMLTensor`, a unit-aware wrapper that enforces dimensional consistency using the Pint unit registry.
+    - `oracle_constants.py`: Implements the Buckingham Pi Theorem for identifying dimensionless groups and checking physical constraints.
+3.  **Operator Tier (`losses.py` & `spectral_governor.py`)**: 
+    - `losses.py`: Physics-informed loss functions (H1, H2, Spectral).
+    - `spectral_governor.py`: A framework-agnostic monitor that prevents 'Spectral Bias' by dynamically adjusting loss weights based on residual frequencies.
 
 ---
 

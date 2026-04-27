@@ -25,6 +25,7 @@ except ImportError:
 
 from core.scaffold import ModelGate, generate_stub
 from core.utils import REPO_ROOT
+from core.device import FRAMEWORK
 
 def parse_proposal(proposal_path: Path):
     if not proposal_path.exists():
@@ -100,15 +101,19 @@ def main():
 
     print(f"Scaffolding model '{data['registry_key']}' for proposal '{data['title']}' using {FRAMEWORK.upper()} backend...")
 
-    # 1. Generate stub
+    # 1. Generate stubs
     is_2d = "_2d" in data['target_pde'].lower() or "2d" in data['target_pde'].lower()
-    stub_code = generate_stub(data['registry_key'], notes=data['hard_limits'], two_d=is_2d, framework=FRAMEWORK)
+    stubs = generate_stub(data['registry_key'], notes=data['hard_limits'], two_d=is_2d)
     
-    model_file = REPO_ROOT / "models" / f"{data['registry_key'].lower()}.py"
-    model_file.write_text(stub_code)
-    print(f"Generated stub at {model_file}")
+    gate = ModelGate()
+    model_files = {}
+    for fw, code in stubs.items():
+        model_file = REPO_ROOT / "models" / f"{data['registry_key'].lower()}_{fw}.py"
+        model_file.write_text(code)
+        model_files[fw] = model_file
+        print(f"Generated {fw} stub at {model_file}")
 
-    # 2. Validate and Register
+    # 2. Validate both, register once
     # Mock torch if missing to allow ModelGate to at least load
     try:
         import torch
@@ -120,18 +125,16 @@ def main():
         sys.modules["torch.nn.functional"] = m
         print("Note: torch missing, using mocks for validation/registration.")
 
-    gate = ModelGate()
-    
-    ok, report = gate.validate(data['registry_key'], str(model_file))
-    if ok:
-        gate.register_and_queue(data['registry_key'], str(model_file), benchmarks=[data['target_pde']])
-        print(f"Registered {data['registry_key']} in registry and experiments.yaml")
-    else:
-        print(f"Validation report: {report}")
-        # If it's a stub, we register it anyway to allow the loop to continue
-        # but we warn about the validation failure.
-        gate.register_and_queue(data['registry_key'], str(model_file), benchmarks=[data['target_pde']])
-        print(f"Registered {data['registry_key']} despite validation failure (likely due to stub relative imports or missing dependencies)")
+    for fw, model_file in model_files.items():
+        ok, report = gate.validate(data['registry_key'], str(model_file))
+        status = "PASSED" if ok else "FAILED"
+        print(f"Validation {status} for {fw} backend: {report.get('warning', report.get('error', 'OK'))}")
+
+    # Register using the one that matches current framework (dynamic backend support handles the rest)
+    preferred_fw = FRAMEWORK if FRAMEWORK in model_files else "torch"
+    preferred_file = model_files[preferred_fw]
+    gate.register_and_queue(data['registry_key'], str(preferred_file), benchmarks=[data['target_pde']])
+    print(f"Registered {data['registry_key']} in registry and experiments.yaml (Dynamic Dual-Backend)")
 
     # 3. Update Brain
     update_research_brain(data)
