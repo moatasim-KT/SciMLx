@@ -105,11 +105,12 @@ def h2_loss(pred: torch.Tensor, y: torch.Tensor, alpha: float = 0.1, beta: float
     return l2 + alpha * h1t + beta * h2t
 
 
-def spectral_loss(pred: torch.Tensor, y: torch.Tensor, high_freq_weight: float = 2.0) -> torch.Tensor:
+def spectral_loss(pred: torch.Tensor, y: torch.Tensor, high_freq_weight: float = 2.0, weights: Optional[torch.Tensor] = None) -> torch.Tensor:
     if y.ndim == 2:
         B, N = y.shape
         k = torch.arange(N // 2 + 1, device=y.device, dtype=torch.float32)
-        weights = 1.0 + (k / (N // 2)) ** high_freq_weight
+        if weights is None:
+            weights = 1.0 + (k / (N // 2)) ** high_freq_weight
 
         pred_ft = torch.fft.rfft(pred, dim=1)
         y_ft = torch.fft.rfft(y, dim=1)

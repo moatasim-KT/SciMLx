@@ -243,6 +243,71 @@ def get_fix_strategies(crash_type: str, current_config: Dict[str, Any]) -> List[
 
     return fixes
 
+class OracleOfConstants:
+    """
+    Agentic sub-system that analyzes data to identify missing dimensionless 
+    physical numbers (Reynolds, Peclet, Nusselt) not explicitly in features.
+    """
+    def __init__(self, benchmark: str):
+        self.benchmark = benchmark
+        # Known constants for benchmarks
+        self.known_constants = {
+            "burgers_1d": ["viscosity"],
+            "ns_2d": ["reynolds_number", "viscosity"],
+            "darcy_2d": ["permeability"],
+            "euler_1d": ["gamma", "mach_number"]
+        }
+
+    def identify_missing_constants(self, data_sample: Dict[str, Any]) -> List[str]:
+        """Analyze sample data to guess which constants might be missing."""
+        provided_keys = set(data_sample.keys())
+        expected = self.known_constants.get(self.benchmark, [])
+        missing = [c for c in expected if c not in provided_keys]
+        return missing
+
+    def estimate_dimensionless_numbers(self, u: np.ndarray, dx: float, nu: float) -> Dict[str, float]:
+        """Calculate physics-based dimensionless numbers from field data."""
+        results = {}
+        if "ns" in self.benchmark or "burgers" in self.benchmark:
+            # Re = U * L / nu
+            u_max = np.max(np.abs(u))
+            L = u.shape[-1] * dx
+            results["reynolds_number"] = float(u_max * L / (nu + 1e-8))
+            
+        return results
+
+class PhysicalAdversary:
+    """
+    Generates 'Physical Adversaries'—extreme edge cases (e.g., shock waves at 
+    Mach 10) to test if the model's 'Scientific Intuition' holds up.
+    """
+    @staticmethod
+    def generate_shock_wave(n: int, mach: float = 10.0) -> np.ndarray:
+        """Generate a sharp discontinuity (shock) at a random location."""
+        x = np.linspace(0, 1, n)
+        shock_loc = np.random.uniform(0.3, 0.7)
+        u = np.where(x < shock_loc, mach, 1.0)
+        # Add some Gibbs-like oscillations near shock to make it harder
+        u += 0.1 * np.exp(-((x - shock_loc) / 0.05)**2) * np.sin(50 * x)
+        return u
+
+    @staticmethod
+    def generate_high_frequency_forcing(n: int, frequency: float = 100.0) -> np.ndarray:
+        """Generate a highly oscillatory field to test spectral bias."""
+        x = np.linspace(0, 1, n)
+        return np.sin(frequency * np.pi * x)
+
+    def stress_test_model(self, model_fn, n: int = 128) -> Dict[str, float]:
+        """Run stress tests and return failure metrics."""
+        shock = self.generate_shock_wave(n)
+        osc = self.generate_high_frequency_forcing(n)
+        
+        # Placeholder for actual model inference and error calculation
+        return {
+            "shock_stability": 0.0,
+            "spectral_resolution": 0.0
+        }
+
 def generate_experiment_comparison(exp_id: str, 
                                    inputs: np.ndarray, 
                                    truth: np.ndarray, 

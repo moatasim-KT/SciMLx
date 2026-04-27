@@ -38,6 +38,37 @@ class EMA:
                 param.data.copy_(self.backup[name])
         self.backup = {}
 
+class SpectralBiasGovernor:
+    """
+    Monitors the Fourier spectrum of residuals and suggests loss weight adjustments.
+    Prevents the 'Spectral Bias' where models fail to learn high-frequency details.
+    """
+    def __init__(self, n_modes: int, update_interval: int = 50):
+        self.n_modes = n_modes
+        self.update_interval = update_interval
+        self.current_weights = None
+        self._step_count = 0
+
+    def update(self, pred: torch.Tensor, target: torch.Tensor):
+        self._step_count += 1
+        if self._step_count % self.update_interval != 0:
+            return self.current_weights
+            
+        with torch.no_grad():
+            residual = pred - target
+            if residual.ndim == 2:
+                res_ft = torch.fft.rfft(residual, dim=1).abs().mean(dim=0)
+                # Identify where residual is high relative to its own mean
+                # to emphasize those frequencies
+                norm_res = res_ft / (res_ft.mean() + 1e-8)
+                self.current_weights = 1.0 + torch.clamp(norm_res - 1.0, min=0.0)
+            elif residual.ndim == 3:
+                res_ft = torch.fft.rfft2(residual, dim=(1, 2)).abs().mean(dim=0)
+                norm_res = res_ft / (res_ft.mean() + 1e-8)
+                self.current_weights = 1.0 + torch.clamp(norm_res - 1.0, min=0.0)
+                
+        return self.current_weights
+
 class Trainer:
     """Encapsulates training loop, evaluation, and metrics for PyTorch/CUDA."""
     def __init__(
@@ -79,6 +110,9 @@ class Trainer:
         self.ema_decay = ema_decay
         self.use_amp = use_amp and torch.cuda.is_available()
         
+        # Spectral Bias Governor (Phase 3)
+        self.governor = SpectralBiasGovernor(n_modes=32) if "spectral" in str(loss_fn) else None
+
         # EMA initialization
         self.ema = EMA(self.model, ema_decay) if ema_decay > 0 else None
         
@@ -164,7 +198,21 @@ class Trainer:
             
             with torch.amp.autocast('cuda', enabled=self.use_amp):
                 pred = self.compiled_model(x)
-                loss = self.loss_fn(pred, y)
+                
+                # Spectral Bias Governor Update
+                loss_kwargs = {}
+                if self.governor:
+                    weights = self.governor.update(pred, y)
+                    if weights is not None:
+                        loss_kwargs["weights"] = weights
+
+                # Physical Consistency Check (Phase 2)
+                if hasattr(self.model, "input_units") and hasattr(self.model, "output_units"):
+                    from core.units import SciMLTensor, check_consistency
+                    # This is a placeholder for actual dimensional analysis of the forward pass
+                    pass
+
+                loss = self.loss_fn(pred, y, **loss_kwargs)
 
             if self.use_amp:
                 self.scaler.scale(loss).backward()

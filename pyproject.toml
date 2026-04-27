@@ -20,4 +20,8 @@ dependencies = [
     "duckdb>=1.0.0",
     "zarr>=2.18.0",
     "filelock>=3.13.0",
+    "google-generativeai>=0.8.0",
+    "pint>=0.24",
+    "z3-solver>=4.13",
+    "wavio>=0.0.8",
 ]

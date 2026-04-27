@@ -7519,3 +7519,11 @@
   budget_s: 480
   priority: 3
   rationale: Auto-generated baseline for SARModel2d on ellipse_2d
+- name: mambafno_burge_baseline
+  benchmark: burgers_1d
+  model: MambaFNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3

@@ -96,6 +96,8 @@ def _register_defaults():
     from data.benchmarks_ext import EXT_BENCHMARKS, EXT_SOTA, make_ext_dataloader, evaluate_l2_rel_ext
 
     # ── Model Registrations (Lazy) ───────────────────────────────────────────
+    MODEL_REGISTRY.register_lazy("MambaFNO", "mambafno", "MambaFNO")
+
     MODEL_REGISTRY.register_lazy("FNO", "fno", "FNO1d")
     MODEL_REGISTRY.register_lazy("RFNO", "fno", "RFNO1d")
     MODEL_REGISTRY.register_lazy("AFNO", "afno", "AFNO1d")

@@ -26,9 +26,10 @@ proposes follow-ups, and updates itself overnight.
 11. [Bayesian HPO](#bayesian-hpo)
 12. [Cloud Deployment (GCP)](#cloud-deployment-gcp)
 13. [Dashboard](#dashboard)
-14. [Results & Tracking](#results--tracking)
-15. [Troubleshooting](#troubleshooting)
-16. [Project Status](#project-status)
+14. [Agentic Scientist Ideation Loop (ASIL)](#agentic-scientist-ideation-loop-asil)
+15. [Results & Tracking](#results--tracking)
+16. [Troubleshooting](#troubleshooting)
+17. [Project Status](#project-status)
 
 ---
 
@@ -128,6 +129,31 @@ SciMLx is pre-configured for **Google Cloud Platform** (Project `gdpr-494411`):
 
 - **Vertex AI**: Use the provided `Dockerfile` and `scripts/gcp/submit_vertex.py` for serverless GPU training.
 - **Compute Engine**: Use `scripts/gcp/setup_vm.sh` to provision a Deep Learning VM with L4/A100/H100 GPUs.
+
+---
+
+## Agentic Scientist Ideation Loop (ASIL)
+
+SciMLx features an autonomous research pipeline that moves from literature review to code implementation without manual intervention.
+
+### Workflow
+1.  **ArXiv Scan**: `asil_ideate.py` fetches recent papers and identifies SOTA gaps.
+2.  **Autonomous Synthesis**: The AI synthesizes novel architectural ideas based on the knowledge base in `RESEARCH_BRAIN.md`.
+3.  **Research Proposal**: A structured markdown proposal is generated in `docs/proposals/`.
+4.  **Human Approval**: Researchers review and approve proposals.
+5.  **Automated Scaffolding**: `asil_scaffold.py` parses the proposal, generates PyTorch code, registers the model, and updates the experiment queue.
+
+### Usage Examples
+
+**Generate a new idea:**
+```bash
+python scripts/asil_ideate.py --keywords "Fourier Neural Operator" --novelty high
+```
+
+**Scaffold an approved proposal:**
+```bash
+python scripts/asil_scaffold.py --proposal docs/proposals/2026-04-27-hybrid-mamba-fno.md
+```
 
 ---
 
