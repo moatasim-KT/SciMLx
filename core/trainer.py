@@ -1,18 +1,32 @@
-"""Unified Trainer for SciML experiments on NVIDIA GPUs (PyTorch/CUDA)."""
+"""Unified Trainer for SciML experiments supporting PyTorch and MLX."""
 
 import time
 import math
-import torch
-import torch.nn as nn
 import numpy as np
 import copy
-from typing import Callable, Any, Dict, Optional, Tuple, List
+from typing import Callable, Any, Dict, Optional, Tuple, List, Union
 from core.utils import TELEMETRY_DIR, REPO_ROOT
-from core.device import DEVICE, to_device
+from core.device import DEVICE, FRAMEWORK, to_device
+
+# Optional imports for backends
+try:
+    import torch
+    import torch.nn as nn
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+
+try:
+    import mlx.core as mx
+    import mlx.nn as mx_nn
+    import mlx.optimizers as mxo
+    HAS_MLX = True
+except ImportError:
+    HAS_MLX = False
 
 class EMA:
-    """Exponential Moving Average for model parameters."""
-    def __init__(self, model: nn.Module, decay: float):
+    """Exponential Moving Average for model parameters (Torch only)."""
+    def __init__(self, model: Any, decay: float):
         self.model = model
         self.decay = decay
         self.shadow = {name: param.clone().detach() for name, param in model.named_parameters()}
@@ -20,6 +34,7 @@ class EMA:
     def update(self):
         if self.decay <= 0:
             return
+        import torch
         with torch.no_grad():
             for name, param in self.model.named_parameters():
                 if name in self.shadow:
@@ -27,6 +42,7 @@ class EMA:
                     self.shadow[name].copy_(new_average)
 
     def apply_shadow(self):
+        import torch
         self.backup = {name: param.clone().detach() for name, param in self.model.named_parameters()}
         for name, param in self.model.named_parameters():
             if name in self.shadow:
@@ -42,6 +58,7 @@ class SpectralBiasGovernor:
     """
     Monitors the Fourier spectrum of residuals and suggests loss weight adjustments.
     Prevents the 'Spectral Bias' where models fail to learn high-frequency details.
+    (Torch-centric implementation).
     """
     def __init__(self, n_modes: int, update_interval: int = 50):
         self.n_modes = n_modes
@@ -49,17 +66,16 @@ class SpectralBiasGovernor:
         self.current_weights = None
         self._step_count = 0
 
-    def update(self, pred: torch.Tensor, target: torch.Tensor):
+    def update(self, pred: Any, target: Any):
         self._step_count += 1
         if self._step_count % self.update_interval != 0:
             return self.current_weights
             
+        import torch
         with torch.no_grad():
             residual = pred - target
             if residual.ndim == 2:
                 res_ft = torch.fft.rfft(residual, dim=1).abs().mean(dim=0)
-                # Identify where residual is high relative to its own mean
-                # to emphasize those frequencies
                 norm_res = res_ft / (res_ft.mean() + 1e-8)
                 self.current_weights = 1.0 + torch.clamp(norm_res - 1.0, min=0.0)
             elif residual.ndim == 3:
@@ -69,12 +85,85 @@ class SpectralBiasGovernor:
                 
         return self.current_weights
 
-class Trainer:
-    """Encapsulates training loop, evaluation, and metrics for PyTorch/CUDA."""
+class BaseTrainer:
+    """Abstract base class with shared logic (budget tracking, logging)."""
     def __init__(
         self,
-        model: nn.Module,
-        optimizer: torch.optim.Optimizer,
+        model: Any,
+        optimizer: Any,
+        loss_fn: Callable,
+        forward_fn: Callable,
+        eval_fn: Callable,
+        grad_clip: float = 1.0,
+        time_budget: int = 300,
+        lr_base: float = 1e-3,
+        lr_schedule_fn: Optional[Callable[[float], float]] = None,
+        max_vram_gb: float = 0.0,
+        curriculum: bool = False,
+        exp_name: str = "",
+        step_callback: Optional[Callable[[int, float], None]] = None,
+        patience: int = 5,
+        n_ensemble: int = 1,
+        ema_decay: float = 0.0,
+    ):
+        self.model = model
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
+        self.forward_fn = forward_fn
+        self.eval_fn = eval_fn
+        self.grad_clip = grad_clip
+        self.time_budget = time_budget
+        self.lr_base = lr_base
+        self.lr_schedule_fn = lr_schedule_fn
+        self.max_vram_gb = max_vram_gb
+        self.curriculum = curriculum
+        self.exp_name = exp_name
+        self.step_callback = step_callback
+        self.patience = patience
+        self.n_ensemble = n_ensemble
+        self.ema_decay = ema_decay
+        
+        self._loss_history: list = []
+        self._snapshot_val_scores: list = []
+        self._extensions_count = 0
+        
+        _slug = exp_name.replace("/", "_").replace(" ", "_") if exp_name else ""
+        self._telemetry_path = TELEMETRY_DIR / (
+            f".vram_telemetry_{_slug}" if _slug else ".vram_telemetry"
+        )
+
+    def _is_budget_exceeded(self, t_start: float, initial_loss: Optional[float], loss_at_50: Optional[float]) -> bool:
+        t_now = time.time()
+        elapsed = t_now - t_start
+        if elapsed > self.time_budget:
+            MAX_EXTENSIONS = 5
+            if self._extensions_count < MAX_EXTENSIONS and initial_loss and loss_at_50 and len(self._loss_history) > 0:
+                last_loss = self._loss_history[-1][1]
+                if last_loss < 0.8 * initial_loss and last_loss < 0.9 * loss_at_50:
+                    extension = int(self.time_budget * 0.2)
+                    self.time_budget += extension
+                    self._extensions_count += 1
+                    print(f"\n[Dynamic Budget] Loss is decreasing well ({last_loss:.6f}). "
+                          f"Extending budget by {extension}s to {self.time_budget}s.", flush=True)
+                    return False
+            return True
+        return False
+
+    def train(self, train_loader, t_start: float):
+        raise NotImplementedError
+
+    def train_step(self, x, y):
+        raise NotImplementedError
+
+    def evaluate(self):
+        raise NotImplementedError
+
+class TrainerTorch(BaseTrainer):
+    """The existing PyTorch/CUDA implementation."""
+    def __init__(
+        self,
+        model: Any,
+        optimizer: Any,
         loss_fn: Callable,
         forward_fn: Callable,
         eval_fn: Callable,
@@ -92,58 +181,77 @@ class Trainer:
         use_amp: bool = True,
         compile: bool = True,
     ):
-        self.model = to_device(model)
-        self.optimizer = optimizer
-        self.loss_fn = loss_fn
-        self.forward_fn = forward_fn
-        self.eval_fn = eval_fn
-        self.grad_clip = grad_clip
-        self.time_budget = time_budget
-        self.lr_base = lr_base
-        self.lr_schedule_fn = lr_schedule_fn
-        self.max_vram_gb = max_vram_gb
-        self.curriculum = curriculum
-        self.exp_name = exp_name
-        self.step_callback = step_callback
-        self.patience = patience
-        self.n_ensemble = n_ensemble
-        self.ema_decay = ema_decay
+        super().__init__(
+            model=to_device(model),
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            forward_fn=forward_fn,
+            eval_fn=eval_fn,
+            grad_clip=grad_clip,
+            time_budget=time_budget,
+            lr_base=lr_base,
+            lr_schedule_fn=lr_schedule_fn,
+            max_vram_gb=max_vram_gb,
+            curriculum=curriculum,
+            exp_name=exp_name,
+            step_callback=step_callback,
+            patience=patience,
+            n_ensemble=n_ensemble,
+            ema_decay=ema_decay,
+        )
+        import torch
         self.use_amp = use_amp and torch.cuda.is_available()
-        
-        # Spectral Bias Governor (Phase 3)
         self.governor = SpectralBiasGovernor(n_modes=32) if "spectral" in str(loss_fn) else None
-
-        # EMA initialization
         self.ema = EMA(self.model, ema_decay) if ema_decay > 0 else None
-        
-        # Mixed Precision Scaler
         self.scaler = torch.amp.GradScaler('cuda') if self.use_amp else None
         
-        # Compiled model for speed
         if compile and hasattr(torch, 'compile'):
             try:
-                print("[Trainer] Compiling model with torch.compile...", flush=True)
+                print("[TrainerTorch] Compiling model with torch.compile...", flush=True)
                 self.compiled_model = torch.compile(self.model)
             except Exception as e:
-                print(f"[Trainer] Compilation failed: {e}. Using raw model.", flush=True)
+                print(f"[TrainerTorch] Compilation failed: {e}. Using raw model.", flush=True)
                 self.compiled_model = self.model
         else:
             self.compiled_model = self.model
 
-        self._loss_history: list = []
-        self._snapshot_val_scores: list = []
+    def train_step(self, x, y):
+        import torch
+        self.optimizer.zero_grad()
+        with torch.amp.autocast('cuda', enabled=self.use_amp):
+            pred = self.compiled_model(x)
+            loss_kwargs = {}
+            if self.governor:
+                weights = self.governor.update(pred, y)
+                if weights is not None:
+                    loss_kwargs["weights"] = weights
+            loss = self.loss_fn(pred, y, **loss_kwargs)
+
+        if self.use_amp:
+            self.scaler.scale(loss).backward()
+            if self.grad_clip > 0:
+                self.scaler.unscale_(self.optimizer)
+                gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+            else:
+                self.scaler.unscale_(self.optimizer)
+                gnorm = torch.tensor(0.0)
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            loss.backward()
+            if self.grad_clip > 0:
+                gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+            else:
+                gnorm = torch.tensor(0.0)
+            self.optimizer.step()
         
-        from pathlib import Path as _Path
-        _slug = exp_name.replace("/", "_").replace(" ", "_") if exp_name else ""
-        self._telemetry_path = TELEMETRY_DIR / (
-            f".vram_telemetry_{_slug}" if _slug else ".vram_telemetry"
-        )
+        return loss.item(), float(gnorm)
 
     def train(self, train_loader, t_start: float):
+        import torch
         self.model.train()
         total_steps = 0
         max_grad_norm = 0.0
-        current_gnorm = 0.0
         total_train_time = 0
         t_last_log = t_start
 
@@ -155,30 +263,12 @@ class Trainer:
         
         initial_loss = None
         loss_at_50 = None
-        extensions_count = 0
-        MAX_EXTENSIONS = 5
-        
-        next_snapshot_progress = 1.0 / self.n_ensemble if self.n_ensemble > 1 else 2.0
-        snapshot_count = 0
 
         while True:
-            t_now = time.time()
-            elapsed = t_now - t_start
-            if elapsed > self.time_budget:
-                if extensions_count < MAX_EXTENSIONS and initial_loss and loss_at_50 and len(self._loss_history) > 0:
-                    if self._loss_history[-1][1] < 0.8 * initial_loss and \
-                       self._loss_history[-1][1] < 0.9 * loss_at_50:
-                        extension = int(self.time_budget * 0.2)
-                        self.time_budget += extension
-                        extensions_count += 1
-                        print(f"\n[Dynamic Budget] Loss is decreasing well ({self._loss_history[-1][1]:.6f}). "
-                              f"Extending budget by {extension}s to {self.time_budget}s.", flush=True)
-                    else:
-                        break
-                else:
-                    break
+            if self._is_budget_exceeded(t_start, initial_loss, loss_at_50):
+                break
 
-            progress = elapsed / self.time_budget
+            progress = (time.time() - t_start) / self.time_budget
             if self.lr_schedule_fn:
                 new_lr = self.lr_base * self.lr_schedule_fn(progress)
                 for param_group in self.optimizer.param_groups:
@@ -190,52 +280,8 @@ class Trainer:
             except StopIteration:
                 break
 
-            # Curriculum: spectral smoothing (omitted here for brevity, but should be ported)
-            # ... (TBD: port curriculum spectral smoothing if critical)
-
             t_step_start = time.time()
-            self.optimizer.zero_grad()
-            
-            with torch.amp.autocast('cuda', enabled=self.use_amp):
-                pred = self.compiled_model(x)
-                
-                # Spectral Bias Governor Update
-                loss_kwargs = {}
-                if self.governor:
-                    weights = self.governor.update(pred, y)
-                    if weights is not None:
-                        loss_kwargs["weights"] = weights
-
-                # Physical Consistency Check (Phase 2)
-                if hasattr(self.model, "input_units") and hasattr(self.model, "output_units"):
-                    from core.units import SciMLTensor, check_consistency
-                    # This is a placeholder for actual dimensional analysis of the forward pass
-                    pass
-
-                loss = self.loss_fn(pred, y, **loss_kwargs)
-
-            if self.use_amp:
-                self.scaler.scale(loss).backward()
-                if self.grad_clip > 0:
-                    self.scaler.unscale_(self.optimizer)
-                    gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-                else:
-                    # Need to unscale for gnorm monitoring even if not clipping
-                    self.scaler.unscale_(self.optimizer)
-                    gnorm = torch.tensor(0.0) # To be calculated if needed
-                
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-            else:
-                loss.backward()
-                if self.grad_clip > 0:
-                    gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-                else:
-                    gnorm = torch.tensor(0.0)
-                self.optimizer.step()
-
-            loss_val = loss.item()
-            current_gnorm = float(gnorm)
+            loss_val, current_gnorm = self.train_step(x, y)
             max_grad_norm = max(max_grad_norm, current_gnorm)
 
             if initial_loss is None: initial_loss = loss_val
@@ -263,33 +309,17 @@ class Trainer:
                       f"dt: {dt_ms:.0f}ms | remaining: {remaining:.0f}s", flush=True)
                 
                 t_last_log = t_now2
-
-                # VRAM guard + live telemetry
-                try:
-                    active_mb = torch.cuda.memory_allocated() / 1024 / 1024
-                    peak_mb   = torch.cuda.max_memory_allocated() / 1024 / 1024
-                except Exception:
-                    active_mb = peak_mb = 0.0
-                
                 self._loss_history.append([total_steps, loss_val])
                 if len(self._loss_history) > 100:
                     self._loss_history = self._loss_history[-100:]
                 
-                if self.max_vram_gb > 0 and peak_mb / 1024 > self.max_vram_gb:
-                    raise RuntimeError(f"VRAM limit exceeded: {peak_mb/1024:.2f} GB")
+                if self.max_vram_gb > 0:
+                    peak_mb = torch.cuda.max_memory_allocated() / 1024 / 1024
+                    if peak_mb / 1024 > self.max_vram_gb:
+                        raise RuntimeError(f"VRAM limit exceeded: {peak_mb/1024:.2f} GB")
 
-            # Mid-run validation & Snapshots (logic similar to MLX, using self.ema.apply_shadow())
             if progress >= next_eval_progress:
-                self.model.eval()
-                if self.ema:
-                    self.ema.apply_shadow()
-                
-                with torch.no_grad():
-                    val = self.eval_fn(lambda x: self.compiled_model(to_device(x)))
-                
-                if self.ema:
-                    self.ema.restore()
-                
+                val = self.evaluate()
                 if val < best_val:
                     no_improve_count = 0
                     best_val = val
@@ -313,6 +343,7 @@ class Trainer:
         return total_steps, max_grad_norm, total_train_time
 
     def evaluate(self):
+        import torch
         self.model.eval()
         if self.ema:
             self.ema.apply_shadow()
@@ -323,6 +354,123 @@ class Trainer:
         if self.ema:
             self.ema.restore()
         return result
+
+class TrainerMLX(BaseTrainer):
+    """A new implementation using mlx.core and mlx.optimizers."""
+    def __init__(self, *args, **kwargs):
+        # Remove torch-specific kwargs if present
+        kwargs.pop("use_amp", None)
+        kwargs.pop("compile", None)
+        super().__init__(*args, **kwargs)
+        if self.optimizer is None and HAS_MLX:
+            self.optimizer = mxo.AdamW(learning_rate=self.lr_base)
+        self._step_fn = None
+
+    def train_step(self, x, y):
+        import mlx.core as mx
+        if self._step_fn is None:
+            def loss_fn(model, x, y):
+                pred = model(x)
+                return self.loss_fn(pred, y)
+
+            loss_and_grad_fn = mx.value_and_grad(self.model, loss_fn)
+
+            @mx.compile
+            def step(x, y):
+                loss, grads = loss_and_grad_fn(self.model, x, y)
+                self.optimizer.update(self.model, grads)
+                return loss
+            self._step_fn = step
+
+        loss = self._step_fn(x, y)
+        mx.eval(self.model.parameters(), self.optimizer.state, loss)
+        return loss.item(), 0.0
+
+    def train(self, train_loader, t_start: float):
+        import mlx.core as mx
+        total_steps = 0
+        total_train_time = 0
+        best_val = float("inf")
+        initial_loss = None
+        loss_at_50 = None
+        
+        next_eval_progress = 0.10
+        EVAL_INTERVAL = 0.10
+        no_improve_count = 0
+        t_last_log = t_start
+
+        self.model.train()
+        while True:
+            if self._is_budget_exceeded(t_start, initial_loss, loss_at_50):
+                break
+
+            progress = (time.time() - t_start) / self.time_budget
+            if self.lr_schedule_fn:
+                self.optimizer.learning_rate = self.lr_base * self.lr_schedule_fn(progress)
+
+            try:
+                x, y = next(train_loader)
+                if not isinstance(x, mx.array): x = mx.array(x)
+                if not isinstance(y, mx.array): y = mx.array(y)
+            except StopIteration:
+                break
+
+            t_step_start = time.time()
+            loss_val, _ = self.train_step(x, y)
+            
+            if initial_loss is None: initial_loss = loss_val
+            if progress >= 0.5 and loss_at_50 is None: loss_at_50 = loss_val
+            
+            self._loss_history.append([total_steps, loss_val])
+            if len(self._loss_history) > 100:
+                self._loss_history = self._loss_history[-100:]
+
+            if self.step_callback:
+                self.step_callback(total_steps, progress)
+
+            total_train_time += (time.time() - t_step_start)
+            total_steps += 1
+
+            if total_steps % 20 == 0:
+                t_now = time.time()
+                dt_ms = (t_now - t_last_log) / 20 * 1000
+                remaining = max(0.0, self.time_budget - (t_now - t_start))
+                print(f"step {total_steps:05d} ({progress*100:.1f}%) | loss: {loss_val:.6f} | "
+                      f"lr: {self.optimizer.learning_rate:.2e} | "
+                      f"dt: {dt_ms:.0f}ms | remaining: {remaining:.0f}s", flush=True)
+                t_last_log = t_now
+
+            if progress >= next_eval_progress:
+                val = self.evaluate()
+                if val < best_val:
+                    best_val = val
+                    no_improve_count = 0
+                else:
+                    no_improve_count += 1
+                
+                print(f"val@{progress*100:.0f}%: {val:.6f}", flush=True)
+                next_eval_progress += EVAL_INTERVAL
+                self.model.train()
+
+                if self.patience > 0 and no_improve_count >= self.patience:
+                    break
+
+        return total_steps, 0.0, total_train_time
+
+    def evaluate(self):
+        import mlx.core as mx
+        self.model.eval()
+        val = self.eval_fn(lambda x: self.model(mx.array(x) if not isinstance(x, mx.array) else x))
+        self.model.train()
+        return val
+
+def Trainer(*args, **kwargs):
+    """Factory function that dispatches to the correct backend."""
+    from core.device import FRAMEWORK
+    if FRAMEWORK == "mlx":
+        return TrainerMLX(*args, **kwargs)
+    else:
+        return TrainerTorch(*args, **kwargs)
 
 def get_lr_schedule(
     warmup_ratio: float = 0.05,

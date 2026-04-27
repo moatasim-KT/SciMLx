@@ -98,11 +98,11 @@ def main():
     proposal_path = Path(args.proposal)
     data = parse_proposal(proposal_path)
 
-    print(f"Scaffolding model '{data['registry_key']}' for proposal '{data['title']}'...")
+    print(f"Scaffolding model '{data['registry_key']}' for proposal '{data['title']}' using {FRAMEWORK.upper()} backend...")
 
     # 1. Generate stub
     is_2d = "_2d" in data['target_pde'].lower() or "2d" in data['target_pde'].lower()
-    stub_code = generate_stub(data['registry_key'], notes=data['hard_limits'], two_d=is_2d)
+    stub_code = generate_stub(data['registry_key'], notes=data['hard_limits'], two_d=is_2d, framework=FRAMEWORK)
     
     model_file = REPO_ROOT / "models" / f"{data['registry_key'].lower()}.py"
     model_file.write_text(stub_code)

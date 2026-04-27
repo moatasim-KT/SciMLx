@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.utils import REPO_ROOT
-from core.device import DEVICE
+from core.device import DEVICE, FRAMEWORK
 
 # ── Stub templates ────────────────────────────────────────────────────────────
 
@@ -101,11 +101,86 @@ class {name}2d(nn.Module):
         return self.proj(h).squeeze(-1).view(B, N, N)
 '''
 
+_MLX_STUB_TEMPLATE = '''"""
+{name} — SciML Neural Operator (MLX)
+
+Auto-generated stub by model_scaffold.py.
+Base architecture: {base}
+"""
+
+import mlx.core as mx
+import mlx.nn as nn
+
+# from models.layers.mlx_spectral import SpectralConv1d
+
+class {name}(nn.Module):
+    def __init__(self, n_modes: int = 16, hidden_dim: int = 64,
+                 n_layers: int = 4, **kwargs):
+        super().__init__()
+        self.n_modes    = n_modes
+        self.hidden_dim = hidden_dim
+        self.n_layers   = n_layers
+
+        self.lift = nn.Linear(1, hidden_dim)
+        self.blocks = [
+            nn.Linear(hidden_dim, hidden_dim)
+            for _ in range(n_layers)
+        ]
+        self.proj = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def __call__(self, x: mx.array) -> mx.array:
+        h = self.lift(x[..., None])          # [B, N, H]
+        for block in self.blocks:
+            h = h + block(h)
+        return self.proj(h).squeeze(-1)      # [B, N]
+'''
+
+_MLX_STUB_TEMPLATE_2D = '''"""
+{name}2d — 2D SciML Neural Operator (MLX)
+"""
+
+import mlx.core as mx
+import mlx.nn as nn
+
+class {name}2d(nn.Module):
+    def __init__(self, n_modes: int = 12, hidden_dim: int = 32,
+                 n_layers: int = 4, **kwargs):
+        super().__init__()
+        self.n_modes    = n_modes
+        self.hidden_dim = hidden_dim
+        self.lift       = nn.Linear(1, hidden_dim)
+        self.blocks     = [
+            nn.Linear(hidden_dim, hidden_dim)
+            for _ in range(n_layers)
+        ]
+        self.proj = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim), nn.GELU(), nn.Linear(hidden_dim, 1)
+        )
+
+    def __call__(self, x: mx.array) -> mx.array:
+        B, N, _ = x.shape
+        h = self.lift(x.reshape(B, N*N, 1))
+        for block in self.blocks:
+            h = h + block(h)
+        return self.proj(h).squeeze(-1).reshape(B, N, N)
+'''
+
 def generate_stub(name: str, base: str = "FNO",
-                  notes: str = "", two_d: bool = False) -> str:
+                  notes: str = "", two_d: bool = False,
+                  framework: Optional[str] = None) -> str:
     """Return Python source for a new model stub."""
+    fw = framework or FRAMEWORK
     module = name.lower()
-    template = _STUB_TEMPLATE_2D if two_d else _STUB_TEMPLATE
+
+    if fw == "mlx":
+        template = _MLX_STUB_TEMPLATE_2D if two_d else _MLX_STUB_TEMPLATE
+    else:
+        template = _STUB_TEMPLATE_2D if two_d else _STUB_TEMPLATE
+
     return template.format(name=name, base=base,
                            notes=notes or "fill in architecture details",
                            module=module)
@@ -143,19 +218,35 @@ class ModelGate:
 
         # ── Gate 3: Smoke test ────────────────────────────────────────────────
         try:
-            import torch
-            model_inst = cls(n_modes=8, hidden_dim=16, n_layers=2).to(DEVICE)
-            x1d = torch.randn(2, 64).to(DEVICE)
-            x2d = torch.randn(2, 16, 16).to(DEVICE)
             out_shape = None
-            for x in (x1d, x2d):
-                try:
-                    out = model_inst(x)
-                    if out.shape == x.shape:
-                        out_shape = out.shape
-                        break
-                except Exception:
-                    continue
+            if FRAMEWORK == "mlx":
+                import mlx.core as mx
+                model_inst = cls(n_modes=8, hidden_dim=16, n_layers=2)
+                x1d = mx.random.normal((2, 64))
+                x2d = mx.random.normal((2, 16, 16))
+                for x in (x1d, x2d):
+                    try:
+                        out = model_inst(x)
+                        mx.eval(out)
+                        if list(out.shape) == list(x.shape):
+                            out_shape = out.shape
+                            break
+                    except Exception:
+                        continue
+            else:
+                import torch
+                model_inst = cls(n_modes=8, hidden_dim=16, n_layers=2).to(DEVICE)
+                x1d = torch.randn(2, 64).to(DEVICE)
+                x2d = torch.randn(2, 16, 16).to(DEVICE)
+                for x in (x1d, x2d):
+                    try:
+                        out = model_inst(x)
+                        if out.shape == x.shape:
+                            out_shape = out.shape
+                            break
+                    except Exception:
+                        continue
+
             if out_shape is None:
                 raise ValueError("Model output shape does not match input shape")
             report.update(smoke_ok=True, output_shape=str(out_shape))

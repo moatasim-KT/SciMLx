@@ -45,7 +45,20 @@ SciMLx is a high-performance, self-driving experiment harness for **neural opera
 - **CUDA Optimizations**: Utilizes `torch.compile`, Mixed Precision (AMP), and high-throughput data loading with Pinned Memory.
 - **Lineage Tracking**: Records every experiment in `results.json` and manages champions in a model registry.
 
-**Who this is for:** Researchers and engineers who want to systematically explore neural PDE solvers at scale on NVIDIA hardware.
+---
+
+## Multi-Backend Support
+
+SciMLx is designed for cross-platform research, automatically optimizing for your hardware:
+
+- **NVIDIA CUDA (PyTorch)**: Leverages `torch.compile`, mixed precision (AMP), and high-throughput data loading. Optimized for high-performance training on A100/H100/L4 GPUs.
+- **Apple Silicon (MLX)**: Uses Apple's unified memory architecture and native MLX framework for efficient training on M-series chips.
+
+The system automatically detects your environment and selects the optimal backend via `core/device.py`. This ensures your research code remains portable while extracting maximum performance from available hardware.
+
+---
+
+**Who this is for:** Researchers and engineers who want to systematically explore neural PDE solvers at scale on NVIDIA or Apple Silicon hardware.
 
 ---
 

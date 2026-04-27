@@ -34,7 +34,10 @@ VAL_CACHE_1D = os.path.join(
     CACHE_DIR, f"burgers_val_N{GRID_SIZE}_nu{NU:.6f}_T{T_FINAL}.npz"
 )
 
-from core.device import DEVICE
+from core.device import DEVICE, FRAMEWORK, to_array
+
+if FRAMEWORK == "mlx":
+    import mlx.core as mx
 
 # ── 1D Solvers ────────────────────────────────────────────────────────────────
 
@@ -269,10 +272,38 @@ class PDEDataset(torch.utils.data.Dataset):
 
 def make_dataloader(benchmark: str, split: str, batch_size: int, seed: int | None = None):
     """
-    Yielding ``(inputs, targets)`` as PyTorch tensors.
+    Yielding ``(inputs, targets)`` as framework-native tensors/arrays.
     """
     assert split in ("train", "val"), f"split must be 'train' or 'val', got {split!r}"
 
+    if FRAMEWORK == "mlx":
+        # MLX path: use a simple generator
+        if split == "val":
+            inp, tgt = _load_or_gen_val(benchmark)
+        else:
+            inp, tgt = _get_train_data(benchmark)
+        
+        n = len(inp)
+        rng = np.random.RandomState(seed if seed is not None else 99999)
+        
+        def mlx_generator():
+            while True:
+                if split == "train":
+                    # For training, we shuffle at each epoch
+                    perm = rng.permutation(n)
+                    for j in range(0, n - batch_size + 1, batch_size):
+                        idx = perm[j:j+batch_size]
+                        yield to_array(inp[idx]), to_array(tgt[idx])
+                else:
+                    # For validation, we yield in order
+                    for j in range(0, n, batch_size):
+                        end = min(j + batch_size, n)
+                        yield to_array(inp[j:end]), to_array(tgt[j:end])
+                    break
+        
+        return mlx_generator()
+
+    # Torch path (original logic)
     if split == "val":
         inp, tgt = _load_or_gen_val(benchmark)
         dataset = PDEDataset(torch.from_numpy(inp), torch.from_numpy(tgt))
@@ -311,20 +342,34 @@ def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> floa
     total_err  = 0.0
     total_norm = 0.0
 
-    with torch.no_grad():
+    if FRAMEWORK == "mlx":
         for x, y in val_loader:
-            x, y     = x.to(DEVICE), y.to(DEVICE)
-            y_pred   = model(x)
-            diff     = (y_pred - y).float()
-            y_f      = y.float()
+            y_pred = model(x)
+            diff   = (y_pred - y).astype(mx.float32)
+            y_f    = y.astype(mx.float32)
             
-            # L2 norm over spatial dimensions (all but batch)
             axes = tuple(range(1, y.ndim))
-            err  = torch.sqrt(torch.mean(diff ** 2, dim=axes))
-            nrm  = torch.sqrt(torch.mean(y_f  ** 2, dim=axes))
+            err  = mx.sqrt(mx.mean(diff ** 2, axis=axes))
+            nrm  = mx.sqrt(mx.mean(y_f  ** 2, axis=axes))
+            mx.eval(err, nrm)
             
-            total_err  += torch.sum(err).item()
-            total_norm += torch.sum(nrm).item()
+            total_err  += mx.sum(err).item()
+            total_norm += mx.sum(nrm).item()
+    else:
+        with torch.no_grad():
+            for x, y in val_loader:
+                x, y     = x.to(DEVICE), y.to(DEVICE)
+                y_pred   = model(x)
+                diff     = (y_pred - y).float()
+                y_f      = y.float()
+                
+                # L2 norm over spatial dimensions (all but batch)
+                axes = tuple(range(1, y.ndim))
+                err  = torch.sqrt(torch.mean(diff ** 2, dim=axes))
+                nrm  = torch.sqrt(torch.mean(y_f  ** 2, dim=axes))
+                
+                total_err  += torch.sum(err).item()
+                total_norm += torch.sum(nrm).item()
 
     return total_err / max(total_norm, 1e-8)
 

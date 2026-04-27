@@ -32,11 +32,18 @@
   `results.json` is an auto-exported human-readable copy. `results.db` (SQLite WAL) is the SSoT.
 - **`name` in `experiments.yaml` must be globally unique** — duplicates are silently skipped.
 
-### Hardware Limits (Apple Silicon — enforced by `ModelRegistry.build()`)
-- **2D hard limit**: `hidden_dim < 64`, `n_layers < 8`. Raises `ValueError` above these.
+### Hardware Limits (Backend-Aware)
+
+#### Apple Silicon (MLX)
+- **2D hard limit**: `hidden_dim < 64`, `n_layers < 8`. Enforced for memory stability on unified memory.
   Recommended: `hidden_dim = 32`, `n_layers ≤ 4`, `n_modes ≤ 12`.
 - **SSNO**: `hidden_dim ≤ 64`, `n_layers ≤ 4`. Diverges at `h ≥ 128`.
 - **Budget floors** (auto-applied): 1D ≥ 1800s, 2D ≥ 3600s.
+
+#### NVIDIA CUDA (PyTorch)
+- **2D capacity**: Higher ceilings for large-scale training (e.g., `hidden_dim = 128`, `n_layers = 12`).
+- **Optimization**: Mixed Precision (`torch.amp`) and `torch.compile` are mandatory for SOTA-chasing experiments.
+- **Memory**: Pinned memory used for high-throughput data loading.
 
 ### Known Crash Patterns (Do Not Repeat)
 - **`RFNO`/`PINO` on `burgers_nu_001`**: was crashing because benchmark doesn't end in `_1d`.
