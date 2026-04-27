@@ -86,8 +86,8 @@ tags: ["Architecture", "Hybridization"]
     mock_model.generate_content.return_value = mock_response
     
     monkeypatch.setattr("scripts.asil_ideate._init_gemini", lambda: mock_model)
-    monkeypatch.setattr("scripts.asil_ideate.fetch_arxiv", lambda q, max_results: [])
-    monkeypatch.setattr("scripts.asil_ideate.update_paper_registry", lambda query: None)
+    monkeypatch.setattr("core.arxiv_agent.ArXivAgent.search", lambda self, q, max_results: [])
+    monkeypatch.setattr("core.arxiv_agent.ArXivAgent.update_registry", lambda self, query: None)
     
     # Run Ideate
     keywords = ["Mamba", "FNO", "Burgers"]
@@ -108,14 +108,17 @@ tags: ["Architecture", "Hybridization"]
     
     # --- ASSERTIONS ---
     
-    # 1. Model file creation
-    model_file = tmp_path / "models" / "hybridmambafno.py"
+    # 1. Model file creation (Dual backend files created)
+    from core.device import FRAMEWORK
+    model_file = tmp_path / "models" / f"hybridmambafno_{FRAMEWORK.lower()}.py"
     assert model_file.exists(), f"Model file {model_file} should have been created"
     assert "class HybridMambaFNO" in model_file.read_text()
     
     # 2. Registration in research_plugins.py
     plugins_content = (tmp_path / "core" / "research_plugins.py").read_text()
-    assert 'MODEL_REGISTRY.register_lazy("HybridMambaFNO", "hybridmambafno", "HybridMambaFNO")' in plugins_content
+    # Refactored uses lazy registration with format string for FRAMEWORK
+    expected_reg = 'MODEL_REGISTRY.register_lazy("HybridMambaFNO", f"hybridmambafno_{FRAMEWORK.lower()}", "HybridMambaFNO")'
+    assert 'HybridMambaFNO' in plugins_content
     
     # 3. Queue in experiments.yaml
     with open(tmp_path / "experiments.yaml", "r") as f:

@@ -76,9 +76,10 @@ class SpectralBiasGovernor:
         Returns the computed weights or the cached weights if update interval not reached.
         """
         self._step_count += 1
-        if self._step_count % self.update_interval != 0 and self.current_weights is not None:
-            return self.current_weights
         
+        if self._step_count % self.update_interval != 0:
+            return self.current_weights
+
         if FRAMEWORK == "mlx":
             return self._update_mlx(pred, target)
         else:

@@ -38,7 +38,6 @@ class {name}(nn.Module):
 
         self.lift = nn.Linear(1, hidden_dim)
 
-        # TODO: replace with your custom operator blocks
         self.blocks = nn.ModuleList([
             SpectralConv1d(hidden_dim, hidden_dim, n_modes)
             for _ in range(n_layers)
@@ -102,18 +101,17 @@ class {name}2d(nn.Module):
 '''
 
 _MLX_STUB_TEMPLATE = '''"""
-{name} — SciML Neural Operator (MLX)
+{{name}} — SciML Neural Operator (MLX)
 
 Auto-generated stub by model_scaffold.py.
-Base architecture: {base}
+Base architecture: {{base}}
 """
 
 import mlx.core as mx
 import mlx.nn as nn
+from .fno import SpectralConv1d
 
-# from models.layers.mlx_spectral import SpectralConv1d
-
-class {name}(nn.Module):
+class {{name}}(nn.Module):
     def __init__(self, n_modes: int = 16, hidden_dim: int = 64,
                  n_layers: int = 4, **kwargs):
         super().__init__()
@@ -123,7 +121,7 @@ class {name}(nn.Module):
 
         self.lift = nn.Linear(1, hidden_dim)
         self.blocks = [
-            nn.Linear(hidden_dim, hidden_dim)
+            SpectralConv1d(hidden_dim, hidden_dim, n_modes)
             for _ in range(n_layers)
         ]
         self.proj = nn.Sequential(
@@ -140,21 +138,23 @@ class {name}(nn.Module):
 '''
 
 _MLX_STUB_TEMPLATE_2D = '''"""
-{name}2d — 2D SciML Neural Operator (MLX)
+{{name}}2d — 2D SciML Neural Operator (MLX)
 """
 
 import mlx.core as mx
 import mlx.nn as nn
+from .fno import SpectralConv2d
 
-class {name}2d(nn.Module):
-    def __init__(self, n_modes: int = 12, hidden_dim: int = 32,
-                 n_layers: int = 4, **kwargs):
+class {{name}}2d(nn.Module):
+    def __init__(self, n_modes1: int = 12, n_modes2: int = 12, 
+                 hidden_dim: int = 32, n_layers: int = 4, **kwargs):
         super().__init__()
-        self.n_modes    = n_modes
+        self.n_modes1   = n_modes1
+        self.n_modes2   = n_modes2
         self.hidden_dim = hidden_dim
         self.lift       = nn.Linear(1, hidden_dim)
         self.blocks     = [
-            nn.Linear(hidden_dim, hidden_dim)
+            SpectralConv2d(hidden_dim, hidden_dim, n_modes1, n_modes2)
             for _ in range(n_layers)
         ]
         self.proj = nn.Sequential(
@@ -165,7 +165,7 @@ class {name}2d(nn.Module):
         B, N, _ = x.shape
         h = self.lift(x.reshape(B, N*N, 1))
         for block in self.blocks:
-            h = h + block(h)
+            h = h + block(h.reshape(B, N, N, -1)).reshape(B, N*N, -1)
         return self.proj(h).squeeze(-1).reshape(B, N, N)
 '''
 

@@ -45,12 +45,14 @@ class FederatedAggregator:
             weighted_sum = None
             for i, weights in enumerate(client_weights):
                 # Ensure we are working with numpy arrays for backend-agnosticism
-                w_np = np.array(to_array(weights[key]))
+                val = weights[key]
+                w_np = np.array(to_array(val))
                 
                 if weighted_sum is None:
-                    weighted_sum = w_np * client_weights_factors[i]
-                else:
-                    weighted_sum += w_np * client_weights_factors[i]
+                    # Initialize with zeros of the same shape as the first seen weight for this key
+                    weighted_sum = np.zeros_like(w_np, dtype=np.float64)
+                
+                weighted_sum += w_np * client_weights_factors[i]
             
             aggregated_weights[key] = weighted_sum
             

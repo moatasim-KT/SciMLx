@@ -44,9 +44,11 @@ def _init_gemini():
 
 def synthesize_proposal(keywords: List[str], novelty: str, limit: int) -> str:
     """Use Gemini to synthesize a novel research proposal."""
-    agent = ArXivAgent()
-    if not agent._model:
+    model = _init_gemini()
+    if not model:
         raise RuntimeError("GOOGLE_API_KEY not found. LLM synthesis required.")
+
+    agent = ArXivAgent()
 
     # 1. Update paper registry (Sync ArXiv)
     query = " ".join(keywords)
@@ -99,7 +101,7 @@ def synthesize_proposal(keywords: List[str], novelty: str, limit: int) -> str:
     """
 
     print(f"Synthesizing {novelty}-novelty proposal using Gemini 1.5 Pro...")
-    response = agent._model.generate_content(prompt)
+    response = model.generate_content(prompt)
     proposal_content = response.text.strip()
     
     # Clean up markdown code blocks if the LLM wrapped it
