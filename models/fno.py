@@ -51,10 +51,17 @@ class FNO1d(nn.Module):
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         if u0.ndim == 1:
             u0 = u0.unsqueeze(0)
         B, N = u0.shape
-        grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+        grid = torch.linspace(0.0, 1.0, N, device=device).view(1, N).expand(B, N)
         x = torch.stack([u0, grid], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
@@ -113,9 +120,16 @@ class FNO2d(nn.Module):
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         B, N1, N2 = u0.shape
-        grid1 = torch.linspace(0.0, 1.0, N1, device=u0.device).view(1, N1, 1).expand(B, N1, N2)
-        grid2 = torch.linspace(0.0, 1.0, N2, device=u0.device).view(1, 1, N2).expand(B, N1, N2)
+        grid1 = torch.linspace(0.0, 1.0, N1, device=device).view(1, N1, 1).expand(B, N1, N2)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=device).view(1, 1, N2).expand(B, N1, N2)
         x = torch.stack([u0, grid1, grid2], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
@@ -147,10 +161,17 @@ class RFNO1d(nn.Module):
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         if u0.ndim == 1:
             u0 = u0.unsqueeze(0)
         B, N = u0.shape
-        grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+        grid = torch.linspace(0.0, 1.0, N, device=device).view(1, N).expand(B, N)
         x = torch.stack([u0, grid], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
@@ -180,9 +201,16 @@ class RFNO2d(nn.Module):
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         B, N1, N2 = u0.shape
-        grid1 = torch.linspace(0.0, 1.0, N1, device=u0.device).view(1, N1, 1).expand(B, N1, N2)
-        grid2 = torch.linspace(0.0, 1.0, N2, device=u0.device).view(1, 1, N2).expand(B, N1, N2)
+        grid1 = torch.linspace(0.0, 1.0, N1, device=device).view(1, N1, 1).expand(B, N1, N2)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=device).view(1, 1, N2).expand(B, N1, N2)
         x = torch.stack([u0, grid1, grid2], dim=-1)
         x = self.lift(x)
         for blk in self.blocks:
@@ -208,9 +236,16 @@ class UNO1d(nn.Module):
         self.proj = nn.Linear(hidden_dim, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         if u0.ndim == 1: u0 = u0.unsqueeze(0)
         B, N = u0.shape
-        grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+        grid = torch.linspace(0.0, 1.0, N, device=device).view(1, N).expand(B, N)
         x = self.lift(torch.stack([u0, grid], dim=-1))
         
         x1 = self.enc1(x)
@@ -235,9 +270,16 @@ class UNO2d(nn.Module):
         self.proj = nn.Linear(hidden_dim, 1)
 
     def forward(self, u0: torch.Tensor) -> torch.Tensor:
+        if not isinstance(u0, torch.Tensor):
+            u0 = torch.tensor(u0, dtype=torch.float32)
+        
+        # Ensure u0 is on the same device as the model weights
+        device = next(self.parameters()).device
+        u0 = u0.to(device)
+
         B, N1, N2 = u0.shape
-        grid1 = torch.linspace(0.0, 1.0, N1, device=u0.device).view(1, N1, 1).expand(B, N1, N2)
-        grid2 = torch.linspace(0.0, 1.0, N2, device=u0.device).view(1, 1, N2).expand(B, N1, N2)
+        grid1 = torch.linspace(0.0, 1.0, N1, device=device).view(1, N1, 1).expand(B, N1, N2)
+        grid2 = torch.linspace(0.0, 1.0, N2, device=device).view(1, 1, N2).expand(B, N1, N2)
         x = self.lift(torch.stack([u0, grid1, grid2], dim=-1))
         x = self.enc1(x)
         x = self.dec1(x)

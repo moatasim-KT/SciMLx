@@ -69,6 +69,7 @@ def _parse_args():
     p.add_argument("--lr_schedule", default="warmup_cosine")
     p.add_argument("--patience",    type=int,   default=5)
     p.add_argument("--snapshot_ensemble", type=int, default=0)
+    p.add_argument("--weight_decay", type=float, default=1e-4)
 
     return p.parse_args()
 
@@ -107,7 +108,7 @@ def main():
 
     # 4. Training Components
     loss_fn = get_loss_fn(args.loss, alpha=args.h1_alpha if "h1" in args.loss else None)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     lr_sch = get_lr_schedule(schedule_type=args.lr_schedule)
 
     trainer = Trainer(

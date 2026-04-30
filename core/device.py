@@ -133,7 +133,7 @@ def to_device(data):
     
     if FRAMEWORK == "mlx":
         # For MLX arrays, it's mostly a no-op
-        if HAS_MLX and isinstance(data, mx.array):
+        if _HAS_MLX and isinstance(data, mx.array):
             return data
         # If it's a numpy array, convert to mx.array? 
         # Actually TrainerMLX handles that.

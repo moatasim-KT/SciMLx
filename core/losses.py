@@ -208,6 +208,10 @@ def get_loss_fn(name: str, **kwargs):
     if name not in _LOSS_REGISTRY:
         raise ValueError(f"Unknown loss: {name}. Available: {list(_LOSS_REGISTRY.keys())}")
     fn = _LOSS_REGISTRY[name]
+    
+    # Filter out None values to prevent them from being passed to functions that don't accept them
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    
     if kwargs:
         import functools
         return functools.partial(fn, **kwargs)

@@ -230,7 +230,28 @@ class TrainerTorch(BaseTrainer):
         else:
             loss.backward()
             if self.grad_clip > 0:
-                gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+                try:
+                    gnorm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+                except RuntimeError as e:
+                    if "norm ops are not supported for complex yet" in str(e):
+                        # Fallback for complex gradients: compute norm of complex grads
+                        grads = [p.grad for p in self.model.parameters() if p.grad is not None]
+                        total_norm = torch.tensor(0.0, device=self.model.parameters().__next__().device)
+                        for g in grads:
+                            if torch.is_complex(g):
+                                total_norm += torch.linalg.vector_norm(g.real)**2 + torch.linalg.vector_norm(g.imag)**2
+                            else:
+                                total_norm += torch.linalg.vector_norm(g)**2
+                        total_norm = torch.sqrt(total_norm)
+                        gnorm = total_norm
+                        if self.grad_clip > 0:
+                            clip_coef = self.grad_clip / (total_norm + 1e-6)
+                            if clip_coef < 1:
+                                for p in self.model.parameters():
+                                    if p.grad is not None:
+                                        p.grad.mul_(clip_coef)
+                    else:
+                        raise e
             else:
                 gnorm = torch.tensor(0.0)
             self.optimizer.step()
