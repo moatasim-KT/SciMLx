@@ -153,7 +153,7 @@ Full list: `core/research_plugins.py`. All new models must be registered there.
 ### Active Strategy
 <!-- STRATEGY_START -->
 - **Current Score**: 9/14 SOTA benchmarks beaten: `allen_cahn_2d`, `burgers_nu_001`, `elasticity_2d`, `euler_1d`, `kdv_1d`
-- **Current Focus**: Close `burgers_1d` (47.3× gap).
+- **Current Focus**: Close `burgers_1d` (47.0× gap).
 - **Priority Hypotheses**: High spectral modes for shocks; EMA for convergence stability.
 <!-- STRATEGY_END -->
 
@@ -161,16 +161,16 @@ Full list: `core/research_plugins.py`. All new models must be registered there.
 | Date | Insight | Action | Outcome |
 |---|---|---|---|
 <!-- LESSONS_START -->
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.178343 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | Transolver on burgers_1d | **0.172114 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.214153 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.193788 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.192137 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.170058 (discard)** |
-| 2026-04-22 | Incrementing modes to m=28 based on best config (TFNO h=128 ... | SSNO on burgers_1d | **0.170058 (discard)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | WNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | UNO on burgers_1d | **crash:UnknownError)** |
+| 2026-04-28 | Architecture discovery halted by UnknownError.... | FNO on burgers_1d | **crash:UnknownError)** |
 <!-- LESSONS_END -->
 
 ### Architecture Evolution

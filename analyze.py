@@ -157,7 +157,7 @@ def print_report(rows: list[dict], benchmark_filter: Optional[str]) -> None:
         print(f"    {'─'*60}")
         for row in sorted_rows[:20]:
             print(f"    {row['val_l2_rel']:>12.6f}  {row['status']:<8}  "
-                  f"{row['model']:<12}  {row.get('description','')[:40]}")
+                  f"{row['model']:<12}  {(row.get('description') or '')[:40]}")
 
         # Suggestions
         print(f"\n  Suggestions for next experiments:")
@@ -199,7 +199,7 @@ def _print_suggestions(rows: list[dict], benchmark: str,
             print(f"    → {model} not yet tried on {benchmark}.")
 
     # Check if PINO has been tried
-    pino_rows = [r for r in rows if "pino" in r.get("description", "").lower()]
+    pino_rows = [r for r in rows if "pino" in (r.get("description") or "").lower()]
     if not pino_rows:
         print(f"    → Physics-informed loss (PINO) not yet explored.")
         print(f"       Try: uv run train.py --pino_lambda 0.01")

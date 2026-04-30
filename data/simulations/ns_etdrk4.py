@@ -33,7 +33,7 @@ References:
 
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -62,7 +62,7 @@ METADATA = {
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Small-amplitude smooth vorticity field (CFL-safe for dt=0.002)."""
     w0 = _random_ic_2d(n, N, rng, n_modes=4, scale=IC_SCALE, offset=0.0)
-    return torch.from_numpy(w0).to(DEVICE)
+    return torch.from_numpy(w0).to(TORCH_DEVICE)
 
 
 # ── ETDRK4 pseudo-spectral NS solver ──────────────────────────────────────────
@@ -73,15 +73,15 @@ def solve_batch(w0: torch.Tensor | np.ndarray,
                 n_steps: int = N_STEPS) -> torch.Tensor:
     """Evolve 2D NS vorticity field from t=0 to T via ETDRK4."""
     if isinstance(w0, np.ndarray):
-        w0 = torch.from_numpy(w0).to(DEVICE)
+        w0 = torch.from_numpy(w0).to(TORCH_DEVICE)
     else:
-        w0 = w0.to(DEVICE)
+        w0 = w0.to(TORCH_DEVICE)
 
     B, N, _ = w0.shape
     dt = T / n_steps
 
     # Spectral operators on [0, 2π)²
-    k_int = torch.fft.fftfreq(N, device=DEVICE).reshape(N, 1)
+    k_int = torch.fft.fftfreq(N, device=TORCH_DEVICE).reshape(N, 1)
     kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     lap   = -(kx**2 + ky**2)                       # ∇² eigenvalues (negative)
     lap_safe          = lap.clone()
@@ -89,7 +89,7 @@ def solve_batch(w0: torch.Tensor | np.ndarray,
 
     # Dealiasing mask (2/3-rule)
     dealias = ((torch.abs(kx * N) <= N // 3) &
-               (torch.abs(ky * N) <= N // 3)).to(torch.float64)
+               (torch.abs(ky * N) <= N // 3)).to(torch.float32)
 
     # Linear operator L̂ = −ν|k|² (real, ≤ 0 everywhere)
     L = nu * lap                                    # = −ν|k|², ≤ 0
@@ -99,11 +99,11 @@ def solve_batch(w0: torch.Tensor | np.ndarray,
     E2 = torch.exp(L * dt / 2.0)   # [N, N]
 
     eps_L = 1e-10
-    Ls    = torch.where(torch.abs(L) < eps_L, torch.tensor(eps_L, device=DEVICE, dtype=L.dtype), L)
+    Ls    = torch.where(torch.abs(L) < eps_L, torch.tensor(eps_L, device=TORCH_DEVICE, dtype=L.dtype), L)
 
     # φ₁(z) = (e^z − 1)/z  coefficients for half-step and full-step
-    c1h = torch.where(torch.abs(L) < eps_L, torch.tensor(dt / 2.0, device=DEVICE, dtype=L.dtype),  (E2 - 1.0) / Ls)  # half-step
-    c1f = torch.where(torch.abs(L) < eps_L, torch.tensor(dt, device=DEVICE, dtype=L.dtype),          (E  - 1.0) / Ls)  # full-step
+    c1h = torch.where(torch.abs(L) < eps_L, torch.tensor(dt / 2.0, device=TORCH_DEVICE, dtype=L.dtype),  (E2 - 1.0) / Ls)  # half-step
+    c1f = torch.where(torch.abs(L) < eps_L, torch.tensor(dt, device=TORCH_DEVICE, dtype=L.dtype),          (E  - 1.0) / Ls)  # full-step
 
     # Broadcast for batch dimension: [1, N, N]
     E   = E  [None]
@@ -135,7 +135,7 @@ def solve_batch(w0: torch.Tensor | np.ndarray,
         adv = torch.fft.fft2(u_phys * wx_phys + v_phys * wy_phys, dim=(1, 2))
         return -adv    # N(ω) = −(u·∇)ω
 
-    w = w0.to(torch.float64)
+    w = w0.to(torch.float32)
     w_hat = torch.fft.fft2(w, dim=(1, 2))
 
     for _ in range(n_steps):

@@ -80,9 +80,9 @@ class BenchmarkRegistry:
         self._sota[name]    = sota
         self._desc[name]    = description
 
-    def make_loader(self, name: str, split: str, batch_size: int):
+    def make_loader(self, name: str, split: str, batch_size: int, **kwargs):
         if name not in self._loaders: raise ValueError(f"Unknown benchmark {name!r}")
-        return self._loaders[name](name, split, batch_size)
+        return self._loaders[name](name, split, batch_size, **kwargs)
 
     def evaluate(self, name: str, model_fn: Callable) -> float:
         if name not in self._evals: raise ValueError(f"Unknown benchmark {name!r}")

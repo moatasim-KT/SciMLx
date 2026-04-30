@@ -1,6 +1,7 @@
 """Modular loss function library for SciML experiments (PyTorch/CUDA)."""
 
 import math
+from typing import Optional
 import torch
 import torch.nn.functional as F
 from core.device import DEVICE

@@ -74,6 +74,18 @@ def get_device():
 
 DEVICE = get_device()
 
+def get_torch_device():
+    """Always returns a valid torch.device, regardless of global FRAMEWORK."""
+    if not _HAS_TORCH:
+        return None
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+TORCH_DEVICE = get_torch_device()
+
 def to_array(data, dtype=None):
     """
     Convert data to framework-native array/tensor.
@@ -113,9 +125,18 @@ def to_array(data, dtype=None):
 def to_device(data):
     """
     Move tensors or models to the active device.
-    For MLX, this is mostly a no-op as it manages its own memory.
+    If global FRAMEWORK is 'mlx', it still ensures torch models/tensors 
+    are moved to TORCH_DEVICE if they are torch objects.
     """
+    if isinstance(data, (torch.Tensor, torch.nn.Module)):
+        return data.to(TORCH_DEVICE)
+    
     if FRAMEWORK == "mlx":
+        # For MLX arrays, it's mostly a no-op
+        if HAS_MLX and isinstance(data, mx.array):
+            return data
+        # If it's a numpy array, convert to mx.array? 
+        # Actually TrainerMLX handles that.
         return data
     
     if FRAMEWORK == "torch":

@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from core.device import DEVICE, FRAMEWORK, to_array
+from core.device import DEVICE, TORCH_DEVICE, FRAMEWORK, to_array
 
 if FRAMEWORK == "mlx":
     import mlx.core as mx
@@ -162,7 +162,7 @@ def _get_sim_train(benchmark: str) -> tuple:
 # ── Public dataloader (same interface as prepare.make_dataloader) ─────────────
 
 def make_sim_dataloader(benchmark: str, split: str, batch_size: int,
-                        seed: int | None = None):
+                        seed: int | None = None, **kwargs):
     """Infinite (inputs, targets) generator yielding framework-native arrays.
 
     Interface identical to prepare.make_dataloader and benchmarks_ext.make_ext_dataloader.

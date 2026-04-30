@@ -94,7 +94,7 @@ MHD_ETA   = 1e-3
 MHD_T     = 0.5
 MHD_NSTEPS = 500
 
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 # ── 2D Solvers (corrected) ────────────────────────────────────────────────────
 
@@ -109,11 +109,11 @@ def solve_darcy_2d_batch(
     Poisson operator P = a_mean·(-Δ) as a preconditioner.
     """
     B, N, _ = a.shape
-    a_d = a.to(torch.float64)
-    f_d = f.to(torch.float64)
+    a_d = a.to(torch.float32)
+    f_d = f.to(torch.float32)
 
     # Physical wavenumbers on [0,1]²: d/dx ↔ multiply by 2πi·k_int
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ky = torch.meshgrid(2 * math.pi * k_int, 2 * math.pi * k_int, indexing="ij")
     lap_pos = kx ** 2 + ky ** 2
     lap_pos[0, 0] = 1.0
@@ -139,7 +139,7 @@ def solve_darcy_2d_batch(
         Pr -= Pr.mean(dim=(1, 2), keepdim=True)  # project to zero-mean space
         return Pr
 
-    u = torch.zeros((B, N, N), dtype=torch.float64, device=DEVICE)
+    u = torch.zeros((B, N, N), dtype=torch.float32, device=TORCH_DEVICE)
     r = f_d - apply_A(u)
     r -= r.mean(dim=(1, 2), keepdim=True)
     
@@ -182,14 +182,14 @@ def solve_ns_2d_batch(
     B, N, _ = w0.shape
     dt = T / n_steps
 
-    k = torch.fft.fftfreq(N, device=DEVICE)
+    k = torch.fft.fftfreq(N, device=TORCH_DEVICE)
     k1, k2 = torch.meshgrid(k, k, indexing="ij")
     laplacian = -(k1 ** 2 + k2 ** 2)
     laplacian[0, 0] = 1.0
 
     cutoff = (2 * N) // 3  # 2/3-rule dealiasing
 
-    w_hat = torch.fft.fft2(w0.to(torch.float64), dim=(1, 2))
+    w_hat = torch.fft.fft2(w0.to(torch.float32), dim=(1, 2))
 
     for _ in range(n_steps):
         # Dealias
@@ -220,10 +220,10 @@ def solve_allen_cahn_2d_batch(u0: torch.Tensor, epsilon: float = AC_EPSILON, T: 
     """Semi-implicit spectral solver for Allen-Cahn 2D."""
     B, N, _ = u0.shape
     dt = T / n_steps
-    k = torch.fft.fftfreq(N, device=DEVICE)
+    k = torch.fft.fftfreq(N, device=TORCH_DEVICE)
     k1, k2 = torch.meshgrid(k, k, indexing="ij")
     laplacian = -(k1 ** 2 + k2 ** 2)
-    u_hat = torch.fft.fft2(u0.to(torch.float64), dim=(1, 2))
+    u_hat = torch.fft.fft2(u0.to(torch.float32), dim=(1, 2))
     for _ in range(n_steps):
         u = torch.fft.ifft2(u_hat).real
         nonlin = torch.fft.fft2(u**3 - u)
@@ -235,11 +235,11 @@ def solve_swe_2d_batch(h0: torch.Tensor, T: float = SWE_T, n_steps: int = SWE_NS
     """Spectral solver for 2D Shallow Water Equations (linearized height)."""
     B, N, _ = h0.shape
     dt = T / n_steps
-    k = torch.fft.fftfreq(N, device=DEVICE)
+    k = torch.fft.fftfreq(N, device=TORCH_DEVICE)
     k1, k2 = torch.meshgrid(k, k, indexing="ij")
     # Spectral derivatives
     ik1, ik2 = 1j * k1 * N, 1j * k2 * N
-    h_hat = torch.fft.fft2(h0.to(torch.float64), dim=(1, 2))
+    h_hat = torch.fft.fft2(h0.to(torch.float32), dim=(1, 2))
     u_hat = torch.zeros_like(h_hat)
     v_hat = torch.zeros_like(h_hat)
     for _ in range(n_steps):
@@ -256,11 +256,11 @@ def solve_mhd_2d_batch(w0: torch.Tensor, a0: torch.Tensor, T: float = MHD_T, n_s
     """Spectral solver for 2D incompressible MHD (vorticity-potential form)."""
     B, N, _ = w0.shape
     dt = T / n_steps
-    k = torch.fft.fftfreq(N, device=DEVICE)
+    k = torch.fft.fftfreq(N, device=TORCH_DEVICE)
     k1, k2 = torch.meshgrid(k, k, indexing="ij")
     lap = -(k1 ** 2 + k2 ** 2); lap[0, 0] = 1.0
-    w_hat = torch.fft.fft2(w0.to(torch.float64), dim=(1, 2))
-    a_hat = torch.fft.fft2(a0.to(torch.float64), dim=(1, 2))
+    w_hat = torch.fft.fft2(w0.to(torch.float32), dim=(1, 2))
+    a_hat = torch.fft.fft2(a0.to(torch.float32), dim=(1, 2))
     for _ in range(n_steps):
         psi_hat = w_hat / lap; psi_hat[:, 0, 0] = 0.0
         u = torch.fft.ifft2(1j * k2 * psi_hat).real
@@ -281,10 +281,10 @@ def solve_mhd_2d_batch(w0: torch.Tensor, a0: torch.Tensor, T: float = MHD_T, n_s
 def solve_poisson_2d_batch(f: torch.Tensor) -> torch.Tensor:
     """Solve -Δu = f on [0, 1]² with periodic BCs using spectral method."""
     B, N, _ = f.shape
-    f_d = f.to(torch.float64)
+    f_d = f.to(torch.float32)
     f_d -= f_d.mean(dim=(1, 2), keepdim=True)  # ensure zero mean
     
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ky = torch.meshgrid(2 * math.pi * k_int, 2 * math.pi * k_int, indexing="ij")
     lap_pos = kx ** 2 + ky ** 2
     lap_pos[0, 0] = 1.0  # avoid div by zero for DC mode
@@ -303,7 +303,7 @@ def solve_reionization_1d_batch(f: torch.Tensor, T: float = 0.5, n_steps: int = 
     dt = T / n_steps
     c = 1.0
     alpha = 0.1
-    u = f.to(torch.float64)
+    u = f.to(torch.float32)
     dx = 1.0 / N
     for _ in range(n_steps):
         # Upwind advection
@@ -319,15 +319,15 @@ def solve_ellipse_2d_batch(
 ) -> torch.Tensor:
     """Semi-analytical potential flow solver for an ellipse in 2D."""
     B = params.shape[0]
-    x = torch.linspace(-1, 1, N, device=DEVICE)
-    y = torch.linspace(-1, 1, N, device=DEVICE)
+    x = torch.linspace(-1, 1, N, device=TORCH_DEVICE)
+    y = torch.linspace(-1, 1, N, device=TORCH_DEVICE)
     yy, xx = torch.meshgrid(y, x, indexing="ij") # meshgrid(y,x) to match np.meshgrid(x,y) with indexing='ij' logic?
     # Wait, np.meshgrid(x,y, indexing='ij') returns [N,N] where xx[i,j] = x[i] and yy[i,j] = y[j]
     # torch.meshgrid(x,y, indexing='ij') returns same.
     xx, yy = torch.meshgrid(x, y, indexing="ij")
     
     # Pressure fields
-    p = torch.zeros((B, N, N), dtype=torch.float32, device=DEVICE)
+    p = torch.zeros((B, N, N), dtype=torch.float32, device=TORCH_DEVICE)
     
     for i in range(B):
         a, b, alpha = params[i]
@@ -427,60 +427,60 @@ def _generate_ext_dataset(benchmark: str, n: int, seed: int) -> tuple:
             inp, tgt = inp_t.cpu().numpy(), tgt_t.cpu().numpy()
         elif benchmark == "wave_1d":
             u0_np, ut0_np = _wave_ic(curr_n, GRID_SIZE, rng)
-            u0_t, ut0_t = torch.from_numpy(u0_np).to(DEVICE), torch.from_numpy(ut0_np).to(DEVICE)
+            u0_t, ut0_t = torch.from_numpy(u0_np).to(TORCH_DEVICE), torch.from_numpy(ut0_np).to(TORCH_DEVICE)
             tgt_t = solve_wave_batch(u0_t, ut0_t, c=WAVE_C, T=WAVE_T, n_steps=WAVE_NSTEPS)
             inp, tgt = u0_np, tgt_t.cpu().numpy()
         elif benchmark == "darcy_2d":
             a_np, f_np = _darcy_fix_ic(curr_n, GRID_SIZE, rng)
-            a_t, f_t = torch.from_numpy(a_np).to(DEVICE), torch.from_numpy(f_np).to(DEVICE)
+            a_t, f_t = torch.from_numpy(a_np).to(TORCH_DEVICE), torch.from_numpy(f_np).to(TORCH_DEVICE)
             tgt_t = solve_darcy_2d_batch(a_t, f_t)
             inp, tgt = a_np[..., None], tgt_t.cpu().numpy()[..., None]
         elif benchmark == "ns_2d":
             w0_np = _ns_fix_ic(curr_n, GRID_SIZE, rng)
-            w0_t = torch.from_numpy(w0_np).to(DEVICE)
+            w0_t = torch.from_numpy(w0_np).to(TORCH_DEVICE)
             tgt_t = solve_ns_2d_batch(w0_t)
             inp, tgt = w0_np[..., None], tgt_t.cpu().numpy()[..., None]
         elif benchmark == "swe_2d":
             h0_np = _swe_ic(curr_n, GRID_SIZE, rng)
-            h0_t = torch.from_numpy(h0_np).to(DEVICE)
+            h0_t = torch.from_numpy(h0_np).to(TORCH_DEVICE)
             tgt_t = solve_swe_2d_batch(h0_t)
             inp, tgt = h0_np[..., None], tgt_t.cpu().numpy()[..., None]
         elif benchmark == "allen_cahn_2d":
             u0_np = _allen_cahn_ic(curr_n, GRID_SIZE, rng)
-            u0_t = torch.from_numpy(u0_np).to(DEVICE)
+            u0_t = torch.from_numpy(u0_np).to(TORCH_DEVICE)
             tgt_t = solve_allen_cahn_2d_batch(u0_t)
             inp, tgt = u0_np[..., None], tgt_t.cpu().numpy()[..., None]
         elif benchmark == "mhd_2d":
             w0_np, a0_np = _mhd_ic(curr_n, GRID_SIZE, rng)
-            w0_t, a0_t = torch.from_numpy(w0_np).to(DEVICE), torch.from_numpy(a0_np).to(DEVICE)
+            w0_t, a0_t = torch.from_numpy(w0_np).to(TORCH_DEVICE), torch.from_numpy(a0_np).to(TORCH_DEVICE)
             tgt_t = solve_mhd_2d_batch(w0_t, a0_t)
             inp = np.stack([w0_np, a0_np], axis=-1)
             tgt = tgt_t.cpu().numpy()[..., None]
         elif benchmark == "burgers_nu_01":
             inp_np = _random_ic_np(curr_n, GRID_SIZE, rng)
             from data.prepare import solve_burgers_batch
-            inp_t = torch.from_numpy(inp_np).to(DEVICE)
+            inp_t = torch.from_numpy(inp_np).to(TORCH_DEVICE)
             tgt_t = solve_burgers_batch(inp_t, nu=0.1)
             inp, tgt = inp_np, tgt_t.cpu().numpy()
         elif benchmark == "burgers_nu_001":
             inp_np = _random_ic_np(curr_n, GRID_SIZE, rng)
             from data.prepare import solve_burgers_batch
-            inp_t = torch.from_numpy(inp_np).to(DEVICE)
+            inp_t = torch.from_numpy(inp_np).to(TORCH_DEVICE)
             tgt_t = solve_burgers_batch(inp_t, nu=0.01)
             inp, tgt = inp_np, tgt_t.cpu().numpy()
         elif benchmark == "poisson_2d":
             f_np = _random_ic_2d(curr_n, GRID_SIZE, rng, n_modes=5, scale=1.0)
-            f_t = torch.from_numpy(f_np).to(DEVICE)
+            f_t = torch.from_numpy(f_np).to(TORCH_DEVICE)
             tgt_t = solve_poisson_2d_batch(f_t)
             inp, tgt = f_np[..., None], tgt_t.cpu().numpy()[..., None]
         elif benchmark == "reionization_1d":
             f_np = _random_ic_np(curr_n, GRID_SIZE, rng, n_modes=3) * 1.0 + 0.5
-            f_t = torch.from_numpy(f_np).to(DEVICE)
+            f_t = torch.from_numpy(f_np).to(TORCH_DEVICE)
             tgt_t = solve_reionization_1d_batch(f_t)
             inp, tgt = f_np, tgt_t.cpu().numpy()
         elif benchmark == "ellipse_2d":
             params_np = _ellipse_ic(curr_n, rng)
-            params_t = torch.from_numpy(params_np).to(DEVICE)
+            params_t = torch.from_numpy(params_np).to(TORCH_DEVICE)
             # Input is the SDF of the ellipse
             x = np.linspace(-1, 1, GRID_SIZE)
             y = np.linspace(-1, 1, GRID_SIZE)
@@ -555,7 +555,7 @@ from data.prepare import PDEDataset
 # ── Public dataloader (same interface as prepare.make_dataloader) ─────────────
 
 def make_ext_dataloader(benchmark: str, split: str, batch_size: int,
-                        seed: int | None = None):
+                        seed: int | None = None, **kwargs):
     """Yielding (inputs, targets) as PyTorch tensors."""
     assert split in ("train", "val")
     if split == "val":
@@ -594,7 +594,7 @@ def evaluate_l2_rel_ext(benchmark: str, model, batch_size: int = 64) -> float:
     model.eval()
     with torch.no_grad():
         for x, y in val_loader:
-            x, y   = x.to(DEVICE), y.to(DEVICE)
+            x, y   = x.to(TORCH_DEVICE), y.to(TORCH_DEVICE)
             y_pred = model(x)
             diff   = (y_pred - y).float()
             y_f    = y.float()

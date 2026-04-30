@@ -70,11 +70,16 @@ class BaseTrainer:
         lr_schedule_fn: Optional[Callable[[float], float]] = None,
         max_vram_gb: float = 0.0,
         curriculum: bool = False,
+        curriculum_epochs: int = 0,
         exp_name: str = "",
         step_callback: Optional[Callable[[int, float], None]] = None,
         patience: int = 5,
-        n_ensemble: int = 1,
+        snapshot_ensemble: int = 0,
         ema_decay: float = 0.0,
+        pino_lambda: float = 0.0,
+        save_ckpt: bool = False,
+        resume: bool = False,
+        resume_from: str = "",
     ):
         self.model = model
         self.optimizer = optimizer
@@ -87,11 +92,16 @@ class BaseTrainer:
         self.lr_schedule_fn = lr_schedule_fn
         self.max_vram_gb = max_vram_gb
         self.curriculum = curriculum
+        self.curriculum_epochs = curriculum_epochs
         self.exp_name = exp_name
         self.step_callback = step_callback
         self.patience = patience
-        self.n_ensemble = n_ensemble
+        self.snapshot_ensemble = snapshot_ensemble
         self.ema_decay = ema_decay
+        self.pino_lambda = pino_lambda
+        self.save_ckpt = save_ckpt
+        self.resume = resume
+        self.resume_from = resume_from
         
         self._loss_history: list = []
         self._snapshot_val_scores: list = []
@@ -143,11 +153,16 @@ class TrainerTorch(BaseTrainer):
         lr_schedule_fn: Optional[Callable[[float], float]] = None,
         max_vram_gb: float = 0.0,
         curriculum: bool = False,
+        curriculum_epochs: int = 0,
         exp_name: str = "",
         step_callback: Optional[Callable[[int, float], None]] = None,
         patience: int = 5,
-        n_ensemble: int = 1,
+        snapshot_ensemble: int = 0,
         ema_decay: float = 0.0,
+        pino_lambda: float = 0.0,
+        save_ckpt: bool = False,
+        resume: bool = False,
+        resume_from: str = "",
         use_amp: bool = True,
         compile: bool = True,
     ):
@@ -163,11 +178,16 @@ class TrainerTorch(BaseTrainer):
             lr_schedule_fn=lr_schedule_fn,
             max_vram_gb=max_vram_gb,
             curriculum=curriculum,
+            curriculum_epochs=curriculum_epochs,
             exp_name=exp_name,
             step_callback=step_callback,
             patience=patience,
-            n_ensemble=n_ensemble,
+            snapshot_ensemble=snapshot_ensemble,
             ema_decay=ema_decay,
+            pino_lambda=pino_lambda,
+            save_ckpt=save_ckpt,
+            resume=resume,
+            resume_from=resume_from,
         )
         import torch
         self.use_amp = use_amp and torch.cuda.is_available()
@@ -338,12 +358,13 @@ class TrainerMLX(BaseTrainer):
 
     def train_step(self, x, y):
         import mlx.core as mx
+        import mlx.nn as mx_nn
         if self._step_fn is None:
             def loss_fn(model, x, y):
                 pred = model(x)
                 return self.loss_fn(pred, y)
 
-            loss_and_grad_fn = mx.value_and_grad(self.model, loss_fn)
+            loss_and_grad_fn = mx_nn.value_and_grad(self.model, loss_fn)
 
             @mx.compile
             def step(x, y):
@@ -435,11 +456,21 @@ class TrainerMLX(BaseTrainer):
         return val
 
 def Trainer(*args, **kwargs):
-    """Factory function that dispatches to the correct backend."""
-    from core.device import FRAMEWORK
-    if FRAMEWORK == "mlx":
+    """Factory function that dispatches to the correct backend based on model type."""
+    model = kwargs.get("model") or (args[0] if args else None)
+    
+    # Detect MLX model
+    is_mlx = False
+    if HAS_MLX:
+        import mlx.nn as mx_nn
+        if isinstance(model, mx_nn.Module):
+            is_mlx = True
+    
+    if is_mlx:
+        print("[Trainer] Detected MLX model. Using TrainerMLX.", flush=True)
         return TrainerMLX(*args, **kwargs)
     else:
+        print("[Trainer] Using TrainerTorch.", flush=True)
         return TrainerTorch(*args, **kwargs)
 
 def get_lr_schedule(

@@ -42,6 +42,7 @@ def _parse_args():
     p.add_argument("--modes",       type=int,   default=N_MODES)
     p.add_argument("--hidden",      type=int,   default=HIDDEN_DIM)
     p.add_argument("--layers",      type=int,   default=N_LAYERS)
+    p.add_argument("--levels",      type=int,   default=3)
     p.add_argument("--batch_size",  type=int,   default=BATCH_SIZE)
     p.add_argument("--lr",          type=float, default=LR)
     p.add_argument("--grad_clip",   type=float, default=GRAD_CLIP)
@@ -50,19 +51,42 @@ def _parse_args():
     p.add_argument("--ema_decay",   type=float, default=EMA_DECAY)
     p.add_argument("--no_amp",      action="store_false", dest="use_amp")
     p.add_argument("--no_compile",  action="store_false", dest="compile")
+    
+    # Missing args from autorun.py / loader.py
+    p.add_argument("--pino_lambda", type=float, default=0.0)
+    p.add_argument("--seed",        type=int,   default=42)
+    p.add_argument("--augment",     action="store_true")
+    p.add_argument("--curriculum",  action="store_true")
+    p.add_argument("--curriculum_epochs", type=int, default=0)
+    p.add_argument("--n_head",      type=int,   default=4)
+    p.add_argument("--slice_num",   type=int,   default=32)
+    p.add_argument("--save_ckpt",   action="store_true")
+    p.add_argument("--resume",      action="store_true")
+    p.add_argument("--resume_from", default="")
+    p.add_argument("--refine_grid", action="store_true")
+    p.add_argument("--degree",      type=int,   default=5)
+    p.add_argument("--n_iterations", type=int,  default=10)
+    p.add_argument("--lr_schedule", default="warmup_cosine")
+    p.add_argument("--patience",    type=int,   default=5)
+    p.add_argument("--snapshot_ensemble", type=int, default=0)
+
     return p.parse_args()
 
 def main():
     args = _parse_args()
     
     # 1. Environment Setup
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     torch.set_float32_matmul_precision('high')
     t_start = time.time()
     print(f"Device: {DEVICE}")
 
     # 2. Data
     print(f"Loading {args.benchmark} data...")
-    train_loader = BENCHMARK_REGISTRY.make_loader(args.benchmark, "train", args.batch_size)
+    train_loader = BENCHMARK_REGISTRY.make_loader(
+        args.benchmark, "train", args.batch_size, augment=args.augment
+    )
     
     # 3. Model
     model = MODEL_REGISTRY.build(
@@ -70,7 +94,12 @@ def main():
         benchmark=args.benchmark,
         n_modes=args.modes,
         hidden_dim=args.hidden,
-        n_layers=args.layers
+        n_layers=args.layers,
+        n_levels=args.levels,
+        n_head=args.n_head,
+        slice_num=args.slice_num,
+        degree=args.degree,
+        n_iterations=args.n_iterations
     )
     model = to_device(model)
     n_params = sum(p.numel() for p in model.parameters())
@@ -79,7 +108,7 @@ def main():
     # 4. Training Components
     loss_fn = get_loss_fn(args.loss, alpha=args.h1_alpha if "h1" in args.loss else None)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
-    lr_sch = get_lr_schedule(schedule_type="warmup_cosine")
+    lr_sch = get_lr_schedule(schedule_type=args.lr_schedule)
 
     trainer = Trainer(
         model=model,
@@ -94,7 +123,15 @@ def main():
         exp_name=args.name or f"{args.model}_{args.benchmark}",
         ema_decay=args.ema_decay,
         use_amp=args.use_amp,
-        compile=args.compile
+        compile=args.compile,
+        pino_lambda=args.pino_lambda,
+        save_ckpt=args.save_ckpt,
+        resume=args.resume,
+        resume_from=args.resume_from,
+        curriculum=args.curriculum,
+        curriculum_epochs=args.curriculum_epochs,
+        patience=args.patience,
+        snapshot_ensemble=args.snapshot_ensemble
     )
 
     # 5. Loop

@@ -12,7 +12,7 @@ Output: [B, N, N, 2]
 import math
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
@@ -33,23 +33,23 @@ METADATA = {
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     u0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
     v0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
-    return torch.stack([torch.from_numpy(u0), torch.from_numpy(v0)], dim=-1).to(DEVICE)
+    return torch.stack([torch.from_numpy(u0), torch.from_numpy(v0)], dim=-1).to(TORCH_DEVICE)
 
 def solve_batch(uv0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
     if isinstance(uv0, np.ndarray):
-        uv0 = torch.from_numpy(uv0).to(DEVICE)
+        uv0 = torch.from_numpy(uv0).to(TORCH_DEVICE)
     else:
-        uv0 = uv0.to(DEVICE)
+        uv0 = uv0.to(TORCH_DEVICE)
 
     B, N, _, _ = uv0.shape
     u0, v0 = uv0[..., 0], uv0[..., 1]
     
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     k_sq = kx**2 + ky**2
     
-    u_hat = torch.fft.fft2(u0.to(torch.float64), dim=(1, 2))
-    v_hat = torch.fft.fft2(v0.to(torch.float64), dim=(1, 2))
+    u_hat = torch.fft.fft2(u0.to(torch.float32), dim=(1, 2))
+    v_hat = torch.fft.fft2(v0.to(torch.float32), dim=(1, 2))
     
     # Solve system in Fourier domain analytically using matrix exponential (diagonalized)
     steps = 10

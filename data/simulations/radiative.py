@@ -11,7 +11,7 @@ Output: [B, N, N]
 import math
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
@@ -29,18 +29,18 @@ METADATA = {
 
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     u0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
-    return torch.from_numpy(u0).to(DEVICE)
+    return torch.from_numpy(u0).to(TORCH_DEVICE)
 
 def solve_batch(u0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
     if isinstance(u0, np.ndarray):
-        u0 = torch.from_numpy(u0).to(DEVICE)
+        u0 = torch.from_numpy(u0).to(TORCH_DEVICE)
     else:
-        u0 = u0.to(DEVICE)
+        u0 = u0.to(TORCH_DEVICE)
 
     B, N, _ = u0.shape
-    u = u0.to(torch.float64)
+    u = u0.to(torch.float32)
     # mock logic: 1D advection in x, scattering/blurring in θ
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ktheta = torch.meshgrid(k_int, k_int, indexing="ij")
     
     # dt advection

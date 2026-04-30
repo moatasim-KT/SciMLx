@@ -15,7 +15,7 @@ import torch
 import numpy as np
 
 from data.prepare import _random_ic_2d
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 C_SPEED = 2.0
 T_FINAL = 1.0
@@ -35,18 +35,18 @@ def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Random surface anomaly with higher mode frequencies."""
     # scale higher modes to test high-frequency bias
     ic_np = _random_ic_2d(n, N, rng, n_modes=12, scale=0.5, offset=0.0)
-    return torch.from_numpy(ic_np).to(DEVICE)
+    return torch.from_numpy(ic_np).to(TORCH_DEVICE)
 
 def solve_batch(u0: torch.Tensor, T: float = T_FINAL) -> torch.Tensor:
     B, N, _ = u0.shape
     # k_int = np.fft.fftfreq(N, d=1.0 / N)
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     omega = C_SPEED * torch.sqrt(kx**2 + ky**2)
     
     propagator = torch.cos(omega * T)[None, :, :]
     
-    u0_d = u0.to(torch.float64)
+    u0_d = u0.to(torch.float32)
     u_hat = torch.fft.fft2(u0_d, dim=(1, 2))
     uT_hat = u_hat * propagator
     uT = torch.fft.ifft2(uT_hat, dim=(1, 2)).real

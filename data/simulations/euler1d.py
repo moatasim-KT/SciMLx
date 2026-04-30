@@ -18,7 +18,7 @@ References:
 import math
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 # ── Physical constants ─────────────────────────────────────────────────────────
 
@@ -44,13 +44,13 @@ METADATA = {
 
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Generate random smooth ICs for compressible Euler on [0, 2π)."""
-    x = 2.0 * math.pi * torch.arange(N, dtype=torch.float64, device=DEVICE) / N
+    x = 2.0 * math.pi * torch.arange(N, dtype=torch.float32, device=TORCH_DEVICE) / N
 
     def _fourier(n_modes: int, amp: float) -> torch.Tensor:
-        k       = torch.arange(1, n_modes + 1, dtype=torch.float64, device=DEVICE)
+        k       = torch.arange(1, n_modes + 1, dtype=torch.float32, device=TORCH_DEVICE)
         decay   = k ** -1.5
-        cos_c   = torch.from_numpy(rng.randn(n, n_modes)).to(DEVICE) * decay * amp
-        sin_c   = torch.from_numpy(rng.randn(n, n_modes)).to(DEVICE) * decay * amp
+        cos_c   = torch.from_numpy(rng.randn(n, n_modes)).to(TORCH_DEVICE) * decay * amp
+        sin_c   = torch.from_numpy(rng.randn(n, n_modes)).to(TORCH_DEVICE) * decay * amp
         angles  = k[:, None] * x[None, :]      # [n_modes, N]
         return (cos_c @ torch.cos(angles) + sin_c @ torch.sin(angles))  # [n, N]
 
@@ -73,19 +73,19 @@ def _prim2cons(prims: torch.Tensor) -> torch.Tensor:
 
 def _cons2prim(cons: torch.Tensor) -> torch.Tensor:
     """(ρ, ρu, E) → (ρ, u, p).  cons: [..., 3]"""
-    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=TORCH_DEVICE, dtype=cons.dtype))
     u   = cons[..., 1] / rho
     E   = cons[..., 2]
-    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=TORCH_DEVICE, dtype=cons.dtype))
     return torch.stack([rho, u, p], dim=-1)
 
 
 def _flux(cons: torch.Tensor) -> torch.Tensor:
     """Physical Euler flux F(U).  cons: [..., 3] → [..., 3]"""
-    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    rho = torch.maximum(cons[..., 0], torch.tensor(1e-8, device=TORCH_DEVICE, dtype=cons.dtype))
     u   = cons[..., 1] / rho
     E   = cons[..., 2]
-    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=DEVICE, dtype=cons.dtype))
+    p   = torch.maximum((GAMMA - 1.0) * (E - 0.5 * rho * u**2), torch.tensor(1e-8, device=TORCH_DEVICE, dtype=cons.dtype))
     return torch.stack([rho * u,
                      rho * u**2 + p,
                      (E + p) * u], dim=-1)
@@ -107,7 +107,7 @@ def _hll_flux(UL: torch.Tensor, UR: torch.Tensor) -> torch.Tensor:
     sR = torch.maximum(uL + aL, uR + aR)             # right signal speed
 
     FL, FR  = _flux(UL), _flux(UR)
-    denom   = torch.maximum(sR - sL, torch.tensor(1e-10, device=DEVICE, dtype=sR.dtype))[..., None]
+    denom   = torch.maximum(sR - sL, torch.tensor(1e-10, device=TORCH_DEVICE, dtype=sR.dtype))[..., None]
     F_hll   = (sR[..., None] * FL - sL[..., None] * FR
                + sL[..., None] * sR[..., None] * (UR - UL)) / denom
 
@@ -143,25 +143,25 @@ def solve_batch(prims0: torch.Tensor | np.ndarray,
                 n_steps: int = N_STEPS) -> torch.Tensor:
     """Evolve Euler 1D from t=0 to T."""
     if isinstance(prims0, np.ndarray):
-        prims0 = torch.from_numpy(prims0).to(DEVICE)
+        prims0 = torch.from_numpy(prims0).to(TORCH_DEVICE)
     else:
-        prims0 = prims0.to(DEVICE)
+        prims0 = prims0.to(TORCH_DEVICE)
 
     B, N, _ = prims0.shape
     dx = 2.0 * math.pi / N
     dt = T / n_steps
 
-    U = _prim2cons(prims0.to(torch.float64))
+    U = _prim2cons(prims0.to(torch.float32))
 
     for _ in range(n_steps):
         # SSP-RK2 (Shu-Osher)
         L0 = _rhs(U, dx)
         U1 = U + dt * L0
         # positivity guard
-        U1[..., 0] = torch.maximum(U1[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=U1.dtype))
+        U1[..., 0] = torch.maximum(U1[..., 0], torch.tensor(1e-8, device=TORCH_DEVICE, dtype=U1.dtype))
         L1 = _rhs(U1, dx)
         U  = 0.5 * (U + U1 + dt * L1)
-        U[..., 0] = torch.maximum(U[..., 0], torch.tensor(1e-8, device=DEVICE, dtype=U.dtype))   # density floor
+        U[..., 0] = torch.maximum(U[..., 0], torch.tensor(1e-8, device=TORCH_DEVICE, dtype=U.dtype))   # density floor
 
     return _cons2prim(U).to(torch.float32)
 

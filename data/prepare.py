@@ -34,7 +34,7 @@ VAL_CACHE_1D = os.path.join(
     CACHE_DIR, f"burgers_val_N{GRID_SIZE}_nu{NU:.6f}_T{T_FINAL}.npz"
 )
 
-from core.device import DEVICE, FRAMEWORK, to_array
+from core.device import DEVICE, FRAMEWORK, to_array, TORCH_DEVICE
 
 if FRAMEWORK == "mlx":
     import mlx.core as mx
@@ -69,7 +69,7 @@ def _random_ic(
     n_modes: int = 10,
 ) -> torch.Tensor:
     u0 = _random_ic_np(n, N, rng, n_modes)
-    return torch.from_numpy(u0).to(DEVICE)
+    return torch.from_numpy(u0).to(TORCH_DEVICE)
 
 
 def solve_burgers_batch(
@@ -83,13 +83,13 @@ def solve_burgers_batch(
     """
     _, N   = u0.shape
     # k      = np.fft.rfftfreq(N, d=1.0 / N)             # wavenumbers [N//2+1]
-    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
+    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     dt     = T / n_steps
     impl   = 1.0 / (1.0 + nu * k ** 2 * dt)            # implicit diffusion factor
     ik     = 1j * k                                      # spectral derivative operator
     cutoff = N // 3                                      # 2/3-rule dealias cutoff
 
-    u_hat = torch.fft.rfft(u0.to(torch.float64), dim=1)
+    u_hat = torch.fft.rfft(u0.to(torch.float32), dim=1)
 
     for _ in range(n_steps):
         uh_d          = u_hat.clone()
@@ -132,12 +132,12 @@ def solve_wave_batch(
         [B, N] float32  displacement at time T
     """
     _, N    = u0.shape
-    k       = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
+    k       = torch.fft.rfftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     omega2  = (c * k) ** 2
     dt      = T / n_steps
 
-    u_hat   = torch.fft.rfft(u0.to(torch.float64),  dim=1)
-    ut_hat  = torch.fft.rfft(ut0.to(torch.float64), dim=1)
+    u_hat   = torch.fft.rfft(u0.to(torch.float32),  dim=1)
+    ut_hat  = torch.fft.rfft(ut0.to(torch.float32), dim=1)
 
     for _ in range(n_steps):                              # Störmer-Verlet
         ut_hat -= 0.5 * dt * omega2 * u_hat
@@ -163,7 +163,7 @@ def solve_kdv_batch(
         [B, N] float32  solutions at time T
     """
     _, N   = u0.shape
-    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=DEVICE)
+    k      = torch.fft.rfftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     ik     = 1j * k
     ik3    = (1j * k) ** 3                               # dispersion operator
     cutoff = N // 3
@@ -174,7 +174,7 @@ def solve_kdv_batch(
     E  = torch.exp(L * dt)
     E2 = torch.exp(L * dt / 2.0)
 
-    u_hat = torch.fft.rfft(u0.to(torch.float64), dim=1)
+    u_hat = torch.fft.rfft(u0.to(torch.float32), dim=1)
 
     def nonlin(uh):
         uhd        = uh.clone()
@@ -270,7 +270,7 @@ class PDEDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return self.inputs[idx], self.targets[idx]
 
-def make_dataloader(benchmark: str, split: str, batch_size: int, seed: int | None = None):
+def make_dataloader(benchmark: str, split: str, batch_size: int, seed: int | None = None, **kwargs):
     """
     Yielding ``(inputs, targets)`` as framework-native tensors/arrays.
     """
@@ -358,7 +358,7 @@ def evaluate_l2_rel(benchmark: str, model, batch_size: int = EVAL_BATCH) -> floa
     else:
         with torch.no_grad():
             for x, y in val_loader:
-                x, y     = x.to(DEVICE), y.to(DEVICE)
+                x, y     = x.to(TORCH_DEVICE), y.to(TORCH_DEVICE)
                 y_pred   = model(x)
                 diff     = (y_pred - y).float()
                 y_f      = y.float()

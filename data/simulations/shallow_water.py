@@ -25,7 +25,7 @@ References:
 import math
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -54,7 +54,7 @@ METADATA = {
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Random smooth surface height anomaly (zero mean)."""
     h0 = _random_ic_2d(n, N, rng, n_modes=4, scale=0.15, offset=0.0)
-    return torch.from_numpy(h0).to(DEVICE)
+    return torch.from_numpy(h0).to(TORCH_DEVICE)
 
 
 # ── Analytic solver ────────────────────────────────────────────────────────────
@@ -62,14 +62,14 @@ def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
 def solve_batch(h0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
     """Propagate surface height h₀ to time T using exact Fourier solution."""
     if isinstance(h0, np.ndarray):
-        h0 = torch.from_numpy(h0).to(DEVICE)
+        h0 = torch.from_numpy(h0).to(TORCH_DEVICE)
     else:
-        h0 = h0.to(DEVICE)
+        h0 = h0.to(TORCH_DEVICE)
 
     B, N, _ = h0.shape
 
     # Integer wavenumbers on [0, 2π)²
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)         
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)         
     kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")  
 
     # Dispersion relation: ω_k = c * |k|  (gravity waves)
@@ -78,7 +78,7 @@ def solve_batch(h0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tens
     # Exact propagation: ĥ(T) = ĥ₀ · cos(ωT)
     propagator = torch.cos(omega * T)[None, :, :]    
 
-    h0_d  = h0.to(torch.float64)
+    h0_d  = h0.to(torch.float32)
     h_hat = torch.fft.fft2(h0_d, dim=(1, 2))       
     hT_hat = h_hat * propagator
     hT = torch.fft.ifft2(hT_hat, dim=(1, 2)).real

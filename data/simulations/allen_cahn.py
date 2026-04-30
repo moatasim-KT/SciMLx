@@ -25,7 +25,7 @@ References:
 
 import torch
 import numpy as np
-from core.device import DEVICE
+from core.device import DEVICE, TORCH_DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -53,7 +53,7 @@ METADATA = {
 def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Random mixed-phase initial conditions via tanh-smoothed GRF."""
     raw   = _random_ic_2d(n, N, rng, n_modes=6, scale=1.5, offset=0.0)
-    raw   = torch.from_numpy(raw).to(DEVICE)
+    raw   = torch.from_numpy(raw).to(TORCH_DEVICE)
     scale = 1.0 / (np.sqrt(2.0) * EPSILON)
     return torch.tanh(raw * scale).to(torch.float32)
 
@@ -64,14 +64,14 @@ def _etdrk2_coeffs(L_hat: torch.Tensor, dt: float):
     """Precompute ETDRK2 (Cox-Matthews) integration coefficients."""
     eps_zero = 1e-10
     E   = torch.exp(L_hat * dt)
-    Ls  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(eps_zero, device=DEVICE, dtype=L_hat.dtype), L_hat)
+    Ls  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(eps_zero, device=TORCH_DEVICE, dtype=L_hat.dtype), L_hat)
 
     # φ₁(z) = (e^z - 1)/z  →  dt at z→0
-    c1  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt, device=DEVICE, dtype=L_hat.dtype),
+    c1  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt, device=TORCH_DEVICE, dtype=L_hat.dtype),
                    (E - 1.0) / Ls)
 
     # φ₂(z) = (e^z - 1 - z) / z² dt  →  dt/2 at z→0
-    c2  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt / 2.0, device=DEVICE, dtype=L_hat.dtype),
+    c2  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt / 2.0, device=TORCH_DEVICE, dtype=L_hat.dtype),
                    (E - 1.0 - L_hat * dt) / (Ls**2 * dt))
     return E, c1, c2
 
@@ -81,15 +81,15 @@ def solve_batch(phi0: torch.Tensor | np.ndarray,
                 n_steps: int = N_STEPS) -> torch.Tensor:
     """Evolve Allen-Cahn phase field from t=0 to T via ETDRK2."""
     if isinstance(phi0, np.ndarray):
-        phi0 = torch.from_numpy(phi0).to(DEVICE)
+        phi0 = torch.from_numpy(phi0).to(TORCH_DEVICE)
     else:
-        phi0 = phi0.to(DEVICE)
+        phi0 = phi0.to(TORCH_DEVICE)
 
     B, N, _ = phi0.shape
     dt = T / n_steps
 
     # Spectral Laplacian on [0,1]²: ∇² → −|2πk|²
-    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=DEVICE)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
     kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     k_sq = kx**2 + ky**2                              
     L_hat = -(EPSILON**2) * (2.0 * np.pi)**2 * k_sq   
@@ -105,7 +105,7 @@ def solve_batch(phi0: torch.Tensor | np.ndarray,
         Nphys = phi - phi**3
         return torch.fft.fft2(Nphys, dim=(1, 2))
 
-    phi = phi0.to(torch.float64)
+    phi = phi0.to(torch.float32)
 
     for _ in range(n_steps):
         phi_hat = torch.fft.fft2(phi, dim=(1, 2))
