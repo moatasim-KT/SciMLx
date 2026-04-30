@@ -35,6 +35,7 @@ manual_*.log
 # ── Generated Output & Artefacts ──────────────────────────────────────────────
 figs/
 checkpoints/
+artifacts/
 *.npz
 *.npy
 *.safetensors

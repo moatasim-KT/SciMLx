@@ -7519,3 +7519,449 @@
   budget_s: 480
   priority: 3
   rationale: Auto-generated baseline for SARModel2d on ellipse_2d
+- name: mambafno_burge_baseline
+  benchmark: burgers_1d
+  model: MambaFNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3
+- name: mambafno_burge_baseline
+  benchmark: burgers_1d
+  model: MambaFNO
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3
+- name: dualmodeltest_burge_baseline
+  benchmark: burgers_1d
+  model: DualModelTest
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3
+- name: testnet_burge_baseline
+  benchmark: burgers_1d
+  model: TestNet
+  hidden_dim: 64
+  n_layers: 4
+  n_modes: 16
+  budget_s: 600
+  priority: 3
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_burgers_1d_transolver_h1_3386
+  benchmark: burgers_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (Transolver, val=0.1457)'
+- name: autogen_burgers_1d_transolver_h1adapt_3386
+  benchmark: burgers_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_burgers_1d_transolver_ema_3386
+  benchmark: burgers_1d
+  model: Transolver
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_burgers_1d_rfno_deep_3386
+  benchmark: burgers_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_darcy_2d_fno2d_h1_3386
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.0597)'
+- name: autogen_darcy_2d_fno2d_h1adapt_3386
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_darcy_2d_attentionenhancedfno2d_3386
+  benchmark: darcy_2d
+  model: AttentionEnhancedFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: AttentionEnhancedFNO2D not yet tried on darcy_2d'
+- name: autogen_darcy_2d_fno2d_ema_3386
+  benchmark: darcy_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_darcy_2d_rfno2d_deep_3386
+  benchmark: darcy_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_ns_2d_fno2d_h1_3386
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.0143)'
+- name: autogen_ns_2d_fno2d_h1adapt_3386
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_ns_2d_fedonet2d_3386
+  benchmark: ns_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on ns_2d'
+- name: autogen_ns_2d_attentionenhancedfno2d_3386
+  benchmark: ns_2d
+  model: AttentionEnhancedFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: AttentionEnhancedFNO2D not yet tried on ns_2d'
+- name: autogen_ns_2d_fno2d_ema_3386
+  benchmark: ns_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_ns_2d_rfno2d_deep_3386
+  benchmark: ns_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_allen_cahn_2d_fno2d_h1_3387
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.0628)'
+- name: autogen_allen_cahn_2d_fno2d_h1adapt_3387
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_allen_cahn_2d_fedonet2d_3387
+  benchmark: allen_cahn_2d
+  model: FEDONet2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: FEDONet2D not yet tried on allen_cahn_2d'
+- name: autogen_allen_cahn_2d_transolver2d_3387
+  benchmark: allen_cahn_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on allen_cahn_2d'
+- name: autogen_allen_cahn_2d_fno2d_ema_3387
+  benchmark: allen_cahn_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_allen_cahn_2d_rfno2d_deep_3387
+  benchmark: allen_cahn_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_multiphysics_2d_fno2d_h1_3387
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO2D, val=0.6923)'
+- name: autogen_multiphysics_2d_fno2d_h1adapt_3387
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 3600
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_multiphysics_2d_transolver2d_3387
+  benchmark: multiphysics_2d
+  model: Transolver2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: Transolver2D not yet tried on multiphysics_2d'
+- name: autogen_multiphysics_2d_tfno2d_3387
+  benchmark: multiphysics_2d
+  model: TFNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: TFNO2D not yet tried on multiphysics_2d'
+- name: autogen_multiphysics_2d_fno2d_ema_3387
+  benchmark: multiphysics_2d
+  model: FNO2D
+  hidden_dim: 32
+  n_layers: 4
+  n_modes: 8
+  ema_decay: 0.999
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_multiphysics_2d_rfno2d_deep_3387
+  benchmark: multiphysics_2d
+  model: RFNO2D
+  hidden_dim: 32
+  n_layers: 6
+  n_modes: 8
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 3600
+  priority: 2
+  rationale: 'auto_suggest: RFNO2D deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_kdv_1d_rfno_h1_3388
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (RFNO, val=0.0020)'
+- name: autogen_kdv_1d_rfno_h1adapt_3388
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_kdv_1d_gnot_3388
+  benchmark: kdv_1d
+  model: GNOT
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: GNOT not yet tried on kdv_1d'
+- name: autogen_kdv_1d_uno_3388
+  benchmark: kdv_1d
+  model: UNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: UNO not yet tried on kdv_1d'
+- name: autogen_kdv_1d_rfno_ema_3388
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_kdv_1d_rfno_deep_3388
+  benchmark: kdv_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'
+
+# ── auto_suggest --generate ─────────────────────────────────────────────────
+- name: autogen_wave_1d_fno_h1_3388
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.3
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: H1 loss on best model (FNO, val=0.0010)'
+- name: autogen_wave_1d_fno_h1adapt_3388
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  loss_type: h1_adaptive
+  h1_alpha: 0.1
+  budget_s: 1800
+  priority: 1
+  rationale: 'auto_suggest: adaptive H1 loss auto-scales alpha per batch'
+- name: autogen_wave_1d_tfno_3388
+  benchmark: wave_1d
+  model: TFNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: TFNO not yet tried on wave_1d'
+- name: autogen_wave_1d_uno_3388
+  benchmark: wave_1d
+  model: UNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: UNO not yet tried on wave_1d'
+- name: autogen_wave_1d_fno_ema_3388
+  benchmark: wave_1d
+  model: FNO
+  hidden_dim: 128
+  n_layers: 8
+  n_modes: 24
+  ema_decay: 0.999
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: EMA-0.999 on best model for stabilised eval'
+- name: autogen_wave_1d_rfno_deep_3388
+  benchmark: wave_1d
+  model: RFNO
+  hidden_dim: 128
+  n_layers: 10
+  n_modes: 24
+  loss_type: h1
+  h1_alpha: 0.2
+  budget_s: 1800
+  priority: 2
+  rationale: 'auto_suggest: RFNO deeper stack with H1 loss'

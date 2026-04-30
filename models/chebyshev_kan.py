@@ -1,10 +1,11 @@
-import mlx.core as mx
-import mlx.nn as nn
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import math
 
 class ChebyshevKANLinear(nn.Module):
     """
-    Kolmogorov-Arnold Network Layer using Chebyshev Polynomials.
+    Kolmogorov-Arnold Network Layer using Chebyshev Polynomials (PyTorch/CUDA).
     Reference: Section 3.1.2 of the PIKAN 2025 review.
     """
     def __init__(self, in_features: int, out_features: int, degree: int = 5):
@@ -15,37 +16,37 @@ class ChebyshevKANLinear(nn.Module):
 
         # Base weights for robustness
         scale_base = 1.0 / math.sqrt(in_features)
-        self.base_s = mx.ones([out_features, 1])
-        self.base_v = mx.random.normal([out_features, in_features]) * scale_base
+        self.base_s = nn.Parameter(torch.ones(out_features, 1))
+        self.base_v = nn.Parameter(torch.randn(out_features, in_features) * scale_base)
         
         # Chebyshev coefficients: [out, in, degree + 1]
         scale_cheb = 1.0 / math.sqrt(in_features * (degree + 1))
-        self.cheb_weight = mx.random.normal([out_features, in_features, degree + 1]) * scale_cheb
+        self.cheb_weight = nn.Parameter(torch.randn(out_features, in_features, degree + 1) * scale_cheb)
 
-    def chebyshev_basis(self, x: mx.array):
+    def chebyshev_basis(self, x: torch.Tensor):
         """
         Compute Chebyshev basis functions recursively up to self.degree.
         x: [..., in_features]. Assumed to be in [-1, 1].
         Returns: [..., in_features, degree + 1]
         """
         # Ensure x is in range [-1, 1] via tanh if not already
-        x = mx.tanh(x)
+        x = torch.tanh(x)
         
-        basis = [mx.ones_like(x)]
+        basis = [torch.ones_like(x)]
         if self.degree > 0:
             basis.append(x)
         
         for n in range(2, self.degree + 1):
             basis.append(2.0 * x * basis[-1] - basis[-2])
             
-        return mx.stack(basis, axis=-1)
+        return torch.stack(basis, dim=-1)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         original_shape = x.shape
         x = x.reshape(-1, self.in_features)
         
         # Base path
-        base_output = nn.silu(x) @ (self.base_s * self.base_v).T
+        base_output = F.silu(x) @ (self.base_s * self.base_v).t()
         
         # Chebyshev path
         # basis: [batch, in, deg+1]
@@ -53,7 +54,7 @@ class ChebyshevKANLinear(nn.Module):
         
         # Contract over input features and coefficients
         # basis[b, i, k] * cheb_weight[o, i, k] -> [b, o]
-        cheb_output = mx.einsum("bik,oik->bo", basis, self.cheb_weight)
+        cheb_output = torch.einsum("bik,oik->bo", basis, self.cheb_weight)
         
         out = base_output + cheb_output
         new_shape = [*list(original_shape[:-1]), self.out_features]
@@ -66,7 +67,7 @@ class ChebyshevKANBlock1d(nn.Module):
         self.spec = SpectralConv1d(channels, channels, n_modes)
         self.cheb = ChebyshevKANLinear(channels, channels, degree=degree)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.spec(x) + self.cheb(x)
 
 class cPIKAN_FNO(nn.Module):
@@ -74,22 +75,22 @@ class cPIKAN_FNO(nn.Module):
     def __init__(self, n_modes: int, hidden_dim: int, n_layers: int, in_ch: int = 2, degree: int = 5):
         super().__init__()
         self.lift = nn.Linear(in_ch, hidden_dim)
-        self.blocks = [ChebyshevKANBlock1d(hidden_dim, n_modes, degree=degree) for _ in range(n_layers)]
+        self.blocks = nn.ModuleList([ChebyshevKANBlock1d(hidden_dim, n_modes, degree=degree) for _ in range(n_layers)])
         self.proj1 = nn.Linear(hidden_dim, hidden_dim // 2)
         self.proj2 = nn.Linear(hidden_dim // 2, 1)
 
-    def __call__(self, u0: mx.array) -> mx.array:
+    def forward(self, u0: torch.Tensor) -> torch.Tensor:
         if u0.ndim == 2:
             B, N = u0.shape
-            grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N), (B, N))
-            x = mx.stack([u0, grid], axis=-1)
+            grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N).expand(B, N)
+            x = torch.stack([u0, grid], dim=-1)
         else:
             B, N, _C = u0.shape
-            grid = mx.broadcast_to(mx.linspace(0.0, 1.0, N).reshape(1, N, 1), (B, N, 1))
-            x = mx.concatenate([u0, grid], axis=-1)
+            grid = torch.linspace(0.0, 1.0, N, device=u0.device).view(1, N, 1).expand(B, N, 1)
+            x = torch.cat([u0, grid], dim=-1)
             
         x = self.lift(x)
         for blk in self.blocks:
             x = blk(x)
-        x = nn.gelu(self.proj1(x))
+        x = F.gelu(self.proj1(x))
         return self.proj2(x)[..., 0]

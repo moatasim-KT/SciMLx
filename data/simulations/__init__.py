@@ -20,8 +20,13 @@ import os
 import time
 from pathlib import Path
 
-import mlx.core as mx
 import numpy as np
+import torch
+
+from core.device import DEVICE, TORCH_DEVICE, FRAMEWORK, to_array
+
+if FRAMEWORK == "mlx":
+    import mlx.core as mx
 
 from data.prepare import GRID_SIZE, N_TRAIN, N_VAL, VAL_SEED, TRAIN_SEED, CACHE_DIR
 
@@ -157,8 +162,8 @@ def _get_sim_train(benchmark: str) -> tuple:
 # ── Public dataloader (same interface as prepare.make_dataloader) ─────────────
 
 def make_sim_dataloader(benchmark: str, split: str, batch_size: int,
-                        seed: int | None = None):
-    """Infinite (inputs, targets) generator yielding MLX arrays.
+                        seed: int | None = None, **kwargs):
+    """Infinite (inputs, targets) generator yielding framework-native arrays.
 
     Interface identical to prepare.make_dataloader and benchmarks_ext.make_ext_dataloader.
     """
@@ -169,7 +174,7 @@ def make_sim_dataloader(benchmark: str, split: str, batch_size: int,
         n, i = len(inp), 0
         while True:
             end = min(i + batch_size, n)
-            yield mx.array(inp[i:end]), mx.array(tgt[i:end])
+            yield to_array(inp[i:end]), to_array(tgt[i:end])
             i = end
             if i >= n:
                 i = 0
@@ -181,7 +186,7 @@ def make_sim_dataloader(benchmark: str, split: str, batch_size: int,
             perm = rng.permutation(n)
             for i in range(0, n - batch_size + 1, batch_size):
                 idx = perm[i: i + batch_size]
-                yield mx.array(inp[idx]), mx.array(tgt[idx])
+                yield to_array(inp[idx]), to_array(tgt[idx])
 
 
 # ── Evaluator (same interface as benchmarks_ext.evaluate_l2_rel_ext) ─────────
@@ -196,17 +201,31 @@ def evaluate_l2_rel_sim(benchmark: str, model, batch_size: int = 64) -> float:
     total_err  = 0.0
     total_norm = 0.0
 
-    for _ in range(n_batches):
-        x, y   = next(val_loader)
-        y_pred = model(x)
-        diff   = (y_pred - y).astype(mx.float32)
-        y_f    = y.astype(mx.float32)
-        axes   = tuple(range(1, y.ndim))    # all spatial+channel dims
-        err    = mx.sqrt(mx.mean(diff**2, axis=axes))
-        nrm    = mx.sqrt(mx.mean(y_f **2, axis=axes))
-        mx.eval(err, nrm)
-        total_err  += mx.sum(err).item()
-        total_norm += mx.sum(nrm).item()
+    if FRAMEWORK == "mlx":
+        for _ in range(n_batches):
+            x, y   = next(val_loader)
+            y_pred = model(x)
+            diff   = (y_pred - y).astype(mx.float32)
+            y_f    = y.astype(mx.float32)
+            axes   = tuple(range(1, y.ndim))    # all spatial+channel dims
+            err    = mx.sqrt(mx.mean(diff**2, axis=axes))
+            nrm    = mx.sqrt(mx.mean(y_f **2, axis=axes))
+            mx.eval(err, nrm)
+            total_err  += mx.sum(err).item()
+            total_norm += mx.sum(nrm).item()
+    else:
+        with torch.no_grad():
+            for _ in range(n_batches):
+                x, y   = next(val_loader)
+                # x and y are already moved to DEVICE by to_array in loader
+                y_pred = model(x)
+                diff   = (y_pred - y).float()
+                y_f    = y.float()
+                axes   = tuple(range(1, y.ndim))
+                err    = torch.sqrt(torch.mean(diff**2, dim=axes))
+                nrm    = torch.sqrt(torch.mean(y_f **2, dim=axes))
+                total_err  += torch.sum(err).item()
+                total_norm += torch.sum(nrm).item()
 
     return total_err / max(total_norm, 1e-8)
 

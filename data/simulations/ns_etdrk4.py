@@ -31,7 +31,9 @@ References:
     Li et al. (2020) FNO paper, Table 4 (Re=1000 benchmark)
 """
 
+import torch
 import numpy as np
+from core.device import DEVICE, TORCH_DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -57,58 +59,51 @@ METADATA = {
 
 # ── IC generator ───────────────────────────────────────────────────────────────
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
-    """Small-amplitude smooth vorticity field (CFL-safe for dt=0.002).
-
-    IC scale=0.05: max velocity ≈ 3 → advective CFL = 3×0.002×N/(2π) ≈ 0.06 < 1.
-    """
-    return _random_ic_2d(n, N, rng, n_modes=4, scale=IC_SCALE, offset=0.0)
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
+    """Small-amplitude smooth vorticity field (CFL-safe for dt=0.002)."""
+    w0 = _random_ic_2d(n, N, rng, n_modes=4, scale=IC_SCALE, offset=0.0)
+    return torch.from_numpy(w0).to(TORCH_DEVICE)
 
 
 # ── ETDRK4 pseudo-spectral NS solver ──────────────────────────────────────────
 
-def solve_batch(w0: np.ndarray,
+def solve_batch(w0: torch.Tensor | np.ndarray,
                 nu: float    = NU,
                 T: float     = T_FINAL,
-                n_steps: int = N_STEPS) -> np.ndarray:
-    """Evolve 2D NS vorticity field from t=0 to T via ETDRK4.
+                n_steps: int = N_STEPS) -> torch.Tensor:
+    """Evolve 2D NS vorticity field from t=0 to T via ETDRK4."""
+    if isinstance(w0, np.ndarray):
+        w0 = torch.from_numpy(w0).to(TORCH_DEVICE)
+    else:
+        w0 = w0.to(TORCH_DEVICE)
 
-    Args:
-        w0:      [B, N, N] float32 — initial vorticity
-        nu:      kinematic viscosity
-        T:       final time
-        n_steps: number of ETDRK4 steps (dt = T / n_steps)
-
-    Returns:
-        [B, N, N] float32 — vorticity at time T
-    """
     B, N, _ = w0.shape
     dt = T / n_steps
 
     # Spectral operators on [0, 2π)²
-    k_int = np.fft.fftfreq(N).reshape(N, 1)
-    kx, ky = np.meshgrid(k_int, k_int)
+    k_int = torch.fft.fftfreq(N, device=TORCH_DEVICE).reshape(N, 1)
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     lap   = -(kx**2 + ky**2)                       # ∇² eigenvalues (negative)
-    lap_safe          = lap.copy()
+    lap_safe          = lap.clone()
     lap_safe[0, 0]    = 1.0                         # avoid div-by-zero at DC
 
     # Dealiasing mask (2/3-rule)
-    dealias = ((np.abs(kx * N) <= N // 3) &
-               (np.abs(ky * N) <= N // 3)).astype(np.float64)
+    dealias = ((torch.abs(kx * N) <= N // 3) &
+               (torch.abs(ky * N) <= N // 3)).to(torch.float32)
 
     # Linear operator L̂ = −ν|k|² (real, ≤ 0 everywhere)
     L = nu * lap                                    # = −ν|k|², ≤ 0
 
     # ETDRK4 integrating factors (precomputed, same for every step)
-    E  = np.exp(L * dt)          # [N, N]
-    E2 = np.exp(L * dt / 2.0)   # [N, N]
+    E  = torch.exp(L * dt)          # [N, N]
+    E2 = torch.exp(L * dt / 2.0)   # [N, N]
 
     eps_L = 1e-10
-    Ls    = np.where(np.abs(L) < eps_L, eps_L, L)
+    Ls    = torch.where(torch.abs(L) < eps_L, torch.tensor(eps_L, device=TORCH_DEVICE, dtype=L.dtype), L)
 
     # φ₁(z) = (e^z − 1)/z  coefficients for half-step and full-step
-    c1h = np.where(np.abs(L) < eps_L, dt / 2.0,  (E2 - 1.0) / Ls)  # half-step
-    c1f = np.where(np.abs(L) < eps_L, dt,          (E  - 1.0) / Ls)  # full-step
+    c1h = torch.where(torch.abs(L) < eps_L, torch.tensor(dt / 2.0, device=TORCH_DEVICE, dtype=L.dtype),  (E2 - 1.0) / Ls)  # half-step
+    c1f = torch.where(torch.abs(L) < eps_L, torch.tensor(dt, device=TORCH_DEVICE, dtype=L.dtype),          (E  - 1.0) / Ls)  # full-step
 
     # Broadcast for batch dimension: [1, N, N]
     E   = E  [None]
@@ -117,8 +112,10 @@ def solve_batch(w0: np.ndarray,
     c1f = c1f[None]
     lap_safe = lap_safe[None]
     dealias  = dealias[None]
+    kx = kx[None]
+    ky = ky[None]
 
-    def _nonlinear(w_hat: np.ndarray) -> np.ndarray:
+    def _nonlinear(w_hat: torch.Tensor) -> torch.Tensor:
         """Compute N̂(ω) = −F[(u·∇)ω] with 2/3-rule dealiasing."""
         wd = w_hat * dealias
 
@@ -127,19 +124,19 @@ def solve_batch(w0: np.ndarray,
         psi_hat[:, 0, 0] = 0.0
 
         # Velocity: u = ∂ψ/∂y, v = −∂ψ/∂x
-        u_phys = np.fft.ifft2(1j * ky[None] * psi_hat).real
-        v_phys = np.fft.ifft2(-1j * kx[None] * psi_hat).real
+        u_phys = torch.fft.ifft2(1j * ky * psi_hat, dim=(1, 2)).real
+        v_phys = torch.fft.ifft2(-1j * kx * psi_hat, dim=(1, 2)).real
 
         # Vorticity gradients
-        wx_phys = np.fft.ifft2(1j * kx[None] * wd).real
-        wy_phys = np.fft.ifft2(1j * ky[None] * wd).real
+        wx_phys = torch.fft.ifft2(1j * kx * wd, dim=(1, 2)).real
+        wy_phys = torch.fft.ifft2(1j * ky * wd, dim=(1, 2)).real
 
         # Nonlinear advection (in physical space), back to spectral
-        adv = np.fft.fft2(u_phys * wx_phys + v_phys * wy_phys)
+        adv = torch.fft.fft2(u_phys * wx_phys + v_phys * wy_phys, dim=(1, 2))
         return -adv    # N(ω) = −(u·∇)ω
 
-    w = w0.astype(np.float64)
-    w_hat = np.fft.fft2(w, axes=(1, 2))
+    w = w0.to(torch.float32)
+    w_hat = torch.fft.fft2(w, dim=(1, 2))
 
     for _ in range(n_steps):
         # ETDRK4 (Krogstad 2005, simplified variant)
@@ -157,16 +154,16 @@ def solve_batch(w0: np.ndarray,
         w_hat = (E * w_hat
                  + (dt / 6.0) * (E * N0 + 2.0 * E2 * (Na + Nb) + Nc))
 
-        # Stability check (catch divergences early)
-        if np.any(np.isnan(w_hat)):
+        # Stability check
+        if torch.any(torch.isnan(w_hat)):
             break
 
-    return np.fft.ifft2(w_hat, axes=(1, 2)).real.astype(np.float32)
+    return torch.fft.ifft2(w_hat, dim=(1, 2)).real.to(torch.float32)
 
 
 # ── Dataset helper ────────────────────────────────────────────────────────────
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng     = np.random.RandomState(seed)
     inputs  = make_ic(n, N, rng)
     targets = solve_batch(inputs)

@@ -11,9 +11,11 @@ Here we release from rest, so u_t(0) = 0.
 """
 
 import math
+import torch
 import numpy as np
 
 from data.prepare import _random_ic_2d
+from core.device import DEVICE, TORCH_DEVICE
 
 C_SPEED = 2.0
 T_FINAL = 1.0
@@ -29,26 +31,28 @@ METADATA = {
     "notes":    "Tests model ability to resolve high-frequency waves (spectral bias).",
 }
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     """Random surface anomaly with higher mode frequencies."""
     # scale higher modes to test high-frequency bias
-    return _random_ic_2d(n, N, rng, n_modes=12, scale=0.5, offset=0.0)
+    ic_np = _random_ic_2d(n, N, rng, n_modes=12, scale=0.5, offset=0.0)
+    return torch.from_numpy(ic_np).to(TORCH_DEVICE)
 
-def solve_batch(u0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
+def solve_batch(u0: torch.Tensor, T: float = T_FINAL) -> torch.Tensor:
     B, N, _ = u0.shape
-    k_int = np.fft.fftfreq(N, d=1.0 / N)
-    kx, ky = np.meshgrid(k_int, k_int, indexing="ij")
-    omega = C_SPEED * np.sqrt(kx**2 + ky**2)
+    # k_int = np.fft.fftfreq(N, d=1.0 / N)
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
+    omega = C_SPEED * torch.sqrt(kx**2 + ky**2)
     
-    propagator = np.cos(omega * T)[None, :, :]
+    propagator = torch.cos(omega * T)[None, :, :]
     
-    u0_d = u0.astype(np.float64)
-    u_hat = np.fft.fft2(u0_d, axes=(1, 2))
+    u0_d = u0.to(torch.float32)
+    u_hat = torch.fft.fft2(u0_d, dim=(1, 2))
     uT_hat = u_hat * propagator
-    uT = np.fft.ifft2(uT_hat, axes=(1, 2)).real
-    return uT.astype(np.float32)
+    uT = torch.fft.ifft2(uT_hat, dim=(1, 2)).real
+    return uT.to(torch.float32)
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)

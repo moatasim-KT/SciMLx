@@ -13,7 +13,7 @@ import json
 import math
 from typing import List, Optional, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -66,6 +66,50 @@ def sanitize(data: Any) -> Any:
         return [sanitize(v) for v in data]
     return data
 
+
+# ── WebSocket Latent Streaming ────────────────────────────────────────────────
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/latent/{exp_name}")
+async def websocket_latent(websocket: WebSocket, exp_name: str):
+    await manager.connect(websocket)
+    try:
+        import asyncio
+        while True:
+            # Read latest telemetry for latents
+            slug = exp_name.replace("/", "_").replace(" ", "_")
+            telemetry_path = TELEMETRY_DIR / f".vram_telemetry_{slug}"
+            if telemetry_path.exists():
+                try:
+                    data = json.loads(telemetry_path.read_text())
+                    latents = data.get("latents")
+                    if latents:
+                        await websocket.send_json({
+                            "experiment": exp_name,
+                            "latents": latents,
+                            "step": data.get("step")
+                        })
+                except Exception:
+                    pass
+            await asyncio.sleep(1.0) # 1Hz update
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
 # ── Experiment data ───────────────────────────────────────────────────────────
 

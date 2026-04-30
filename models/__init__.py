@@ -1,82 +1,50 @@
-from .fno import FNO1d, FNO2d, FNO1dMC, UNO1d, RFNO1d, RFNO2d, SpectralConv1d, SpectralConv2d
-from .afno import AFNO1d, AFNOBlock1d, AdaptiveSpectralMixer1d, FFNO1d, FFNOBlock1d, DiagSpectralConv1d
+# All SciMLx Models - PyTorch/CUDA Optimized
+
+from .fno import FNO1d, FNO2d, SpectralConv1d, SpectralConv2d, RFNO1d, RFNO2d, UNO1d, UNO2d
+from .afno import AFNO1d, FFNO1d
 from .deeponet import DeepONet, PODDeepONet
-from .wno import WNO1d, WaveletConv1d
-from .s4d import S4NO1d, S4DLayer
+from .wno import WNO1d, WNO2d, WNO_GNOT
+from .s4d import S4NO1d
 from .gnot import GNOT1d, GNOT2d
-from .pinn import PINO1d, PINN
-from .tfno import TFNO1d, RTFNO1d, CPFNO1d, TFNO2d, TuckerSpectralConv1d, CPSpectralConv1d, TuckerSpectralConv2d
+from .pinn import PINO1d, PINN, ModalPINN
+from .tfno import TFNO1d, TFNO2d
 from .transolver import Transolver1d, Transolver2d
 from .time_deeponet import TimeDeepONet1d, DualBranchDeepONet1d
-from .hnn import HamiltonianNO1d, HamiltonianNet1d, EnergyConservingFNO1d
-from .neural_ode import NeuralODE1d, UniversalDE1d, LatentODE1d
-from .ssno import SSNO1d
-
+from .hnn import HamiltonianNO1d
+from .neural_ode import NeuralODE1d, UniversalDE1d
+from .mamba_no import MambaNO1d
+from .sar import SARModel2d
 from .pacmann import PACMANN
 from .vsmno import VSMNO2d
+from .ssno import SSNO1d
+from .mem_no import MemNO1d
+from .kan import KAN_FNO
+from .chebyshev_kan import cPIKAN_FNO
+from .gato import GATO
+from .mff import MultiFidelityFusion, ResidualMFF
 
-from .mamba_no  import MambaNO1d
-from .sar import SARModel2d
 __all__ = [
-	"PACMANN",
-	"SARModel2d",
-	"VSMNO2d",
-	"PINN",
-	# AFNO/FFNO family
-	"AFNO1d",
-	"AFNOBlock1d",
-	"AdaptiveSpectralMixer1d",
-	"CPFNO1d",
-	"CPSpectralConv1d",
-	# DeepONet family
-	"DeepONet",
-	"DiagSpectralConv1d",
-	"DualBranchDeepONet1d",
-	"EnergyConservingFNO1d",
-	"FFNO1d",
-	"FFNOBlock1d",
-	# FNO family
-	"FNO1d",
-	"FNO1dMC",
-	"FNO2d",
-	# GNOT family
-	"GNOT1d",
-	"GNOT2d",
-	# Hamiltonian Neural Networks — from Greydanus et al. NeurIPS 2019 / MathWorks examples
-	"HamiltonianNO1d",
-	"HamiltonianNet1d",
-	"LatentODE1d",
-    "IterativeFNO2d",
-    "ModalPINN",
-	# Neural ODEs & Universal Differential Equations — from Chen et al. / Rackauckas et al.
-	"NeuralODE1d",
-	# PINN family
-	"PINO1d",
-	"PODDeepONet",
-	"RFNO1d",
-	"RFNO2d",
-	"RTFNO1d",
-	"S4DLayer",
-	# State Space Models
-	"S4NO1d",
-	# State-Space Neural Operator (SS-NO) — adaptive S4D + spectral conv dual-branch
-	"SSNO1d",
-	"SpectralConv1d",
-	"SpectralConv2d",
-	# TFNO family (Tucker/CP factorized FNO) — from PhysicsNeMo
-	"TFNO1d",
-	"TFNO2d",
-	# Time-Marching DeepONet — from FE-NO coupling paper (CMAME 2025)
-	"TimeDeepONet1d",
-	# Transolver (Physics Attention Transformer) — from PhysicsNeMo/NeurIPS 2024
-	"Transolver1d",
-	"Transolver2d",
-	"TuckerSpectralConv1d",
-	"TuckerSpectralConv2d",
-	"UNO1d",
-	"UniversalDE1d",
-	# WNO family
-	"WNO1d",
-	"WaveletConv1d",
+    "FNO1d", "FNO2d", "SpectralConv1d", "SpectralConv2d", "RFNO1d", "RFNO2d", "UNO1d", "UNO2d",
+    "AFNO1d", "FFNO1d",
+    "DeepONet", "PODDeepONet",
+    "WNO1d", "WNO2d", "WNO_GNOT",
+    "S4NO1d",
+    "GNOT1d", "GNOT2d",
+    "PINO1d", "PINN", "ModalPINN",
+    "TFNO1d", "TFNO2d",
+    "Transolver1d", "Transolver2d",
+    "TimeDeepONet1d", "DualBranchDeepONet1d",
+    "HamiltonianNO1d",
+    "NeuralODE1d", "UniversalDE1d",
     "MambaNO1d",
+    "SARModel2d",
+    "PACMANN",
+    "VSMNO2d",
+    "SSNO1d",
+    "MemNO1d",
+    "KAN_FNO",
+    "cPIKAN_FNO",
+    "GATO",
+    "MultiFidelityFusion",
+    "ResidualMFF"
 ]

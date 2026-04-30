@@ -8,7 +8,9 @@ Output: [B, N, N, 2] (displacement)
 """
 
 import math
+import torch
 import numpy as np
+from core.device import DEVICE, TORCH_DEVICE
 from data.prepare import _random_ic_2d
 
 METADATA = {
@@ -22,38 +24,42 @@ METADATA = {
     "notes":    "Challenges multi-component output handling (tensor-valued).",
 }
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     fx = _random_ic_2d(n, N, rng, n_modes=3, scale=1.0, offset=0.0)
     fy = _random_ic_2d(n, N, rng, n_modes=3, scale=1.0, offset=0.0)
-    return np.stack([fx, fy], axis=-1)
+    return torch.stack([torch.from_numpy(fx), torch.from_numpy(fy)], dim=-1).to(TORCH_DEVICE)
 
-def solve_batch(F: np.ndarray, T: float = 1.0) -> np.ndarray:
+def solve_batch(F: torch.Tensor | np.ndarray, T: float = 1.0) -> torch.Tensor:
     # Very simplified proxy for linear elasticity.
-    # U = (λ+2μ)^(-1) ∇(∇·F) ... we'll just mock a smoothing operator to represent the inverse Laplacian-like behavior.
+    if isinstance(F, np.ndarray):
+        F = torch.from_numpy(F).to(TORCH_DEVICE)
+    else:
+        F = F.to(TORCH_DEVICE)
+
     B, N, _, _ = F.shape
-    k_int = np.fft.fftfreq(N, d=1.0 / N)
-    kx, ky = np.meshgrid(k_int, k_int, indexing="ij")
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     k_sq = kx**2 + ky**2
     k_sq[0, 0] = 1.0 # avoid div by zero
     
     fx, fy = F[..., 0], F[..., 1]
-    fx_hat = np.fft.fft2(fx.astype(np.float64), axes=(1, 2))
-    fy_hat = np.fft.fft2(fy.astype(np.float64), axes=(1, 2))
+    fx_hat = torch.fft.fft2(fx.to(torch.float32), dim=(1, 2))
+    fy_hat = torch.fft.fft2(fy.to(torch.float32), dim=(1, 2))
     
     # Simple decoupled Poisson-like smoothing for mock structural mechanics
     ux_hat = fx_hat / k_sq
     uy_hat = fy_hat / k_sq
     
-    ux = np.fft.ifft2(ux_hat, axes=(1, 2)).real
-    uy = np.fft.ifft2(uy_hat, axes=(1, 2)).real
+    ux = torch.fft.ifft2(ux_hat, dim=(1, 2)).real
+    uy = torch.fft.ifft2(uy_hat, dim=(1, 2)).real
     
     # zero out mean
-    ux -= np.mean(ux, axis=(1, 2), keepdims=True)
-    uy -= np.mean(uy, axis=(1, 2), keepdims=True)
+    ux -= torch.mean(ux, dim=(1, 2), keepdim=True)
+    uy -= torch.mean(uy, dim=(1, 2), keepdim=True)
 
-    return np.stack([ux, uy], axis=-1).astype(np.float32)
+    return torch.stack([ux, uy], dim=-1).to(torch.float32)
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)

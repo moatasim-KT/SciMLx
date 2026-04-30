@@ -136,6 +136,20 @@ def _expected_improvement(mu: float, sigma: float,
     return (best_y - mu - xi) * norm.cdf(z) + sigma * norm.pdf(z)
 
 
+def _upper_confidence_bound(mu: float, sigma: float, kappa: float = 2.0) -> float:
+    """UCB acquisition (minimization). We return - (mu - kappa * sigma) to maximize."""
+    return -(mu - kappa * sigma)
+
+
+def _epistemic_curiosity(mu: float, sigma: float, best_y: float, 
+                        criticality: float = 1.0) -> float:
+    """
+    Acquisition focusing on regions of high uncertainty (sigma).
+    Weights sigma by a scientific criticality factor.
+    """
+    return sigma * criticality
+
+
 # ── Main class ────────────────────────────────────────────────────────────────
 
 class BayesianHPO:
@@ -258,11 +272,16 @@ class BayesianHPO:
 
     # ── Suggestion ───────────────────────────────────────────────────────────
 
-    def ask(self, n_candidates: int = 500) -> dict:
-        """Return the next config to try (highest Expected Improvement).
-
-        In multi-objective mode the GP is fitted to the composite scalarized
-        score, so EI balances all objectives according to their weights.
+    def ask(self, n_candidates: int = 500, mode: str = "ei", kappa: float = 2.0, criticality: float = 1.0) -> dict:
+        """Return the next config to try based on the acquisition mode.
+        
+        Args:
+            n_candidates: Number of random candidates to evaluate
+            mode: Acquisition mode: 'ei' (Expected Improvement), 
+                  'ucb' (Upper Confidence Bound), 
+                  'curiosity' (Epistemic Curiosity / high variance)
+            kappa: UCB exploration factor (higher = more exploration)
+            criticality: Multiplier for curiosity mode
         """
         candidates = self.rng.rand(n_candidates, N_DIM)
 
@@ -274,12 +293,21 @@ class BayesianHPO:
         y_arr  = np.array(self.y)
         best_y = float(np.min(y_arr))
 
-        best_ei, best_x = -1.0, candidates[0]
+        best_score, best_x = -float("inf"), candidates[0]
         for x in candidates:
             mu, sigma = _gp_predict(X_arr, y_arr, x)
-            ei = _expected_improvement(mu, sigma, best_y)
-            if ei > best_ei:
-                best_ei, best_x = ei, x
+            
+            if mode == "ei":
+                score = _expected_improvement(mu, sigma, best_y)
+            elif mode == "ucb":
+                score = _upper_confidence_bound(mu, sigma, kappa)
+            elif mode == "curiosity":
+                score = _epistemic_curiosity(mu, sigma, best_y, criticality)
+            else:
+                score = _expected_improvement(mu, sigma, best_y)
+                
+            if score > best_score:
+                best_score, best_x = score, x
 
         return _denormalize(best_x)
 

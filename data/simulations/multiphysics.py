@@ -10,7 +10,9 @@ Output: [B, N, N, 2]
 """
 
 import math
+import torch
 import numpy as np
+from core.device import DEVICE, TORCH_DEVICE
 from data.prepare import _random_ic_2d
 
 T_FINAL = 1.0
@@ -28,27 +30,28 @@ METADATA = {
     "notes":    "Tests model ability to resolve cross-field interactions in multi-channel configurations.",
 }
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
     u0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
     v0 = _random_ic_2d(n, N, rng, n_modes=4, scale=1.0, offset=0.0)
-    return np.stack([u0, v0], axis=-1)
+    return torch.stack([torch.from_numpy(u0), torch.from_numpy(v0)], dim=-1).to(TORCH_DEVICE)
 
-def solve_batch(uv0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
+def solve_batch(uv0: torch.Tensor | np.ndarray, T: float = T_FINAL) -> torch.Tensor:
+    if isinstance(uv0, np.ndarray):
+        uv0 = torch.from_numpy(uv0).to(TORCH_DEVICE)
+    else:
+        uv0 = uv0.to(TORCH_DEVICE)
+
     B, N, _, _ = uv0.shape
     u0, v0 = uv0[..., 0], uv0[..., 1]
     
-    k_int = np.fft.fftfreq(N, d=1.0 / N)
-    kx, ky = np.meshgrid(k_int, k_int, indexing="ij")
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
     k_sq = kx**2 + ky**2
     
-    u_hat = np.fft.fft2(u0.astype(np.float64), axes=(1, 2))
-    v_hat = np.fft.fft2(v0.astype(np.float64), axes=(1, 2))
+    u_hat = torch.fft.fft2(u0.to(torch.float32), dim=(1, 2))
+    v_hat = torch.fft.fft2(v0.to(torch.float32), dim=(1, 2))
     
     # Solve system in Fourier domain analytically using matrix exponential (diagonalized)
-    # df/dt = A f, where A = [[-D1 k^2, -alpha], [alpha, -D2 k^2]]
-    # For a simple mock, we use a crude semi-implicit step or exact if D1=D2.
-    # To keep it fast and stable, we just decouple with an approximation or 
-    # use first order Euler in Fourier space for a few steps.
     steps = 10
     dt = T / steps
     for _ in range(steps):
@@ -56,11 +59,11 @@ def solve_batch(uv0: np.ndarray, T: float = T_FINAL) -> np.ndarray:
         v_next = v_hat - dt * D2 * k_sq * v_hat + dt * ALPHA * u_hat
         u_hat, v_hat = u_next, v_next
 
-    uT = np.fft.ifft2(u_hat, axes=(1, 2)).real.astype(np.float32)
-    vT = np.fft.ifft2(v_hat, axes=(1, 2)).real.astype(np.float32)
-    return np.stack([uT, vT], axis=-1)
+    uT = torch.fft.ifft2(u_hat, dim=(1, 2)).real.to(torch.float32)
+    vT = torch.fft.ifft2(v_hat, dim=(1, 2)).real.to(torch.float32)
+    return torch.stack([uT, vT], dim=-1)
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng = np.random.RandomState(seed)
     inputs = make_ic(n, N, rng)
     targets = solve_batch(inputs)

@@ -1,22 +1,17 @@
 """
 PACMANN — SciML Neural Operator
 
-Auto-generated stub by model_scaffold.py.
-Base architecture: PINN
-Notes: fill in architecture details
-
-Edit this file to implement the model, then validate with:
-    uv run model_scaffold.py --validate PACMANN models/pacmann.py
+Base architecture: PINN/FNO hybrid.
 """
 
-import mlx.core as mx
-import mlx.nn as nn
-from models.fno import SpectralConv1d   # reuse existing building blocks
-
+import torch
+import torch.nn as nn
+from models.fno import SpectralConv1d
+from core.device import DEVICE
 
 class PACMANN(nn.Module):
     """
-    PACMANN: extend description here.
+    PACMANN: Physics-Augmented Convolutional Neural Network.
 
     Args:
         n_modes   : number of Fourier modes to keep
@@ -33,18 +28,18 @@ class PACMANN(nn.Module):
 
         self.lift = nn.Linear(1, hidden_dim)
 
-        # TODO: replace with your custom operator blocks
-        self.blocks = [
+        self.blocks = nn.ModuleList([
             SpectralConv1d(hidden_dim, hidden_dim, n_modes)
             for _ in range(n_layers)
-        ]
+        ])
         self.proj = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, 1),
         )
+        self.to(DEVICE)
 
-    def __call__(self, x: mx.array) -> mx.array:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
             x: [B, N] input field
@@ -52,7 +47,7 @@ class PACMANN(nn.Module):
             out: [B, N] output field
         """
         # Lift to hidden dim
-        h = self.lift(x[..., None])          # [B, N, hidden_dim]
+        h = self.lift(x.unsqueeze(-1))          # [B, N, hidden_dim]
 
         # Apply operator blocks
         for block in self.blocks:

@@ -23,7 +23,9 @@ References:
     Allen & Cahn (1979) "A microscopic theory for antiphase boundary motion"
 """
 
+import torch
 import numpy as np
+from core.device import DEVICE, TORCH_DEVICE
 
 from data.prepare import _random_ic_2d
 
@@ -48,97 +50,85 @@ METADATA = {
 
 # ── IC generator ───────────────────────────────────────────────────────────────
 
-def make_ic(n: int, N: int, rng: np.random.RandomState) -> np.ndarray:
-    """Random mixed-phase initial conditions via tanh-smoothed GRF.
-
-    A raw GRF mapped through tanh gives a field with diffuse ±1 regions
-    (physical Allen-Cahn initial data: random droplets/domains).
-    The scale factor 2/ε stretches the GRF to create sharp but resolved
-    interfaces of width ~ε at the zero crossings.
-    """
+def make_ic(n: int, N: int, rng: np.random.RandomState) -> torch.Tensor:
+    """Random mixed-phase initial conditions via tanh-smoothed GRF."""
     raw   = _random_ic_2d(n, N, rng, n_modes=6, scale=1.5, offset=0.0)
+    raw   = torch.from_numpy(raw).to(TORCH_DEVICE)
     scale = 1.0 / (np.sqrt(2.0) * EPSILON)
-    return np.tanh(raw * scale).astype(np.float32)
+    return torch.tanh(raw * scale).to(torch.float32)
 
 
 # ── ETDRK2 solver ─────────────────────────────────────────────────────────────
 
-def _etdrk2_coeffs(L_hat: np.ndarray, dt: float):
-    """Precompute ETDRK2 (Cox-Matthews) integration coefficients.
-
-    Returns E, c1, c2 arrays with L'Hôpital limits applied at L→0.
-    """
+def _etdrk2_coeffs(L_hat: torch.Tensor, dt: float):
+    """Precompute ETDRK2 (Cox-Matthews) integration coefficients."""
     eps_zero = 1e-10
-    E   = np.exp(L_hat * dt)
-    Ls  = np.where(np.abs(L_hat) < eps_zero, eps_zero, L_hat)
+    E   = torch.exp(L_hat * dt)
+    Ls  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(eps_zero, device=TORCH_DEVICE, dtype=L_hat.dtype), L_hat)
 
     # φ₁(z) = (e^z - 1)/z  →  dt at z→0
-    c1  = np.where(np.abs(L_hat) < eps_zero, dt,
+    c1  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt, device=TORCH_DEVICE, dtype=L_hat.dtype),
                    (E - 1.0) / Ls)
 
     # φ₂(z) = (e^z - 1 - z) / z² dt  →  dt/2 at z→0
-    c2  = np.where(np.abs(L_hat) < eps_zero, dt / 2.0,
+    c2  = torch.where(torch.abs(L_hat) < eps_zero, torch.tensor(dt / 2.0, device=TORCH_DEVICE, dtype=L_hat.dtype),
                    (E - 1.0 - L_hat * dt) / (Ls**2 * dt))
     return E, c1, c2
 
 
-def solve_batch(phi0: np.ndarray,
+def solve_batch(phi0: torch.Tensor | np.ndarray,
                 T: float     = T_FINAL,
-                n_steps: int = N_STEPS) -> np.ndarray:
-    """Evolve Allen-Cahn phase field from t=0 to T via ETDRK2.
+                n_steps: int = N_STEPS) -> torch.Tensor:
+    """Evolve Allen-Cahn phase field from t=0 to T via ETDRK2."""
+    if isinstance(phi0, np.ndarray):
+        phi0 = torch.from_numpy(phi0).to(TORCH_DEVICE)
+    else:
+        phi0 = phi0.to(TORCH_DEVICE)
 
-    Args:
-        phi0:    [B, N, N] float32 — initial phase field
-        T:       final time
-        n_steps: number of ETDRK2 steps (dt = T / n_steps)
-
-    Returns:
-        [B, N, N] float32 — phase field at time T
-    """
     B, N, _ = phi0.shape
     dt = T / n_steps
 
     # Spectral Laplacian on [0,1]²: ∇² → −|2πk|²
-    k_int = np.fft.fftfreq(N, d=1.0 / N)
-    kx, ky = np.meshgrid(k_int, k_int, indexing="ij")
-    k_sq = kx**2 + ky**2                              # [N, N]  (integer-wavenumber squared)
-    L_hat = -(EPSILON**2) * (2.0 * np.pi)**2 * k_sq   # spectral linear operator
+    k_int = torch.fft.fftfreq(N, d=1.0 / N, device=TORCH_DEVICE)
+    kx, ky = torch.meshgrid(k_int, k_int, indexing="ij")
+    k_sq = kx**2 + ky**2                              
+    L_hat = -(EPSILON**2) * (2.0 * np.pi)**2 * k_sq   
 
-    # Precompute ETDRK2 coefficients (same for every step)
+    # Precompute ETDRK2 coefficients
     E, c1, c2 = _etdrk2_coeffs(L_hat, dt)
-    E   = E[None]    # [1, N, N] for broadcasting with [B, N, N]
+    E   = E[None]    
     c1  = c1[None]
     c2  = c2[None]
 
     def _N_hat(phi):
         """Nonlinear term N(φ) = φ − φ³, returned in spectral space."""
         Nphys = phi - phi**3
-        return np.fft.fft2(Nphys, axes=(1, 2))
+        return torch.fft.fft2(Nphys, dim=(1, 2))
 
-    phi = phi0.astype(np.float64)
+    phi = phi0.to(torch.float32)
 
     for _ in range(n_steps):
-        phi_hat = np.fft.fft2(phi, axes=(1, 2))
+        phi_hat = torch.fft.fft2(phi, dim=(1, 2))
         N0_hat  = _N_hat(phi)
 
         # ETDRK2 predictor
         phi_hat_star = E * phi_hat + c1 * N0_hat
-        phi_star     = np.fft.ifft2(phi_hat_star, axes=(1, 2)).real
+        phi_star     = torch.fft.ifft2(phi_hat_star, dim=(1, 2)).real
 
         # ETDRK2 corrector
         Na_hat   = _N_hat(phi_star)
         phi_hat  = phi_hat_star + c2 * (Na_hat - N0_hat)
-        phi      = np.fft.ifft2(phi_hat, axes=(1, 2)).real
+        phi      = torch.fft.ifft2(phi_hat, dim=(1, 2)).real
 
         # Bound projection (numerical stability guard)
-        phi = np.clip(phi, -1.0 - 1e-4, 1.0 + 1e-4)
+        phi = torch.clamp(phi, -1.0 - 1e-4, 1.0 + 1e-4)
 
-    return phi.astype(np.float32)
+    return phi.to(torch.float32)
 
 
 # ── Dataset helper ────────────────────────────────────────────────────────────
 
-def make_dataset(n: int, seed: int, N: int = 64) -> tuple[np.ndarray, np.ndarray]:
+def make_dataset(n: int, seed: int, N: int = 64) -> tuple[torch.Tensor, torch.Tensor]:
     rng     = np.random.RandomState(seed)
     inputs  = make_ic(n, N, rng)
     targets = solve_batch(inputs)

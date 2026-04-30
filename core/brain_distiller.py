@@ -8,14 +8,22 @@ the project's Living Brain.
 
 import json
 import re
+import os
+import requests
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
-from core.utils import REPO_ROOT, LOGS_DIR
+from core.arxiv_agent import ArXivAgent
+from core.utils import REPO_ROOT, LOGS_DIR, PAPERS_DIR
 
 BRAIN_PATH = REPO_ROOT / "RESEARCH_BRAIN.md"
 TRAJECTORIES_FILE = LOGS_DIR / "trajectories.jsonl"
+
+def update_paper_registry(query: str = "Neural Operator", generate_models: bool = False):
+    """Fetch new papers, update the registry, and optionally generate model code."""
+    agent = ArXivAgent()
+    agent.update_registry(query=query, generate_models=generate_models)
 
 def _replace_section(content: str, start_marker: str, end_marker: str, new_content: str) -> str:
     """Replace content between Markdown markers."""
@@ -136,4 +144,15 @@ def distill():
     print(f"RESEARCH_BRAIN.md distilled successfully at {datetime.now().isoformat()}")
 
 if __name__ == "__main__":
-    distill()
+    import argparse
+    parser = argparse.ArgumentParser(description="SciML Brain Distiller")
+    parser.add_argument("--distill", action="store_true", help="Distill experiment trajectories into RESEARCH_BRAIN.md")
+    parser.add_argument("--update-papers", type=str, help="Scan ArXiv for new papers with the given query")
+    parser.add_argument("--generate-models", action="store_true", help="Generate model code for new papers")
+    args = parser.parse_args()
+
+    if args.update_papers:
+        update_paper_registry(args.update_papers, generate_models=args.generate_models)
+    
+    if args.distill or (not args.update_papers):
+        distill()
