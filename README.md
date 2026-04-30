@@ -1,63 +1,50 @@
-# SciMLx (Hardware Agnostic)
+# SciMLx: Agent-Driven Autoresearch for Neural Operators
 
-**Autonomous neural operator research loop for PDE solving on NVIDIA GPUs.**
+SciMLx is a self-driving experiment harness designed for high-performance neural operator research. By bridging the gap between scientific literature and high-fidelity simulation, SciMLx enables autonomous discovery and optimization of PDE solvers across complex physical domains.
 
-![Pipeline Diagram](./artifacts/presentation/assets/gen/workflow.png)
+## Accelerating Scientific Discovery
+The core of SciMLx is an intelligent, agent-driven loop that automates the entire research workflow: from literature-informed hypothesis generation and neural architecture scaffolding to automated training, rigorous benchmarking, and experiment refinement.
 
-## Core & Actionable
-SciMLx is a self-driving experiment harness for neural operator research, optimized for **NVIDIA CUDA**. 
+Enabled by high-performance neural operator research, the platform provides:
+- **Autonomous Research Campaigns**: Overnight orchestration of train-evaluate-diagnose cycles.
+- **Advanced Operator Architectures**: Access to 30+ cutting-edge models, including FNO, MambaNO, and KANs.
+- **Hardware-Accelerated Benchmarking**: 15+ high-fidelity PDE simulation suites optimized for NVIDIA CUDA.
+- **Scientific Implementation (SI) Layer**: Built-in support for dimensional analysis (`units.py`), Lie Algebra foundations (`lie_math.py`), and frequency-aware spectral loss modulation.
 
-- **Autonomous Research**: Orchestrates overnight campaigns: train → evaluate → diagnose → propose next experiment → repeat.
-- **High-Performance Solvers**: 15+ GPU-accelerated PDE benchmarks.
-- **Model Efficiency**: 30+ neural operator architectures including FNO, MambaNO, and KANs.
-
-### Quick Start
+## Quick Start
 ```bash
-# Clone and install
+# Clone the repository
 git clone https://github.com/moatasimfarooque/autoresearch-mlx scimlx
 cd scimlx
+
+# Install dependencies
 uv sync
 
-# Run a training session
+# Run a training session on a benchmark
 uv run train.py --benchmark burgers_1d --model FNO
 
-# Run the autonomous research loop
+# Launch the autonomous research loop
 uv run autorun.py --auto --commit
 ```
 
-## Project Health
-*Based on recent experiment logs:*
-
-- **Big Wins**: Successful migration to PyTorch/CUDA yielding significant throughput gains; 9 of 14 SOTA targets surpassed.
-- **Losses**: Occasional convergence instability in high-dimensional Navier-Stokes benchmarks.
-- **Refinement Areas**: Improve spectral loss stability; enhance multi-GPU scaling strategies.
-
----
-
-## Technical Reference
-
-### Architecture
-SciMLx is modular, prioritizing data throughput and mathematical rigor:
-- **Unified Trainer**: Leverages `torch.compile` and mixed precision (AMP).
-- **Scientific Implementation (SI) Layer**: Dimensional analysis (`units.py`), Lie Algebra foundations (`lie_math.py`), and frequency-aware loss modulation.
-
-### Multi-Backend Support
-While primary development is on NVIDIA CUDA, the system retains an MLX-compatible backend.
-*Use `SCIMLX_BACKEND` to toggle: `export SCIMLX_BACKEND=torch` or `export SCIMLX_BACKEND=mlx`.*
-
-### Agentic Scientist Ideation Loop (ASIL)
-Automates the literature-to-code cycle:
-1.  **ASIL Scan**: `asil_ideate.py` identifies SOTA gaps.
-2.  **Scaffolding**: `asil_scaffold.py` generates model code from research proposals.
-
-### Documentation & Resources
+## Documentation
+For deeper insights into the project, consult our technical resources:
 - [Architecture](./docs/ARCHITECTURE.md)
 - [Benchmarks](./docs/BENCHMARKS.md)
 - [Research Brain](./RESEARCH_BRAIN.md)
 - [SOTA Report](./docs/SOTA.md)
 
----
-*For detailed research findings, see [`RESEARCH_BRAIN.md`](./RESEARCH_BRAIN.md).*
+## Contributions
+We welcome contributions from the scientific and engineering community. Whether you are improving operator architectures, adding new PDE benchmarks, or refining the autonomous agent loop, your input helps advance the state of scientific machine learning. Please refer to `CONTRIBUTING.md` for our submission guidelines.
+
+## Authors
+- Moatasim Farooque
+
+## Acknowledgments
+We thank the open-source community for the foundational research in neural operators, PDE benchmarking, and agentic workflows that have enabled the development of SciMLx.
+
+## License
+This project is released under an Open License. Please see the [LICENSE](./docs/LICENSE) file for details.
 
 
 <!-- STRUCTURE_START -->
@@ -153,9 +140,12 @@ autoresearch-mlx/
 │   │   │       ├── 2026-04-27-scimlx-vision-refactor-design.md
 │   │   │       ├── 2026-04-27-scimlx-vision-refactor-impl-plan.md
 │   │   │       ├── 2026-04-30-readme-overhaul-design.md
-│   │   │       └── 2026-04-30-readme-overhaul-impl-plan.md
+│   │   │       ├── 2026-04-30-readme-overhaul-impl-plan.md
+│   │   │       ├── 2026-04-30-readme-scientific-overhaul-design.md
+│   │   │       └── 2026-04-30-readme-scientific-overhaul-impl-plan.md
 │   │   └── state/
 │   │       ├── archive/
+│   │       │   ├── 2026-04-30-readme-scientific-overhaul.md
 │   │       │   └── 2026-04-30-update-readme-md.md
 │   │       └── 2026-04-30-implement-improvements.design-gate.json
 │   ├── papers/
